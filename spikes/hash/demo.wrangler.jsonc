@@ -1,0 +1,6 @@
+{
+  "name": "toolshed-hash-demo",
+  "main": "demo-worker.ts",
+  "compatibility_date": "2026-11-01",
+  "assets": { "directory": "./demo", "binding": "ASSETS", "run_worker_first": true }
+}

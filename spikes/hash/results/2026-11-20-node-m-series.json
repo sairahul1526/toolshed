@@ -1,0 +1,79 @@
+{
+  "node": "v25.9.0",
+  "arch": "arm64",
+  "runs": 7,
+  "rows": [
+    {
+      "id": "scrypt-native-N16384-r16-p1",
+      "medianCpuMs": 48.77,
+      "maxCpuMs": 50.6,
+      "note": "Better Auth default params, native"
+    },
+    {
+      "id": "scrypt-native-N8192-r8-p1",
+      "medianCpuMs": 12.02,
+      "maxCpuMs": 12.63,
+      "note": ""
+    },
+    {
+      "id": "scrypt-native-N16384-r8-p1",
+      "medianCpuMs": 26.08,
+      "maxCpuMs": 30.33,
+      "note": ""
+    },
+    {
+      "id": "scrypt-native-N32768-r8-p1",
+      "medianCpuMs": 53.46,
+      "maxCpuMs": 64.39,
+      "note": ""
+    },
+    {
+      "id": "scrypt-native-N131072-r8-p1",
+      "medianCpuMs": 217.05,
+      "maxCpuMs": 298.74,
+      "note": "OWASP minimum"
+    },
+    {
+      "id": "scrypt-noble-N16384-r16-p1",
+      "medianCpuMs": 56.37,
+      "maxCpuMs": 71.36,
+      "note": "Better Auth default (pure JS)"
+    },
+    {
+      "id": "pbkdf2-sha256-10000",
+      "medianCpuMs": 0.99,
+      "maxCpuMs": 1.1,
+      "note": ""
+    },
+    {
+      "id": "pbkdf2-sha256-50000",
+      "medianCpuMs": 4.37,
+      "maxCpuMs": 5.08,
+      "note": ""
+    },
+    {
+      "id": "pbkdf2-sha256-100000",
+      "medianCpuMs": 8.54,
+      "maxCpuMs": 8.83,
+      "note": "workerd max iterations"
+    },
+    {
+      "id": "pbkdf2-sha256-600000",
+      "medianCpuMs": 51.36,
+      "maxCpuMs": 52.66,
+      "note": "OWASP 2023"
+    },
+    {
+      "id": "pbkdf2-sha512-100000",
+      "medianCpuMs": 19.2,
+      "maxCpuMs": 19.39,
+      "note": ""
+    },
+    {
+      "id": "pbkdf2-sha512-210000",
+      "medianCpuMs": 41.58,
+      "maxCpuMs": 42.71,
+      "note": "OWASP 2023"
+    }
+  ]
+}

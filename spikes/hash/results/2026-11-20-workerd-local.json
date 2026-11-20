@@ -1,0 +1,54 @@
+{
+  "noopMs": 3.38,
+  "repeats": 10,
+  "rows": [
+    {
+      "id": "scrypt-native-N16384-r16-p1",
+      "perHashMs": 34.06
+    },
+    {
+      "id": "scrypt-native-N8192-r8-p1",
+      "perHashMs": 12.18
+    },
+    {
+      "id": "scrypt-native-N16384-r8-p1",
+      "perHashMs": 18.27
+    },
+    {
+      "id": "scrypt-native-N32768-r8-p1",
+      "perHashMs": 34.75
+    },
+    {
+      "id": "scrypt-native-N131072-r8-p1",
+      "perHashMs": 143.88
+    },
+    {
+      "id": "scrypt-noble-N16384-r16-p1",
+      "perHashMs": 52.64
+    },
+    {
+      "id": "pbkdf2-sha256-10000",
+      "perHashMs": 0.53
+    },
+    {
+      "id": "pbkdf2-sha256-50000",
+      "perHashMs": 3.16
+    },
+    {
+      "id": "pbkdf2-sha256-100000",
+      "perHashMs": 6.37
+    },
+    {
+      "id": "pbkdf2-sha256-600000",
+      "perHashMs": 37.82
+    },
+    {
+      "id": "pbkdf2-sha512-100000",
+      "perHashMs": 17.51
+    },
+    {
+      "id": "pbkdf2-sha512-210000",
+      "perHashMs": 42.15
+    }
+  ]
+}
