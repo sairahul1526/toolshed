@@ -22,11 +22,13 @@
     "check": "npm run typecheck && npm test",
     "spike:hash:node": "node spikes/hash/bench-node.mjs",
     "spike:hash:dev": "wrangler dev -c spikes/hash/wrangler.jsonc --port 8799",
-    "demo:hash": "cp src/ui/toolshed.css spikes/hash/demo/toolshed.css && wrangler dev -c spikes/hash/demo.wrangler.jsonc --port 8798 --ip 127.0.0.1"
+    "demo:hash": "cp src/ui/toolshed.css spikes/hash/demo/toolshed.css && wrangler dev -c spikes/hash/demo.wrangler.jsonc --port 8798 --ip 127.0.0.1",
+    "test:e2e": "playwright test"
   },
   "devDependencies": {
     "@cloudflare/workers-types": "5.20261118.1",
     "@noble/hashes": "1.8.0",
+    "@playwright/test": "^1.63.0",
     "typescript": "5.9.3",
     "vitest": "3.2.4",
     "wrangler": "4.165.0"

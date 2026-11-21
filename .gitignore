@@ -3,3 +3,5 @@ node_modules/
 dist/
 .dev.vars
 spikes/hash/demo/toolshed.css
+test-results/
+playwright-report/

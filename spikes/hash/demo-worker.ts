@@ -27,6 +27,18 @@ const NOTES: Record<string, string> = {
   "pbkdf2-sha256-600000": "OWASP 2023",
 };
 
+async function readJson<T>(req: Request): Promise<T | null> {
+  try {
+    const body = await req.json();
+    return body && typeof body === "object" ? (body as T) : null;
+  } catch {
+    return null;
+  }
+}
+
+const badRequest = () =>
+  Response.json({ code: "bad_request", message: "Send a JSON body." }, { status: 400 });
+
 export default {
   async fetch(req: Request, env: { ASSETS: Fetcher }): Promise<Response> {
     const url = new URL(req.url);
@@ -38,16 +50,20 @@ export default {
       return Response.json({ rows });
     }
     if (req.method === "POST" && url.pathname === "/api/hash") {
-      const { password, iterations } = (await req.json()) as { password: string; iterations: number };
+      const body = await readJson<{ password?: unknown; iterations?: unknown }>(req);
+      if (!body) return badRequest();
+      const { password, iterations } = body;
       try {
-        return Response.json({ stored: await hashPassword(String(password ?? ""), { iterations }) });
+        return Response.json({ stored: await hashPassword(String(password ?? ""), { iterations: iterations === undefined ? undefined : Number(iterations) }) });
       } catch (e) {
         if (e instanceof PasswordHashError) return Response.json({ code: e.code, message: e.message }, { status: 400 });
         throw e;
       }
     }
     if (req.method === "POST" && url.pathname === "/api/verify") {
-      const { password, stored } = (await req.json()) as { password: string; stored: string };
+      const body = await readJson<{ password?: unknown; stored?: unknown }>(req);
+      if (!body) return badRequest();
+      const { password, stored } = body;
       return Response.json({ ok: await verifyPassword(String(password ?? ""), String(stored ?? "")) });
     }
     if (url.pathname === "/toolshed.css") return env.ASSETS.fetch(new Request(new URL("/toolshed.css", url)));

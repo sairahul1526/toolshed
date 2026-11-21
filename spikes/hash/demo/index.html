@@ -23,7 +23,9 @@
   .ms { font-family: var(--font-mono); text-align: right; white-space: nowrap; }
   .try { display: grid; gap: 12px; }
   .try .row2 { display: grid; grid-template-columns: 1fr 160px; gap: 12px; }
-  .out { font-family: var(--font-mono); font-size: 12px; word-break: break-all; background: var(--surface-2); border-radius: var(--radius-sm); padding: 10px 12px; margin: 0; }
+  .wrap > *, .try > *, .try .row2 > * { min-width: 0; }
+  .bench th.ms { font-family: inherit; text-align: right; }
+  .out { font-family: var(--font-mono); font-size: 12px; white-space: pre-wrap; overflow-wrap: anywhere; word-break: break-all; background: var(--surface-2); border-radius: var(--radius-sm); padding: 10px 12px; margin: 0; }
   .res { display: flex; gap: 8px; align-items: center; flex-wrap: wrap; font-size: 13px; }
   .f label { display: block; font-size: 13px; font-weight: 500; margin-bottom: 6px; }
   .f .input { width: 100%; box-sizing: border-box; }
@@ -44,7 +46,7 @@
     <div class="table-wrap">
       <table class="bench">
         <thead><tr><th>Setting</th><th class="hide-s">Cost vs 10 ms</th><th class="ms">Per hash</th><th>Free</th></tr></thead>
-        <tbody id="rows"></tbody>
+        <tbody id="rows"><tr><td colspan="4" class="muted">Loading results…</td></tr></tbody>
       </table>
     </div>
     <div class="card-foot"><span class="note">Picked: PBKDF2-SHA256, 50,000 iterations. Every scrypt setting runs over the limit.</span></div>
@@ -76,34 +78,58 @@
 <script>
 const LIMIT = 10, SCALE = 60;
 const pick = 'pbkdf2-sha256-50000';
-fetch('/results').then(r => r.json()).then(({ rows }) => {
-  document.getElementById('rows').innerHTML = rows.map(r => {
+const rowsEl = document.getElementById('rows');
+fetch('/results').then(r => { if (!r.ok) throw new Error(); return r.json(); }).then(({ rows }) => {
+  rowsEl.innerHTML = rows.map(r => {
     const over = r.perHashMs > LIMIT;
     const w = Math.min(100, r.perHashMs / SCALE * 100);
     return `<tr class="${r.id === pick ? 'pick' : ''}"><td><b>${r.label}</b>${r.note ? `<br><span class="muted">${r.note}</span>` : ''}</td>
-      <td class="hide-s"><div class="bar"><i class="${over ? 'over' : ''}" style="width:${w}%"></i><b style="left:${LIMIT / SCALE * 100}%"></b></div></td>
+      <td class="hide-s"><div class="bar" role="img" aria-label="${r.perHashMs.toFixed(1)} ms of a 10 ms limit"><i class="${over ? 'over' : ''}" style="width:${w}%"></i><b style="left:${LIMIT / SCALE * 100}%"></b></div></td>
       <td class="ms">${r.perHashMs.toFixed(1)} ms</td>
       <td>${over ? '<span class="pill bad">Over</span>' : r.perHashMs > LIMIT * 0.6 ? '<span class="pill warn">Tight</span>' : '<span class="pill good">Fits</span>'}</td></tr>`;
   }).join('');
+}).catch(() => {
+  rowsEl.innerHTML = '<tr><td colspan="4" class="err">Couldn’t load the results. Reload the page to try again.</td></tr>';
 });
+const NETWORK_ERR = 'Couldn’t reach the dev server. Check that it’s still running, then try again.';
+async function post(path, body) {
+  const r = await fetch(path, { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify(body) });
+  const data = await r.json().catch(() => ({ message: NETWORK_ERR }));
+  return { ok: r.ok, data };
+}
+async function busy(btn, label, fn) {
+  const text = btn.textContent;
+  btn.disabled = true; btn.textContent = label;
+  try { await fn(); } finally { btn.disabled = false; btn.textContent = text; }
+}
 let stored = '';
-document.getElementById('hashform').addEventListener('submit', async (e) => {
+const pw = document.getElementById('pw'), iter = document.getElementById('iter'), pw2 = document.getElementById('pw2');
+const hashErr = document.getElementById('hasherr'), hashOut = document.getElementById('hashout');
+const verifyForm = document.getElementById('verifyform'), verdict = document.getElementById('verdict');
+document.getElementById('hashform').addEventListener('submit', (e) => {
   e.preventDefault();
-  const err = document.getElementById('hasherr'), out = document.getElementById('hashout');
-  const t = performance.now();
-  const r = await fetch('/api/hash', { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ password: pw.value, iterations: Number(iter.value) }) });
-  const b = await r.json();
-  if (!r.ok) { err.textContent = b.message; err.hidden = false; out.hidden = true; document.getElementById('verifyform').hidden = true; return; }
-  err.hidden = true; stored = b.stored;
-  document.getElementById('stored').textContent = b.stored;
-  document.getElementById('took').textContent = `${Math.round(performance.now() - t)} ms`;
-  out.hidden = false; document.getElementById('verifyform').hidden = false;
+  busy(e.currentTarget.querySelector('button'), 'Hashing…', async () => {
+    const t = performance.now();
+    let res;
+    try { res = await post('/api/hash', { password: pw.value, iterations: Number(iter.value) }); }
+    catch { res = { ok: false, data: { message: NETWORK_ERR } }; }
+    verdict.textContent = '';
+    if (!res.ok) { hashErr.textContent = res.data.message; hashErr.hidden = false; hashOut.hidden = true; verifyForm.hidden = true; return; }
+    hashErr.hidden = true; stored = res.data.stored;
+    document.getElementById('stored').textContent = stored;
+    document.getElementById('took').textContent = `${Math.round(performance.now() - t)} ms`;
+    hashOut.hidden = false; verifyForm.hidden = false;
+  });
 });
-document.getElementById('verifyform').addEventListener('submit', async (e) => {
+verifyForm.addEventListener('submit', (e) => {
   e.preventDefault();
-  const r = await fetch('/api/verify', { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ password: pw2.value, stored }) });
-  const { ok } = await r.json();
-  document.getElementById('verdict').innerHTML = ok ? '<span class="pill good">Matches</span>' : '<span class="pill bad">Doesn’t match</span>';
+  busy(e.currentTarget.querySelector('button'), 'Checking…', async () => {
+    let res;
+    try { res = await post('/api/verify', { password: pw2.value, stored }); }
+    catch { res = { ok: false, data: { message: NETWORK_ERR } }; }
+    if (!res.ok) { verdict.innerHTML = ''; const p = document.createElement('span'); p.className = 'err'; p.textContent = res.data.message; verdict.append(p); return; }
+    verdict.innerHTML = res.data.ok ? '<span class="pill good">Matches</span>' : '<span class="pill bad">Doesn’t match</span>';
+  });
 });
 const tb = document.getElementById('theme');
 const sync = () => tb.textContent = document.documentElement.dataset.theme === 'dark' ? 'Light mode' : 'Dark mode';

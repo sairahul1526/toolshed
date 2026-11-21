@@ -9,6 +9,8 @@ git clone https://github.com/sairahul1526/toolshed.git
 cd toolshed
 npm ci
 npm run check   # typecheck + tests, the same as CI
+npx playwright install chromium   # once, for the end-to-end tests
+npm run test:e2e   # Playwright against wrangler dev, also run in CI
 ```
 
 You need Node.js 22 or newer. No Cloudflare account is needed: everything runs locally with `wrangler dev`.
@@ -25,7 +27,7 @@ You need Node.js 22 or newer. No Cloudflare account is needed: everything runs l
 ## Pull requests
 
 - Keep each PR to one change, with tests.
-- `npm run check` must pass.
+- `npm run check` and `npm run test:e2e` must pass. A change you can see in a browser comes with an end-to-end test.
 - Say what changed and why in the description. For anything visible, add a screenshot in light mode, dark mode and at phone width (375 px).
 - Commit messages: a short imperative summary line, for example "Add rate limit to email codes".
 

@@ -33,6 +33,7 @@ npm ci
 | `npm test` | Runs the unit tests (Vitest) |
 | `npm run typecheck` | Type-checks `src/` and `test/` |
 | `npm run check` | Both of the above, the same as CI |
+| `npm run test:e2e` | End-to-end tests (Playwright) against `wrangler dev`; starts the server itself. First time: `npx playwright install chromium` |
 | `npm run demo:hash` | Starts the hasher demo at http://127.0.0.1:8798 |
 | `npm run spike:hash:node` | Times every hash setting in Node |
 | `npm run spike:hash:dev` | Starts the benchmark Worker in local workerd at http://127.0.0.1:8799, for `node spikes/hash/bench-workerd.mjs` |
