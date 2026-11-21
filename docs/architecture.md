@@ -145,6 +145,7 @@ Rules:
 ## Tests
 
 - **Unit tests** run in plain Node. `createTestEnv()` from `test/helpers/d1.ts` gives a fresh in-memory database with every migration applied, plus in-memory KV, R2 and a queue you empty with `drainJobs()`. Call `registerModules([yourModule])` when a test needs the registry.
+- **Route tests** use `mountModule(t, yourModule)` from `test/helpers/app.ts`. It mounts the module's dashboard, API and public routes behind the real guards with a pretend caller, so you can check roles, API key scopes and public pages without signing in: `app.as({ role: 'viewer' })`, `app.as({ kind: 'apikey', scopes: ['links:read'] })`, `app.as({ kind: 'anon' })`.
 - **End-to-end tests** (`test/e2e/*.e2e.ts`) run in a real browser against `wrangler dev` with an empty database. Emails sent in dev are readable at `/dev/outbox`, which is how tests sign in with a code.
 - Every module ships both, and its screens are checked at desktop width, at 375 px and in dark mode.
 
