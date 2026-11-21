@@ -1,5 +1,5 @@
 // Local dev page for feature #1: shows the spike results and lets you try the hasher.
-// Run: npm run demo:hash  (serves ui/toolshed.css and this page's HTML as static assets)
+// Run: npm run demo:hash  (serves public/assets/toolshed.css and this page's HTML as static assets)
 import { hashPassword, verifyPassword, PasswordHashError } from "../../src/auth/hasher";
 import { CASES } from "./cases.mjs";
 import results from "./results/2026-11-20-workerd-local.json";
