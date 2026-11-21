@@ -8,3 +8,6 @@ playwright-report/
 src/generated/
 /migrations/
 public/assets/fonts/
+
+# Screenshots from local test runs
+.shots/
