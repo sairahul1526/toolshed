@@ -8,11 +8,14 @@
  */
 import type { Env } from '../env';
 import { newId, parseJson } from './db';
-import { enqueue, registerCoreJob, registerCoreSchedule } from './jobs';
+import { cleanupJobs, enqueue, registerCoreJob, registerCoreSchedule } from './jobs';
 import type { AppEvent } from './module';
+import { cleanupRateLimits } from './ratelimit';
 import { allModules, moduleContext, moduleState } from './registry';
 
 const RECENT_KEEP_DAYS = 30;
+/** Daily totals are small (one row per event per day), so they are kept for over a year of charts. */
+const COUNTS_KEEP_DAYS = 400;
 
 function dayOf(ms: number): string {
   return new Date(ms).toISOString().slice(0, 10);
@@ -123,5 +126,17 @@ registerCoreSchedule({
     await env.DB.prepare('DELETE FROM events_recent WHERE at < ?1')
       .bind(at.getTime() - RECENT_KEEP_DAYS * 86_400_000)
       .run();
+  },
+});
+
+registerCoreSchedule({
+  name: 'housekeeping',
+  every: 'day',
+  run: async (env, at) => {
+    await env.DB.prepare('DELETE FROM event_counts WHERE day < ?1')
+      .bind(dayOf(at.getTime() - COUNTS_KEEP_DAYS * 86_400_000))
+      .run();
+    await cleanupRateLimits(env, at.getTime());
+    await cleanupJobs(env, at.getTime());
   },
 });
