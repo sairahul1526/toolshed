@@ -18,9 +18,21 @@ import { isDev } from './env';
 import { devUi } from './ui/dev';
 import { ErrorPage } from './ui/error-page';
 
+/**
+ * A core route file, `src/core/routes/<name>.ts`, default-exports one of these.
+ * `api` is mounted at /api/v1/<name> (signed in, inside a workspace). `public` is mounted at / with
+ * no sign-in, for things like /.well-known/jwks.json; it must only declare exact paths it owns.
+ */
+export interface CoreRoutes {
+  api?: Hono<AppEnv>;
+  public?: Hono<AppEnv>;
+}
+
 export interface AppParts {
   /** Core dashboard screens by folder name. `overview` is mounted at /app, the rest at /app/<name>. */
   screens: Record<string, Hono<AppEnv>>;
+  /** Core API routes by file name. */
+  routes?: Record<string, CoreRoutes>;
 }
 
 export function createApp(parts: AppParts): Hono<AppEnv> {
@@ -30,6 +42,10 @@ export function createApp(parts: AppParts): Hono<AppEnv> {
   for (const name of Object.keys(parts.screens)) {
     if (modules.some((m) => m.id === name)) throw new Error(`A module and a core screen are both called "${name}"`);
     if (!RESERVED_IDS.includes(name)) throw new Error(`Add "${name}" to RESERVED_IDS in src/core/module.ts before adding the screen`);
+  }
+  const routes = parts.routes ?? {};
+  for (const name of Object.keys(routes)) {
+    if (!RESERVED_IDS.includes(name)) throw new Error(`Add "${name}" to RESERVED_IDS in src/core/module.ts before adding the core route`);
   }
 
   app.use('*', async (c, next) => {
@@ -59,6 +75,7 @@ export function createApp(parts: AppParts): Hono<AppEnv> {
   app.get('/healthz', (c) => c.json({ ok: true }));
 
   // 1. Public module routes. No session lookup, so redirects, embeds and collect endpoints stay fast.
+  for (const r of Object.values(routes)) if (r.public) app.route('/', r.public);
   for (const m of modules) if (m.public) app.route('/', m.public);
 
   // 2. Everything below may need to know who is asking.
@@ -87,6 +104,7 @@ export function createApp(parts: AppParts): Hono<AppEnv> {
 
   // 5. REST API: session cookie, API key or JWT.
   app.use('/api/v1/*', requireUser, requireOrg(), sameOrigin);
+  for (const [name, r] of Object.entries(routes)) if (r.api) app.route(`/api/v1/${name}`, r.api);
   for (const m of modules) {
     if (!m.api) continue;
     app.use(`/api/v1/${m.id}/*`, requireModule(m.id));

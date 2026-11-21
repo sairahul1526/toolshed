@@ -3,6 +3,7 @@
 //
 //   src/modules/<id>/module.ts          -> src/generated/modules.ts
 //   src/dashboard/<name>/index.tsx      -> src/generated/screens.ts
+//   src/core/routes/<name>.ts           -> src/generated/routes.ts
 //   src/core/migrations/*.sql           -> migrations/core_<file>
 //   src/modules/<id>/migrations/*.sql   -> migrations/m_<id>_<file>
 //
@@ -61,6 +62,22 @@ writeIfChanged(
     `\nexport const screens: Record<string, Hono<AppEnv>> = {${screenNames.map((name, i) => ` '${name}': s${i}`).join(',')} };\n`,
 );
 
+// Core routes: each file default-exports { public?, api? } (see CoreRoutes in src/app.tsx).
+const routesDir = join(src, 'core', 'routes');
+const routeNames = existsSync(routesDir)
+  ? readdirSync(routesDir)
+      .filter((f) => /^[a-z][a-z0-9-]*\.tsx?$/.test(f))
+      .map((f) => f.replace(/\.tsx?$/, ''))
+      .sort()
+  : [];
+writeIfChanged(
+  join(src, 'generated', 'routes.ts'),
+  header +
+    "import type { CoreRoutes } from '../app';\n" +
+    routeNames.map((name, i) => `import r${i} from '../core/routes/${name}';\n`).join('') +
+    `\nexport const routes: Record<string, CoreRoutes> = {${routeNames.map((name, i) => ` '${name}': r${i}`).join(',')} };\n`,
+);
+
 // Migrations
 const out = join(root, 'migrations');
 const wanted = new Map();
@@ -73,4 +90,4 @@ mkdirSync(out, { recursive: true });
 for (const f of readdirSync(out)) if (!wanted.has(f)) rmSync(join(out, f));
 for (const [name, from] of wanted) writeIfChanged(join(out, name), readFileSync(from, 'utf8'));
 
-console.log(`prepare: ${moduleIds.length} modules, ${screenNames.length} screens, ${wanted.size} migrations`);
+console.log(`prepare: ${moduleIds.length} modules, ${screenNames.length} screens, ${routeNames.length} core routes, ${wanted.size} migrations`);

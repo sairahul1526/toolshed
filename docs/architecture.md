@@ -27,6 +27,7 @@ src/
     migrations/         Core tables, add-only
   auth/                 Sign-in, sessions, the request loader
   ui/                   The UI kit: layout, components, icons
+    routes/<name>.ts    Core API routes. Default-exports { api?, public? } → /api/v1/<name>
   dashboard/<name>/     Core screens. index.tsx default-exports a Hono app → /app/<name>
   modules/<id>/         One product each (see "A module")
   generated/            Written by scripts/prepare.mjs. Not in git
@@ -38,7 +39,7 @@ test/                   Unit tests (Vitest) and test/e2e (Playwright)
   helpers/d1.ts         In-memory bindings for unit tests
 ```
 
-`scripts/prepare.mjs` runs before every dev, test and typecheck command. It writes `src/generated/modules.ts` and `src/generated/screens.ts`, and copies every migration into `migrations/` with names that sort core first. You never register a module or a screen by hand.
+`scripts/prepare.mjs` runs before every dev, test and typecheck command. It writes `src/generated/modules.ts`, `screens.ts` and `routes.ts`, and copies every migration into `migrations/` with names that sort core first. You never register a module or a screen by hand.
 
 ## Routes
 
@@ -50,6 +51,7 @@ test/                   Unit tests (Vitest) and test/e2e (Playwright)
 | `/app` | `src/dashboard/overview` | Signed in, in a workspace |
 | `/app/<name>` | `src/dashboard/<name>` | Signed in, in a workspace |
 | `/app/<moduleId>/*` | The module's `dashboard` app | Signed in, module turned on |
+| `/api/v1/<name>/*` | A core route file, `src/core/routes/<name>.ts` | Session cookie, API key or JWT |
 | `/api/v1/<moduleId>/*` | The module's `api` app | Session cookie, API key or JWT; module turned on |
 | `/dev/*` | Dev helpers (`/dev/ui`, `/dev/outbox`) | Only when `ENVIRONMENT=dev` |
 | Anything else | Each module's `fallback`, then a 404 | No |
