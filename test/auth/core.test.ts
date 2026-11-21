@@ -189,7 +189,7 @@ describe('loadAuth', () => {
     const t = createTestEnv();
     await createTestSession(t.env);
     const spy = vi.spyOn(apikeys, 'verifyApiKey').mockImplementation(async (_env, token) =>
-      token === 'ts_good' ? { orgId: 'org_test', keyId: 'key_1', name: 'CI', scopes: ['links:read'], role: 'member' } : null,
+      token === 'ts_good' ? ({ orgId: 'org_test', keyId: 'key_1', name: 'CI', scopes: ['links:read'], role: 'member' } as apikeys.VerifiedKey) : null,
     );
     try {
       const app = probe();
@@ -208,7 +208,7 @@ describe('loadAuth', () => {
     const t = createTestEnv();
     const s = await createTestSession(t.env);
     const spy = vi.spyOn(jwt, 'verifyJwt').mockImplementation(async (_env, token) =>
-      token === 'aaa.bbb.ccc' ? { sub: 'usr_1', orgId: 'org_test', role: 'viewer', scopes: ['forms:read'], exp: 0 } : null,
+      token === 'aaa.bbb.ccc' ? ({ sub: 'usr_1', orgId: 'org_test', role: 'viewer', scopes: ['forms:read'], exp: 0 } as jwt.JwtClaims) : null,
     );
     try {
       const app = probe();

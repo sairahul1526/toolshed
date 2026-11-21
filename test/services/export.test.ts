@@ -145,14 +145,8 @@ describe('building the ZIP', () => {
     expect(files.find((f) => f.name === 'json/notes.extra.json')!.text()).toBe('[]\n');
   });
 
-  it('leaves out secrets from API keys and adds people to members, and skips tables that do not exist', async () => {
+  it('leaves out secrets from API keys and adds people to members', async () => {
     const t = setup();
-    // No member table yet: the export still works and just has no such file.
-    let item = await ask(t);
-    await runToEnd(t, item.id);
-    let names = (await zipOf(t, item.id)).map((f) => f.name);
-    expect(names).not.toContain('json/core.members.json');
-
     const key = (id: string, org: string, name: string, prefix: string, hash: string, scopes: string) =>
       t.env.DB.prepare(
         "INSERT INTO api_keys (id, org_id, name, kind, prefix, key_hash, scopes, role, created_by, created_at) VALUES (?1, ?2, ?3, 'service', ?4, ?5, ?6, 'member', 'u_test', 5)",
@@ -160,24 +154,23 @@ describe('building the ZIP', () => {
     await key('k1', t.org.id, 'CI', 'ts_live_abcd1234', 'sha256:SECRET', '["*"]');
     await key('k2', OTHER, 'Nope', 'ts_live_zzzz9999', 'sha256:OTHERSECRET', '[]');
     t.sqlite.exec(`
-      CREATE TABLE "user" (id TEXT PRIMARY KEY, email TEXT, name TEXT, password_hash TEXT);
-      CREATE TABLE member (id TEXT PRIMARY KEY, organizationId TEXT, userId TEXT, role TEXT);
-      INSERT INTO "user" VALUES ('u1', 'ana@example.com', 'Ana', 'pbkdf2:HASH');
-      INSERT INTO member VALUES ('m1', '${t.org.id}', 'u1', 'admin');
-      INSERT INTO member VALUES ('m2', '${OTHER}', 'u1', 'member');
+      INSERT OR IGNORE INTO organization (id, name, slug, createdAt) VALUES ('${t.org.id}', 'Mine', 'mine-export', 1);
+      INSERT OR IGNORE INTO organization (id, name, slug, createdAt) VALUES ('${OTHER}', 'Other', 'other-export', 1);
+      INSERT INTO "user" (id, name, email, emailVerified, createdAt, updatedAt) VALUES ('u1', 'Ana', 'ana@example.com', 1, 1, 1);
+      INSERT INTO account (id, accountId, providerId, userId, password, createdAt, updatedAt) VALUES ('ac1', 'u1', 'credential', 'u1', 'pbkdf2:HASH', 1, 1);
+      INSERT INTO member (id, organizationId, userId, role, createdAt) VALUES ('m1', '${t.org.id}', 'u1', 'admin', 1);
+      INSERT INTO member (id, organizationId, userId, role, createdAt) VALUES ('m2', '${OTHER}', 'u1', 'member', 1);
     `);
-    await t.env.DB.prepare('DELETE FROM exports').run();
-    await t.env.DB.prepare('DELETE FROM rate_limits').run();
-    item = await ask(t);
+    const item = await ask(t);
     await runToEnd(t, item.id);
     const files = await zipOf(t, item.id);
-    names = files.map((f) => f.name);
     const keys = JSON.parse(files.find((f) => f.name === 'json/core.api_keys.json')!.text());
     expect(keys).toHaveLength(1);
     expect(keys[0]).toMatchObject({ id: 'k1', org_id: t.org.id, name: 'CI', prefix: 'ts_live_abcd1234', scopes: '["*"]', created_at: 5 });
     expect(keys[0]).not.toHaveProperty('key_hash');
     const members = JSON.parse(files.find((f) => f.name === 'json/core.members.json')!.text());
-    expect(members).toEqual([{ id: 'm1', organizationId: t.org.id, userId: 'u1', role: 'admin', email: 'ana@example.com', name: 'Ana' }]);
+    expect(members).toHaveLength(1);
+    expect(members[0]).toMatchObject({ id: 'm1', organizationId: t.org.id, userId: 'u1', role: 'admin', email: 'ana@example.com', name: 'Ana' });
     const text = files.map((f) => f.text()).join('\n');
     expect(text).not.toContain('SECRET');
     expect(text).not.toContain('HASH');
@@ -186,8 +179,8 @@ describe('building the ZIP', () => {
   it('plans sources in a stable order, core first', async () => {
     const t = setup();
     const sources = await planSources(t.env, { ...t.org });
-    expect(sources.map((s) => s.name)).toEqual(['core.settings', 'core.module_state', 'core.audit_log', 'core.api_keys', 'notes.notes_items']);
-    expect(sources[4]!.columns).toEqual(['id', 'org_id', 'title', 'body', 'n']);
+    expect(sources.map((s) => s.name)).toEqual(['core.settings', 'core.module_state', 'core.audit_log', 'core.api_keys', 'core.members', 'notes.notes_items']);
+    expect(sources[5]!.columns).toEqual(['id', 'org_id', 'title', 'body', 'n']);
   });
 });
 
