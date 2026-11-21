@@ -49,6 +49,7 @@ export const authErrors = defineErrors('auth', {
   session_not_found: { status: 404, message: 'That device is already signed out.' },
   passkey_not_found: { status: 404, message: 'We couldn’t find that passkey.' },
   passkey_failed: { status: 400, message: 'That passkey didn’t work. Try again or sign in another way.' },
+  sign_in_again: { status: 403, message: 'Sign in again to make this change. It keeps your account safe if someone else gets hold of this browser.' },
   self_action: { status: 409, message: 'You can’t do that to your own account here.' },
   impersonating: { status: 403, message: 'Stop signing in as someone else before you do that.' },
   not_impersonating: { status: 409, message: 'You aren’t signed in as someone else.' },

@@ -11,6 +11,9 @@ export const SESSION_REFRESH_SEC = 60 * 60;
 /** "Sign in as" sessions end on their own after this long. */
 export const IMPERSONATION_TTL_SEC = 60 * 60;
 
+/** Changing how an account signs in needs a sign-in no older than this. */
+export const FRESH_SIGN_IN_SEC = 30 * 60;
+
 export const CODE_LENGTH = 6;
 export const CODE_TTL_MS = 10 * MINUTE;
 /** Wrong guesses allowed on one code before it stops working. */

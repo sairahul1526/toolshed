@@ -1,0 +1,129 @@
+/**
+ * Things a person changes about their own account. Every function works on the signed-in person
+ * only (there is no "user id" input to get wrong), and the ones that change how the account is
+ * signed in to ask for a recent sign-in.
+ */
+import type { Context } from 'hono';
+import { z } from 'zod';
+import { parse } from '../../core/errors';
+import type { AppEnv } from '../../env';
+import { getAuth } from '../auth';
+import { FRESH_SIGN_IN_SEC, MIN_PASSWORD_LENGTH } from '../config';
+import { authErrors } from '../errors';
+import { MAX_PASSWORD_LENGTH } from '../hasher';
+import { actorFrom, auditBy, freshFrom, selfFrom } from './actor';
+
+export interface AccountSummary {
+  id: string;
+  email: string;
+  name: string;
+  username: string | null;
+  hasPassword: boolean;
+  twoStep: boolean;
+  passkeys: number;
+  isInstanceOwner: boolean;
+  /** When the account was made, ms. */
+  createdAt: number;
+  /** True when this sign-in is recent enough for changes that ask for one. */
+  fresh: boolean;
+  /** Set while the instance owner is signed in as this person. */
+  impersonatedBy: string | null;
+}
+
+/** What the Account screen needs to draw itself. Two queries. */
+export async function getAccount(c: Context<AppEnv>, now = Date.now()): Promise<AccountSummary> {
+  const actor = await actorFrom(c);
+  const row = await c.env.DB.prepare(
+    `SELECT u."username" AS username, u."role" AS role, u."twoFactorEnabled" AS twoStep, u."createdAt" AS createdAt,
+            (SELECT COUNT(*) FROM "account" a WHERE a."userId" = u."id" AND a."providerId" = 'credential' AND a."password" IS NOT NULL) AS passwords,
+            (SELECT COUNT(*) FROM "passkey" p WHERE p."userId" = u."id") AS passkeys
+       FROM "user" u WHERE u."id" = ?1`,
+  )
+    .bind(actor.id)
+    .first<{ username: string | null; role: string | null; twoStep: number | null; createdAt: string; passwords: number; passkeys: number }>();
+  if (!row) throw authErrors.user_not_found();
+  return {
+    id: actor.id,
+    email: actor.email,
+    name: actor.name,
+    username: row.username,
+    hasPassword: row.passwords > 0,
+    twoStep: !!row.twoStep,
+    passkeys: row.passkeys,
+    isInstanceOwner: row.role === 'admin',
+    createdAt: Date.parse(row.createdAt),
+    fresh: !actor.impersonatedBy && now - actor.signedInAt <= FRESH_SIGN_IN_SEC * 1000,
+    impersonatedBy: actor.impersonatedBy,
+  };
+}
+
+/**
+ * Set a password, or replace the one there is. The current password is not asked for: the recent
+ * sign-in is the proof, which also keeps this to one hash per request. Every other device is
+ * signed out.
+ */
+export async function setPassword(c: Context<AppEnv>, input: { password: string }): Promise<{ replaced: boolean }> {
+  const actor = await freshFrom(c);
+  const password = typeof input.password === 'string' ? input.password : '';
+  const length = [...password].length;
+  if (length < MIN_PASSWORD_LENGTH) throw authErrors.password_weak();
+  if (length > MAX_PASSWORD_LENGTH) throw authErrors.password_too_long();
+
+  const ctx = await (await getAuth(c.env, c.req.url)).$context;
+  const hash = await ctx.password.hash(password);
+  const existing = await ctx.internalAdapter.findCredentialAccount(actor.id);
+  if (existing) await ctx.internalAdapter.updatePassword(actor.id, hash);
+  else await ctx.internalAdapter.linkAccount({ userId: actor.id, providerId: 'credential', accountId: actor.id, password: hash });
+
+  await c.env.DB.prepare('DELETE FROM "session" WHERE "userId" = ?1 AND "id" <> ?2').bind(actor.id, actor.sessionId).run();
+  await auditBy(c.env, actor, {
+    orgId: null,
+    action: existing ? 'password.changed' : 'password.added',
+    targetType: 'user',
+    targetId: actor.id,
+    summary: existing ? 'Changed their password' : 'Added a password',
+  });
+  return { replaced: !!existing };
+}
+
+/** Go back to signing in without a password. Emailed codes always work, so nobody is locked out. */
+export async function removePassword(c: Context<AppEnv>): Promise<void> {
+  const actor = await freshFrom(c);
+  const gone = await c.env.DB.prepare(`DELETE FROM "account" WHERE "userId" = ?1 AND "providerId" = 'credential'`).bind(actor.id).run();
+  if (!gone.meta.changes) return;
+  await auditBy(c.env, actor, { orgId: null, action: 'password.removed', targetType: 'user', targetId: actor.id, summary: 'Removed their password' });
+}
+
+/** Lower case, 3 to 30 letters, numbers, dots or underscores. Never an email address. */
+const usernameSchema = z
+  .string()
+  .trim()
+  .toLowerCase()
+  .regex(/^[a-z0-9_.]{3,30}$/, 'Use 3 to 30 letters, numbers, dots or underscores.');
+
+/** Set, change or clear (null) the optional username. It only ever works together with a password. */
+export async function setUsername(c: Context<AppEnv>, input: { username: string | null }): Promise<{ username: string | null }> {
+  const actor = await selfFrom(c);
+  const username = input.username === null || input.username === '' ? null : parse(z.object({ username: usernameSchema }), input).username;
+  if (username) {
+    const taken = await c.env.DB.prepare('SELECT 1 AS yes FROM "user" WHERE "username" = ?1 AND "id" <> ?2').bind(username, actor.id).first<{ yes: number }>();
+    if (taken) throw authErrors.username_taken();
+  }
+  try {
+    await c.env.DB.prepare('UPDATE "user" SET "username" = ?1, "displayUsername" = ?1, "updatedAt" = ?2 WHERE "id" = ?3')
+      .bind(username, new Date().toISOString(), actor.id)
+      .run();
+  } catch (err) {
+    // Two people asking for the same name at once: the unique index decides.
+    if (/UNIQUE/i.test(String((err as Error)?.message))) throw authErrors.username_taken();
+    throw err;
+  }
+  await auditBy(c.env, actor, {
+    orgId: null,
+    action: 'username.changed',
+    targetType: 'user',
+    targetId: actor.id,
+    summary: username ? `Set their username to ${username}` : 'Removed their username',
+  });
+  return { username };
+}

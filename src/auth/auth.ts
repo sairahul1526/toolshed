@@ -18,7 +18,7 @@ import { username } from 'better-auth/plugins/username';
 import { newId } from '../core/db';
 import type { Env } from '../env';
 import { IMPERSONATION_TTL_SEC, MIN_PASSWORD_LENGTH, RECOVERY_CODE_COUNT, SESSION_REFRESH_SEC, SESSION_TTL_SEC, TRUST_DEVICE_SEC } from './config';
-import { betterAuthPasswordHasher, MAX_PASSWORD_LENGTH } from './hasher';
+import { betterAuthPasswordHasher, iterationsFromEnv, MAX_PASSWORD_LENGTH } from './hasher';
 import { guardInit, type Guarded } from './init-guard';
 import { toolshed } from './plugin';
 
@@ -63,6 +63,11 @@ export function secureCookies(origin: string): boolean {
   return !(url.protocol === 'http:' && LOCAL_HOSTS.has(url.hostname));
 }
 
+/** The hashing cost an operator chose with `TOOLSHED_PASSWORD_ITERATIONS`, or the default. */
+export function passwordIterations(env: Env): number {
+  return iterationsFromEnv((env as Env & { TOOLSHED_PASSWORD_ITERATIONS?: string }).TOOLSHED_PASSWORD_ITERATIONS);
+}
+
 function build(env: Env, origin: string) {
   return betterAuth({
     appName: APP_NAME,
@@ -78,7 +83,7 @@ function build(env: Env, origin: string) {
       minPasswordLength: MIN_PASSWORD_LENGTH,
       // Must not exceed the hasher's own limit, or the decoy hash for unknown emails would throw.
       maxPasswordLength: MAX_PASSWORD_LENGTH,
-      password: betterAuthPasswordHasher(),
+      password: betterAuthPasswordHasher({ iterations: passwordIterations(env) }),
       revokeSessionsOnPasswordReset: true,
     },
     session: {
