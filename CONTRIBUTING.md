@@ -15,14 +15,17 @@ npm run test:e2e   # Playwright against wrangler dev, also run in CI
 
 You need Node.js 22 or newer. No Cloudflare account is needed: everything runs locally with `wrangler dev`.
 
+Read [How Toolshed is built](docs/architecture.md) before adding a module or a screen. It covers where code goes and the rules every module follows.
+
 ## Ground rules
 
 1. **Cloudflare only.** Toolshed must install with one click into a Cloudflare account. Don't add a dependency on another hosted service (Stripe, Twilio, Firebase, an OAuth app and so on). Optional add-ons that stay off by default can be discussed in an issue.
 2. **Fit the Free plan.** A request gets about 10 ms of CPU on Workers Free. Measure anything CPU-heavy. `spikes/hash/` shows how.
 3. **MIT only.** Don't copy code from AGPL or GPL projects. Reading them for ideas is fine. Copied code must carry a compatible license and credit.
-4. **One module, one job.** Keep files small and focused. Code in `src/<area>/` gets a matching test file in `test/`.
-5. **Stable errors.** Errors that users can see carry a stable `code` (for example `password_too_long`) and a short plain-English message. Don't change existing codes.
-6. **No secrets in the repo.** Local secrets go in `.dev.vars`, which git ignores.
+4. **One module, one job.** Keep files small and focused. Core code in `src/<area>/` gets a test file in `test/`; a module keeps its tests next to its code in `src/modules/<id>/`.
+5. **Every row belongs to a workspace.** Module tables carry `org_id`, and queries go through `orgDb`, which adds the workspace filter. Migrations only add: never edit a released one.
+6. **Stable errors.** Errors that users can see carry a stable `code` (for example `password_too_long`) and a short plain-English message. Don't change existing codes.
+7. **No secrets in the repo.** Local secrets go in `.dev.vars`, which git ignores.
 
 ## Pull requests
 

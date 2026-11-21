@@ -5,3 +5,5 @@ dist/
 spikes/hash/demo/toolshed.css
 test-results/
 playwright-report/
+src/generated/
+/migrations/

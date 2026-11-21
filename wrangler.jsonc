@@ -1,0 +1,22 @@
+{
+  "$schema": "node_modules/wrangler/config-schema.json",
+  "name": "toolshed",
+  "main": "src/index.ts",
+  "compatibility_date": "2026-11-01",
+  "compatibility_flags": ["nodejs_compat"],
+  // Static files (CSS, JS, fonts). The Worker runs first only for paths that are not files.
+  "assets": { "directory": "./public", "binding": "ASSETS" },
+  "d1_databases": [
+    { "binding": "DB", "database_name": "toolshed", "migrations_dir": "migrations" }
+  ],
+  "kv_namespaces": [{ "binding": "KV" }],
+  "r2_buckets": [{ "binding": "FILES", "bucket_name": "toolshed-files" }],
+  "queues": {
+    "producers": [{ "binding": "JOBS", "queue": "toolshed-jobs" }],
+    "consumers": [{ "queue": "toolshed-jobs", "max_batch_size": 10, "max_batch_timeout": 2, "max_retries": 5 }]
+  },
+  // One dispatcher runs every minute and fans out to module schedules.
+  "triggers": { "crons": ["* * * * *"] },
+  "vars": { "ENVIRONMENT": "production" },
+  "observability": { "enabled": true }
+}

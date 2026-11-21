@@ -10,11 +10,12 @@ Toolshed is a single Cloudflare Worker. One sign-in, one dashboard, many modules
 
 | Part | Where | What it does |
 |---|---|---|
+| App skeleton | [`src/app.tsx`](src/app.tsx), [`src/core/`](src/core/) | The Worker, the module contract, workspace-scoped database access, events, jobs, rate limits, the audit log and stable error codes. [How it's built](docs/architecture.md) |
 | Password hasher | [`src/auth/hasher.ts`](src/auth/hasher.ts) | PBKDF2-SHA256 through Web Crypto, sized to fit the Workers Free plan's 10 ms CPU limit. Self-describing hashes, so the cost can be raised later |
 | Hashing spike | [`spikes/hash/`](spikes/hash/) | The benchmark behind that choice: 12 scrypt and PBKDF2 settings, timed in Node and in workerd |
 | Hasher demo | [`spikes/hash/demo/`](spikes/hash/demo/) | A local page that shows the measurements and lets you try the hasher |
 | Design tokens | [`src/ui/toolshed.css`](src/ui/toolshed.css) | Colors, type and components for the dashboard, light and dark |
-| Docs | [`docs/`](docs/) | [How passwords are stored](docs/passwords.md) |
+| Docs | [`docs/`](docs/) | [How Toolshed is built](docs/architecture.md) · [How passwords are stored](docs/passwords.md) |
 
 ![The hasher demo: measured hash settings against the 10 ms Free-plan line, and a form to hash and check a password](docs/img/hash-demo.jpg)
 
@@ -30,10 +31,12 @@ npm ci
 
 | Command | What it does |
 |---|---|
+| `npm run dev` | Starts the app at http://127.0.0.1:8787 with a local database |
 | `npm test` | Runs the unit tests (Vitest) |
 | `npm run typecheck` | Type-checks `src/` and `test/` |
 | `npm run check` | Both of the above, the same as CI |
-| `npm run test:e2e` | End-to-end tests (Playwright) against `wrangler dev`; starts the server itself. First time: `npx playwright install chromium` |
+| `npm run test:e2e` | End-to-end tests (Playwright) against `wrangler dev`; starts the server itself with an empty database. First time: `npx playwright install chromium` |
+| `npm run test:e2e:hash` | End-to-end tests for the hasher demo |
 | `npm run demo:hash` | Starts the hasher demo at http://127.0.0.1:8798 |
 | `npm run spike:hash:node` | Times every hash setting in Node |
 | `npm run spike:hash:dev` | Starts the benchmark Worker in local workerd at http://127.0.0.1:8799, for `node spikes/hash/bench-workerd.mjs` |
@@ -44,9 +47,15 @@ Nothing here needs a Cloudflare account. Everything runs locally with `wrangler 
 
 ```
 src/            Product code (runs inside the Worker)
+  app.tsx       Builds the app; route order lives here
+  core/         Services every module uses: database, errors, events, jobs, audit, email
   auth/         Sign-in building blocks
-  ui/           Design tokens and shared CSS
-test/           Unit tests, one file per module in src/
+  ui/           Design tokens and shared components
+  dashboard/    Core dashboard screens, one folder each
+  modules/      One folder per product (links, forms, …)
+public/         Static files
+scripts/        Build helpers
+test/           Unit tests and end-to-end tests (test/e2e)
 spikes/         Throwaway experiments that answered a question. Kept for the numbers
 docs/           Docs for people running Toolshed
 ```
