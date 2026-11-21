@@ -1,20 +1,14 @@
 /**
  * Auth entry points used by src/app.tsx.
  *
- * PLACEHOLDER: this file only keeps the app bootable until the real auth lands. The contract:
  * - `loadAuth` fills `user`, `org` and `auth` on the request from a session cookie, an API key
  *   (`Authorization: Bearer ts_…`, see core/apikeys.ts) or a JWT (core/jwt.ts). It never rejects.
- * - `authApp` serves /api/auth/*, /sign-in, /setup (first-run claim), /invite/:id and /welcome.
- * Role and scope checks live in core/guards.ts and only read what `loadAuth` set.
+ * - `authApp` serves /sign-in, /sign-out, /setup (first-run claim), /invite/:id, /welcome and the
+ *   passkey calls under /api/auth/passkey.
+ * Role and scope checks live in core/guards.ts and only read what `loadAuth` set. Everything the
+ * Members, Account and Users screens need is exported from ./service.
  */
-import { Hono } from 'hono';
-import type { MiddlewareHandler } from 'hono';
-import type { AppEnv } from '../env';
-
-export const loadAuth: MiddlewareHandler<AppEnv> = async (_c, next) => {
-  await next();
-};
-
-export const authApp = new Hono<AppEnv>();
-
-authApp.get('/sign-in', (c) => c.text('Sign-in is not built yet.', 501));
+export { loadAuth } from './load';
+export { authApp } from './routes';
+export { currentSession } from './session';
+export type { SessionInfo } from './session';
