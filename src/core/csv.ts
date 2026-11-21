@@ -5,7 +5,7 @@
  * it as text instead of running it.
  */
 
-const BOM = '﻿';
+const BOM = '\uFEFF';
 const NEEDS_QUOTES = /[",\r\n]/;
 const FORMULA = /^[=+\-@\t\r]/;
 

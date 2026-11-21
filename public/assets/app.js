@@ -241,6 +241,8 @@
   document.addEventListener('keydown', function (e) {
     if ((e.metaKey || e.ctrlKey) && e.key.toLowerCase() === 'k' && $('#command')) { e.preventDefault(); openCommand(); return; }
     if (e.key === 'Escape') {
+      var cmd = $('#command[open]');
+      if (cmd) { e.preventDefault(); cmd.close(); }
       closeMenus();
       closeInspector();
       var app = $('.app');

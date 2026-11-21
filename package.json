@@ -27,7 +27,7 @@
     "test:e2e:hash": "playwright test -c playwright.hash.config.ts",
     "spike:hash:node": "node spikes/hash/bench-node.mjs",
     "spike:hash:dev": "wrangler dev -c spikes/hash/wrangler.jsonc --port 8799",
-    "demo:hash": "cp src/ui/toolshed.css spikes/hash/demo/toolshed.css && wrangler dev -c spikes/hash/demo.wrangler.jsonc --port 8798 --ip 127.0.0.1"
+    "demo:hash": "cp public/assets/toolshed.css spikes/hash/demo/toolshed.css && wrangler dev -c spikes/hash/demo.wrangler.jsonc --port 8798 --ip 127.0.0.1"
   },
   "devDependencies": {
     "@cloudflare/workers-types": "5.20261118.1",

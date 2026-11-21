@@ -15,7 +15,7 @@ import { allModules, moduleContext, moduleState } from './registry';
 
 const RECENT_KEEP_DAYS = 30;
 /** Daily totals are small (one row per event per day), so they are kept for over a year of charts. */
-const COUNTS_KEEP_DAYS = 400;
+export const COUNTS_KEEP_DAYS = 400;
 
 function dayOf(ms: number): string {
   return new Date(ms).toISOString().slice(0, 10);

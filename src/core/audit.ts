@@ -115,11 +115,11 @@ interface AuditRow {
   created_at: number;
 }
 
-function encodeCursor(row: { created_at: number; id: string }): string {
+export function encodeCursor(row: { created_at: number; id: string }): string {
   return btoa(`${row.created_at}:${row.id}`).replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/, '');
 }
 
-function decodeCursor(cursor: string): { at: number; id: string } {
+export function decodeCursor(cursor: string): { at: number; id: string } {
   try {
     const raw = atob(cursor.replace(/-/g, '+').replace(/_/g, '/'));
     const colon = raw.indexOf(':');
@@ -132,7 +132,7 @@ function decodeCursor(cursor: string): { at: number; id: string } {
   throw errors.bad_request('That page marker isn’t valid. Reload the list.');
 }
 
-function likeEscape(text: string): string {
+export function likeEscape(text: string): string {
   return text.replace(/[\\%_]/g, (c) => `\\${c}`);
 }
 
@@ -182,7 +182,7 @@ function record(r: AuditRow): AuditRecord {
  */
 export async function listAudit(
   env: Env,
-  opts: AuditQuery & { before?: string; limit?: number },
+  opts: AuditQuery & { before?: string; limit?: number } = {},
 ): Promise<{ items: AuditRecord[]; nextCursor: string | null }> {
   const limit = Math.min(Math.max(1, Math.floor(opts.limit ?? 50)), 200);
   const w = where(opts, opts.before ? decodeCursor(opts.before) : undefined);
