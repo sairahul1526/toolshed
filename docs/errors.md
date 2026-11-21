@@ -24,6 +24,9 @@ table in step with `src/core/errors.ts` and `src/core/export.ts`.
 | --- | --- | --- | --- |
 | `bad_request` | 400 | That request isn’t valid. Check it and try again. | The body was missing, was not JSON, or had the wrong shape. Fix the request. Retrying the same request will not help. |
 | `conflict` | 409 | That clashes with something that already exists. | Something with the same name or id is already there, or the item changed since you read it. Reload, then change the name or try again. |
+| `fetch_failed` | 502 | We couldn’t reach that address. Check it and try again. | The address you gave did not answer or refused the connection. Check that it is online and public, then try again. |
+| `fetch_timeout` | 504 | That address took too long to answer. Try again in a moment. | The address you gave did not answer in time. Try again later, or use a faster endpoint. |
+| `fetch_too_large` | 502 | The page at that address is too large to read. | The response from the address you gave was over the size limit. Point to a smaller page or file. |
 | `forbidden` | 403 | You don’t have access to that. Ask a workspace admin. | You are signed in but your role or API key scope is too low. Ask a workspace admin for access, or use a key with the right scope. |
 | `internal` | 500 | Something went wrong on our side. Try again. | A bug or an outage on our side. Retry once. If it keeps failing, send the `requestId` to your administrator. |
 | `method_not_allowed` | 405 | That action isn’t supported here. | Use a different HTTP method for this path. |
@@ -32,7 +35,9 @@ table in step with `src/core/errors.ts` and `src/core/export.ts`.
 | `not_found` | 404 | We couldn’t find that. It may have been moved or deleted. | Check the id. Items from other workspaces are reported as not found on purpose. |
 | `rate_limited` | 429 | Too many tries. Wait a moment, then try again. | Wait for the number of seconds in the `retry-after` header, then try again. Do not retry in a tight loop. |
 | `too_large` | 413 | That’s too large to accept. | Send less data, or split it into smaller requests. |
+| `too_many_redirects` | 502 | That address sends visitors around in circles. Check where it redirects to. | The address redirected more times than allowed. Use the final address directly. |
 | `unauthorized` | 401 | Sign in to continue. | Sign in, or send a valid API key. An expired or revoked key gives this code too. |
+| `url_not_allowed` | 400 | That address can’t be used. Enter a public web address that starts with http:// or https://. | Only public http and https addresses are accepted. Private, local and internal hosts are refused, and so are addresses with a username or password in them. |
 | `validation_failed` | 422 | Some fields need fixing. | Read `fields` for what to change, fix those inputs and send the request again. |
 
 ## Export codes

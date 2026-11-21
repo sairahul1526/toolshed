@@ -5,6 +5,7 @@ import { describe, expect, it } from 'vitest';
 import '../../src/core/audit';
 import '../../src/core/email';
 import '../../src/core/export';
+import '../../src/core/net';
 import '../../src/core/notifications';
 import { Hono } from 'hono';
 import { defineErrors, errors, listErrorCodes, parse } from '../../src/core/errors';

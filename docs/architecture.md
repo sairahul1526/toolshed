@@ -158,3 +158,19 @@ npm run test:e2e     # Playwright; starts its own server on PORT (default 8787)
 ```
 
 Local secrets go in `.dev.vars` (copy `.dev.vars.example`). Nothing here needs a Cloudflare account.
+
+## Shared helpers
+
+Small, dependency-free helpers any module can import. Each one is covered by tests in `test/utils/`.
+
+| Helper | What it is for |
+| --- | --- |
+| `core/net.ts`: `baseUrl`, `clientIp`, `geo` | The public address of the install, the visitor's IP, and country, region, city and time zone from Cloudflare. |
+| `core/net.ts`: `parseUserAgent`, `isBot`, `isPreviewBot` | Device, browser and system for analytics, and telling people from crawlers and link-preview fetchers. |
+| `core/net.ts`: `visitorId` | A 16 character id for counting unique visitors per day without storing the IP. It hashes a salt that changes every day, kept in KV for 48 hours. |
+| `core/net.ts`: `assertPublicUrl`, `safeFetch` | Fetching an address a stranger typed. Refuses private and local addresses, checks every redirect, and caps time and size. |
+| `core/markdown.ts`: `renderMarkdown`, `markdownToText`, `excerpt` | Markdown from strangers as safe HTML (raw HTML is shown as text), plain text for email, and short previews. |
+| `core/csv-parse.ts`: `parseCsv`, `guessColumns`, `rowsToObjects` | Reading imports: quotes, byte order marks, `;` and tab files, then matching columns to fields. The writer is `core/csv.ts`. |
+| `core/signing.ts`: `sign`, `verify`, `signedToken`, `readSignedToken` | Links that must not be forged (unsubscribe, confirm, download). Each purpose gets its own key derived from `AUTH_SECRET`. |
+
+`assertPublicUrl` works on the text of the address only. A Worker cannot look up DNS, so a public name that points at a private address is not caught. Do not use `safeFetch` as the only protection for anything that sits on a private network.
