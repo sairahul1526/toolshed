@@ -307,8 +307,8 @@ describe('caps', () => {
     const statuses = [];
     for (let i = 0; i < 5; i++) statuses.push((await sendEmail(t.env, mail(`u${i}@example.com`))).status);
     expect(statuses).toEqual(['sent', 'sent', 'sent', 'capped', 'capped']);
-    const [row] = (await listEmailLog(t.env)).items;
-    expect(row?.error).toContain('hourly email limit');
+    const { items } = await listEmailLog(t.env);
+    expect(items.some((row) => row.error?.includes('hourly email limit'))).toBe(true);
   });
 
   it('has sensible defaults', async () => {

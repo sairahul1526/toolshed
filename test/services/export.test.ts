@@ -147,19 +147,21 @@ describe('building the ZIP', () => {
 
   it('leaves out secrets from API keys and adds people to members, and skips tables that do not exist', async () => {
     const t = setup();
-    // No api_keys or member table yet: the export still works and just has no such files.
+    // No member table yet: the export still works and just has no such file.
     let item = await ask(t);
     await runToEnd(t, item.id);
     let names = (await zipOf(t, item.id)).map((f) => f.name);
-    expect(names).not.toContain('json/core.api_keys.json');
     expect(names).not.toContain('json/core.members.json');
 
+    const key = (id: string, org: string, name: string, prefix: string, hash: string, scopes: string) =>
+      t.env.DB.prepare(
+        "INSERT INTO api_keys (id, org_id, name, kind, prefix, key_hash, scopes, role, created_by, created_at) VALUES (?1, ?2, ?3, 'service', ?4, ?5, ?6, 'member', 'u_test', 5)",
+      ).bind(id, org, name, prefix, hash, scopes).run();
+    await key('k1', t.org.id, 'CI', 'ts_live_abcd1234', 'sha256:SECRET', '["*"]');
+    await key('k2', OTHER, 'Nope', 'ts_live_zzzz9999', 'sha256:OTHERSECRET', '[]');
     t.sqlite.exec(`
-      CREATE TABLE api_keys (id TEXT PRIMARY KEY, org_id TEXT NOT NULL, name TEXT, prefix TEXT, key_hash TEXT, scopes TEXT, created_at INTEGER);
       CREATE TABLE "user" (id TEXT PRIMARY KEY, email TEXT, name TEXT, password_hash TEXT);
       CREATE TABLE member (id TEXT PRIMARY KEY, organizationId TEXT, userId TEXT, role TEXT);
-      INSERT INTO api_keys VALUES ('k1', '${t.org.id}', 'CI', 'ts_live_abcd1234', 'sha256:SECRET', '["*"]', 5);
-      INSERT INTO api_keys VALUES ('k2', '${OTHER}', 'Nope', 'ts_live_zzzz9999', 'sha256:OTHERSECRET', '[]', 5);
       INSERT INTO "user" VALUES ('u1', 'ana@example.com', 'Ana', 'pbkdf2:HASH');
       INSERT INTO member VALUES ('m1', '${t.org.id}', 'u1', 'admin');
       INSERT INTO member VALUES ('m2', '${OTHER}', 'u1', 'member');
@@ -171,7 +173,9 @@ describe('building the ZIP', () => {
     const files = await zipOf(t, item.id);
     names = files.map((f) => f.name);
     const keys = JSON.parse(files.find((f) => f.name === 'json/core.api_keys.json')!.text());
-    expect(keys).toEqual([{ id: 'k1', org_id: t.org.id, name: 'CI', prefix: 'ts_live_abcd1234', scopes: '["*"]', created_at: 5 }]);
+    expect(keys).toHaveLength(1);
+    expect(keys[0]).toMatchObject({ id: 'k1', org_id: t.org.id, name: 'CI', prefix: 'ts_live_abcd1234', scopes: '["*"]', created_at: 5 });
+    expect(keys[0]).not.toHaveProperty('key_hash');
     const members = JSON.parse(files.find((f) => f.name === 'json/core.members.json')!.text());
     expect(members).toEqual([{ id: 'm1', organizationId: t.org.id, userId: 'u1', role: 'admin', email: 'ana@example.com', name: 'Ana' }]);
     const text = files.map((f) => f.text()).join('\n');
@@ -182,8 +186,8 @@ describe('building the ZIP', () => {
   it('plans sources in a stable order, core first', async () => {
     const t = setup();
     const sources = await planSources(t.env, { ...t.org });
-    expect(sources.map((s) => s.name)).toEqual(['core.settings', 'core.module_state', 'core.audit_log', 'notes.notes_items']);
-    expect(sources[3]!.columns).toEqual(['id', 'org_id', 'title', 'body', 'n']);
+    expect(sources.map((s) => s.name)).toEqual(['core.settings', 'core.module_state', 'core.audit_log', 'core.api_keys', 'notes.notes_items']);
+    expect(sources[4]!.columns).toEqual(['id', 'org_id', 'title', 'body', 'n']);
   });
 });
 
