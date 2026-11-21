@@ -6,9 +6,10 @@
 //   src/core/routes/<name>.ts           -> src/generated/routes.ts
 //   src/core/migrations/*.sql           -> migrations/core_<file>
 //   src/modules/<id>/migrations/*.sql   -> migrations/m_<id>_<file>
+//   node_modules/@fontsource-variable/*  -> public/assets/fonts/*.woff2 (self-hosted, no third-party requests)
 //
 // Wrangler applies migrations in file-name order, so core tables always exist before module tables.
-import { existsSync, mkdirSync, readdirSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
+import { copyFileSync, existsSync, mkdirSync, readdirSync, readFileSync, rmSync, statSync, writeFileSync } from 'node:fs';
 import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 
@@ -89,5 +90,21 @@ for (const id of moduleIds) {
 mkdirSync(out, { recursive: true });
 for (const f of readdirSync(out)) if (!wanted.has(f)) rmSync(join(out, f));
 for (const [name, from] of wanted) writeIfChanged(join(out, name), readFileSync(from, 'utf8'));
+
+// Fonts: Inter and Geist Mono (both OFL-1.1), served from our own origin.
+const fontsOut = join(root, 'public', 'assets', 'fonts');
+const fonts = [
+  ['inter', 'inter-latin-wght-normal.woff2'],
+  ['inter', 'inter-latin-ext-wght-normal.woff2'],
+  ['geist-mono', 'geist-mono-latin-wght-normal.woff2'],
+  ['geist-mono', 'geist-mono-latin-ext-wght-normal.woff2'],
+];
+mkdirSync(fontsOut, { recursive: true });
+for (const [pkg, file] of fonts) {
+  const from = join(root, 'node_modules', '@fontsource-variable', pkg, 'files', file);
+  const to = join(fontsOut, file);
+  if (!existsSync(from)) throw new Error(`Missing font file ${from}. Run npm ci.`);
+  if (!existsSync(to) || statSync(to).size !== statSync(from).size) copyFileSync(from, to);
+}
 
 console.log(`prepare: ${moduleIds.length} modules, ${screenNames.length} screens, ${routeNames.length} core routes, ${wanted.size} migrations`);
