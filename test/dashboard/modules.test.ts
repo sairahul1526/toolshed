@@ -110,6 +110,20 @@ describe('who can open it', () => {
   });
 });
 
+describe('the sidebar', () => {
+  it('marks only Modules as the current page, not the Add a module shortcut', async () => {
+    const { t, app, headers } = await setup([fake('links')]);
+    const html = await (await get(app, t, headers, '/app/modules')).text();
+    expect(html).toContain('Add a module');
+    const links = [...html.matchAll(/<a href="\/app\/modules"([^>]*)>/g)].map((m) => m[1] ?? '');
+    const add = links.find((attrs) => attrs.includes('title="Add a module"') && !attrs.includes('icon-btn'));
+    const own = links.find((attrs) => attrs.includes('title="Modules"'));
+    expect(add).toBeDefined();
+    expect(add).not.toContain('aria-current');
+    expect(own).toContain('aria-current="page"');
+  });
+});
+
 describe('the grid', () => {
   it('shows each module with its name, one-line description, category and state', async () => {
     const mods = [

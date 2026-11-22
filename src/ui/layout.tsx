@@ -139,6 +139,8 @@ interface NavLink {
   count?: number | null;
   dot?: 'warn' | 'accent';
   dotLabel?: string;
+  /** A shortcut to a page that has its own entry elsewhere in the sidebar: never shown as the current page. */
+  shortcut?: boolean;
 }
 interface NavGroup {
   label?: string;
@@ -150,7 +152,7 @@ interface NavGroup {
 export function navGroups(shell: ShellData): NavGroup[] {
   const groups: NavGroup[] = [{ links: [{ href: '/app', icon: 'home', label: 'Overview' }] }];
   const mods: NavLink[] = shell.modules.map((m) => ({ href: m.href, icon: m.icon, label: m.name, count: m.count }));
-  if (shell.modulesOff > 0) mods.push({ href: '/app/modules', icon: 'plus', label: 'Add a module', count: shell.modulesOff });
+  if (shell.modulesOff > 0) mods.push({ href: '/app/modules', icon: 'plus', label: 'Add a module', count: shell.modulesOff, shortcut: true });
   groups.push({ label: 'Modules', add: true, links: mods });
   const admin = roleAtLeast(shell.org.role, 'admin');
   // Admins see their own workspace's email log and audit log, so those links live with the workspace.
@@ -308,7 +310,7 @@ export function AppShell({ shell, path, crumbs = [], children, ...doc }: AppShel
                 ) : null}
                 <nav class="nav" aria-label={g.label ?? 'Overview'}>
                   {g.links.map((l) => (
-                    <a href={l.href} aria-current={isActive(path, l.href) ? 'page' : undefined} title={l.label}>
+                    <a href={l.href} aria-current={!l.shortcut && isActive(path, l.href) ? 'page' : undefined} title={l.label}>
                       <Icon name={l.icon} />
                       <span class="hide-c nav-label">{l.label}</span>
                       {l.count !== null && l.count !== undefined ? <span class="count hide-c">{formatNumber(l.count)}</span> : null}
