@@ -17,7 +17,7 @@ Cloudflare's Web Crypto also refuses more than 100,000 PBKDF2 iterations, so tha
 
 ## Changing the cost
 
-Set `TOOLSHED_PASSWORD_ITERATIONS` (10,000 to 100,000). On the Workers Paid plan you can raise it to `100000`. Each stored hash records its own cost, so old passwords keep working after a change. Once the sign-in flow lands, a password stored at the old cost will be re-hashed at the new cost the next time that person signs in (`needsRehash()` in `src/auth/hasher.ts`).
+Set `TOOLSHED_PASSWORD_ITERATIONS` (10,000 to 100,000). On the Workers Paid plan you can raise it to `100000`. Each stored hash records its own cost, so old passwords keep working after a change.
 
 ## Stored format
 

@@ -5,7 +5,7 @@
  */
 import { z } from 'zod';
 import { parse } from '../core/errors';
-import { purgeOrgData } from '../core/registry';
+import { purgeOrgFiles, purgeOrgStatements } from '../core/registry';
 import type { Env } from '../env';
 import { authErrors } from './errors';
 
@@ -63,13 +63,16 @@ export async function saveWorkspaceName(
 }
 
 /**
- * Delete a workspace and everything in it. The data modules stored goes first: if that fails the
- * workspace is still there and the delete can be run again. People who had it open move to
+ * Delete a workspace and everything in it. Its files go first: if that fails the workspace is
+ * still there and the delete can be run again. Then every row goes in ONE batch, the stored data
+ * together with the members and the workspace itself, so there is no moment when the data is
+ * gone but a member or a key can still write more into it. People who had it open move to
  * another of their workspaces, or to none.
  */
 export async function eraseWorkspace(env: Env, orgId: string): Promise<void> {
-  await purgeOrgData(env, orgId);
+  await purgeOrgFiles(env, orgId);
   await env.DB.batch([
+    ...purgeOrgStatements(env, orgId),
     env.DB.prepare(
       `UPDATE "session" SET "activeOrganizationId" =
          (SELECT m."organizationId" FROM "member" m WHERE m."userId" = "session"."userId" AND m."organizationId" <> ?1 ORDER BY m."createdAt", m."id" LIMIT 1)

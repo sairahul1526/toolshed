@@ -395,6 +395,12 @@ describe('deleting a workspace', () => {
     expect(await count('SELECT COUNT(*) AS n FROM "organization"')).toBe(1);
   });
 
+  it('asks the owner to sign in again when they signed in a while ago', async () => {
+    await env.DB.prepare('UPDATE "session" SET "createdAt" = ?1 WHERE "id" = ?2').bind(new Date(Date.now() - 31 * 60_000).toISOString(), people.owner.sessionId).run();
+    expect(await codeOf(env, as.owner, (c) => deleteWorkspace(c, { confirm: 'test' }))).toBe('auth.sign_in_again');
+    expect(await count('SELECT COUNT(*) AS n FROM "organization"')).toBe(1);
+  });
+
   it('is not done from a "signed in as" session', async () => {
     const owner = await createTestSession(env, { email: 'install-owner@example.com', instanceOwner: true, orgId: 'org_install' });
     await env.DB.prepare('UPDATE "session" SET "impersonatedBy" = ?1 WHERE "id" = ?2').bind(owner.user.id, people.owner.sessionId).run();

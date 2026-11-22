@@ -78,7 +78,7 @@ export function secureCookies(origin: string): boolean {
 
 /** The hashing cost an operator chose with `TOOLSHED_PASSWORD_ITERATIONS`, or the default. */
 export function passwordIterations(env: Env): number {
-  return iterationsFromEnv((env as Env & { TOOLSHED_PASSWORD_ITERATIONS?: string }).TOOLSHED_PASSWORD_ITERATIONS);
+  return iterationsFromEnv(env.TOOLSHED_PASSWORD_ITERATIONS);
 }
 
 function build(env: Env, origin: string) {
