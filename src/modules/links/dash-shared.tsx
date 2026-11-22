@@ -4,26 +4,38 @@ import type { Child } from 'hono/jsx';
 import type { AppEnv } from '../../env';
 import { AppError, type FieldErrors } from '../../core/errors';
 import { needRole } from '../../core/guards';
-import { renderPage, setFlash, Callout, LinkButton } from '../../ui';
+import { renderPage, setFlash, Callout, LinkButton, Tabs } from '../../ui';
 import type { Crumb } from '../../ui';
 
 export const HOME = '/app/links';
 
-/** The dashboard has no style or script hook, so each screen loads the module's files in its body. */
-export function Assets() {
+const SECTIONS = [
+  { id: 'links', label: 'Links', href: HOME },
+  { id: 'stats', label: 'Stats', href: `${HOME}/stats` },
+  { id: 'bio', label: 'Bio pages', href: `${HOME}/bio` },
+  { id: 'import', label: 'Import and export', href: `${HOME}/import` },
+  { id: 'settings', label: 'Settings', href: `${HOME}/settings` },
+];
+
+/** The sidebar only lists the module, so the main screens link to each other from a row of tabs. */
+function SectionTabs({ path }: { path: string }) {
+  const rest = path.replace(/\/+$/, '').slice(HOME.length).split('/')[1] ?? '';
+  const top = SECTIONS.find((s) => s.id === rest);
+  const direct = path.replace(/\/+$/, '') === HOME || (top !== undefined && path.replace(/\/+$/, '') === top.href);
+  if (!direct) return null;
   return (
-    <>
-      <link rel="stylesheet" href="/m/links/links.css" />
-      <script src="/m/links/links.js" defer></script>
-    </>
+    <div class="lk-tabs">
+      <Tabs label="Links sections" active={top?.id ?? 'links'} items={SECTIONS} />
+    </div>
   );
 }
 
 export function page(c: Context<AppEnv>, title: string, body: Child, crumbs?: Crumb[], status?: 200 | 404 | 422 | 500): Promise<Response> {
   const trail = crumbs ?? (title === 'Links' ? undefined : [{ label: 'Links', href: HOME }, { label: title }]);
-  return renderPage(c, { title, crumbs: trail, status }, (
+  return renderPage(c, { title, crumbs: trail, status, styles: ['/m/links/links.css'] }, (
     <>
-      <Assets />
+      <SectionTabs path={new URL(c.req.url).pathname} />
+      <script src="/m/links/links.js" defer></script>
       {body}
     </>
   ));

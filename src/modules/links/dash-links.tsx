@@ -147,7 +147,7 @@ links.get('/', (c) =>
           <div class="lk-bulkbar" role="group" aria-label="Actions for selected links">
             <label class="lk-all"><input type="checkbox" data-select-all aria-label="Select all links on this page" /> Select all</label>
             <span class="lk-bulk-tag"><Input name="tag" aria-label="Tag to add" placeholder="Tag" maxlength={32} /><Button type="submit" name="action" value="tag" size="sm">Add tag</Button></span>
-            <Button type="submit" name="action" value="archive" size="sm" icon="down">Archive</Button>
+            <Button type="submit" name="action" value="archive" size="sm">Archive</Button>
             <Button type="submit" name="action" value="restore" size="sm" icon="refresh">Restore</Button>
             <Button type="submit" name="action" value="export" size="sm" icon="download">Export CSV</Button>
             <ConfirmButton id="bulk-delete" title="Delete the selected links?" body="They stop working right away and their click history is removed. This can’t be undone." confirmLabel="Delete links" name="action" value="delete" size="sm" icon="trash">Delete</ConfirmButton>

@@ -8,12 +8,9 @@ import type { Form } from './service';
 export type C = Context<AppEnv>;
 export const BASE = '/app/forms';
 
-export const CSS = (
-  <>
-    <link rel="stylesheet" href="/m/forms/dash.css" />
-    <script src="/m/forms/dash.js" defer />
-  </>
-);
+/** The module's stylesheet goes in the head through `renderPage`; only the script is part of the page. */
+export const STYLES = ['/m/forms/dash.css'];
+export const CSS = <script src="/m/forms/dash.js" defer />;
 
 export function statusPill(form: Form) {
   if (form.trashedAt) return <Pill tone="bad">In trash</Pill>;

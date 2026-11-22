@@ -17,11 +17,12 @@
 .lk-qr { width: 160px; height: 160px; flex: none; border: 1px solid var(--border); border-radius: var(--radius); background: var(--surface-2); image-rendering: pixelated; }
 .lk-color { padding: 2px; height: 40px; width: 100%; min-width: 64px; cursor: pointer; }
 
-.lk-cell { display: flex; flex-direction: column; gap: 2px; min-width: 0; }
+.lk-tabs { margin: -8px 0 -8px; }
+.lk-cell { display: flex; flex-direction: column; gap: 2px; min-width: 0; width: 32ch; white-space: normal; }
 .lk-name { font-weight: 600; color: var(--text); text-decoration: none; overflow-wrap: anywhere; }
 .lk-name:hover { text-decoration: underline; }
 .lk-short { font-size: 13px; }
-.lk-dest { font-size: 13px; max-width: 46ch; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.lk-dest { font-size: 13px; max-width: 32ch; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .lk-tags { display: inline-flex; gap: 4px; flex-wrap: wrap; }
 .lk-row-actions { display: inline-flex; gap: 4px; align-items: center; justify-content: flex-end; flex-wrap: wrap; }
 
@@ -56,7 +57,12 @@
 .lk-folders { list-style: none; margin: 16px 0 0; padding: 0; display: flex; flex-direction: column; gap: 8px; }
 
 @media (max-width: 760px) {
+  /* The kit's editor bar does not wrap; on a phone the title gets its own row so the buttons never overlap it. */
+  .editor-bar { flex-wrap: wrap; padding-block: 8px; }
+  .editor-bar .editor-title { order: 3; flex: 1 1 100%; min-width: 0; }
+  .editor-bar .actions { margin-left: auto; }
   .lk-rule { grid-template-columns: 1fr; }
+  .lk-cell { width: auto; }
   .lk-qr { width: 128px; height: 128px; }
   .lk-bulk-tag .input { width: 110px; }
   .lk-dest { max-width: 100%; white-space: normal; overflow-wrap: anywhere; }
