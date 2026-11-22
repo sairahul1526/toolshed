@@ -151,6 +151,8 @@ describe('usernames', () => {
 
   it('refuses a taken or malformed username, and clears one', async () => {
     const other = adopt(new Browser(app, env), (await createTestSession(env, { email: 'bob@example.com' })).cookie);
+    await must(env, other, (c) => setPassword(c, { password: PASSWORD }));
+    await must(env, b, (c) => setPassword(c, { password: PASSWORD }));
     await must(env, other, (c) => setUsername(c, { username: 'bob' }));
     expect(await codeOf(env, b, (c) => setUsername(c, { username: 'BOB' }))).toBe('auth.username_taken');
     for (const bad of ['ab', 'has space', 'ada@example.com', 'x'.repeat(31), 'dash-ed']) {
@@ -158,6 +160,21 @@ describe('usernames', () => {
     }
     expect(await must(env, other, (c) => setUsername(c, { username: null }))).toEqual({ username: null });
     expect(await must(env, b, (c) => setUsername(c, { username: 'bob' }))).toEqual({ username: 'bob' });
+  });
+
+  it('only exists together with a password', async () => {
+    expect(await codeOf(env, b, (c) => setUsername(c, { username: 'ada' }))).toBe('auth.username_needs_password');
+    expect((await must(env, b, (c) => getAccount(c))).username).toBeNull();
+    expect(await audits('username.changed')).toBe(0);
+
+    await must(env, b, (c) => setPassword(c, { password: PASSWORD }));
+    await must(env, b, (c) => setUsername(c, { username: 'ada' }));
+    await must(env, b, (c) => removePassword(c));
+    expect((await must(env, b, (c) => getAccount(c))).username).toBeNull();
+    // The name is free again, and signing in with it fails like any name nobody has.
+    const fresh = new Browser(app, env);
+    expect((await signInByPassword(fresh, 'ada', PASSWORD)).status).toBe(400);
+    expect(await fresh.signedIn()).toBe(false);
   });
 });
 

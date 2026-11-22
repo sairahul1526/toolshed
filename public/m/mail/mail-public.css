@@ -1,0 +1,11 @@
+/* Public pages of Mail: signup, confirmation, unsubscribe, archive. Loaded after /assets/public.css and uses its tokens. */
+.ml-form { display: flex; flex-direction: column; gap: 16px; }
+.ml-small { font-size: 14px; }
+.ml-hp { position: absolute; left: -9999px; width: 1px; height: 1px; overflow: hidden; }
+.ml-embed { box-shadow: none; border: 0; background: transparent; padding: 0; }
+.ml-issues { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 4px; width: 100%; }
+.ml-issue { display: flex; justify-content: space-between; gap: 16px; padding: 12px 0; border-bottom: 1px solid var(--line); }
+.ml-issue a { color: var(--fg); font-weight: 600; text-decoration: none; overflow-wrap: anywhere; }
+.ml-issue a:hover { text-decoration: underline; }
+.ml-issue time { color: var(--muted); font-size: 14px; white-space: nowrap; }
+@media (max-width: 480px) { .ml-issue { flex-direction: column; gap: 2px; } }

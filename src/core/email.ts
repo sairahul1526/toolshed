@@ -31,6 +31,8 @@ export interface EmailMessage {
   template?: string;
   tag?: string;
   replyTo?: string;
+  /** Extra mail headers, such as `List-Unsubscribe`. Only the names `safeHeaders` allows are sent. */
+  headers?: Record<string, string>;
 }
 
 export type EmailStatus = 'sent' | 'dev' | 'not_configured' | 'failed' | 'retrying' | 'suppressed' | 'capped';
@@ -322,8 +324,30 @@ async function writeLog(env: Env, row: LogRow): Promise<void> {
     .run();
 }
 
+const HEADER_NAME = /^(list-[a-z-]+|x-[a-z0-9-]+|precedence|auto-submitted|references|in-reply-to)$/i;
+const MAX_HEADERS = 12;
+const MAX_HEADER_VALUE = 900;
+
+/**
+ * Keep only headers a module may set. Anything that could change who the message is from or to,
+ * or that carries a line break (header injection), is dropped without failing the send.
+ */
+export function safeHeaders(headers: unknown): Record<string, string> {
+  const out: Record<string, string> = {};
+  if (!headers || typeof headers !== 'object' || Array.isArray(headers)) return out;
+  for (const [name, value] of Object.entries(headers as Record<string, unknown>)) {
+    if (Object.keys(out).length >= MAX_HEADERS) break;
+    if (typeof value !== 'string' || !HEADER_NAME.test(name)) continue;
+    // Printable ASCII only: no line breaks, no control characters, no raw non-Latin text.
+    if (value.length === 0 || value.length > MAX_HEADER_VALUE || !/^[\x20-\x7e]+$/.test(value)) continue;
+    out[name] = value;
+  }
+  return out;
+}
+
 function bindingMessage(sender: SenderSettings, msg: EmailMessage): BindingMessage {
   const replyTo = msg.replyTo ?? sender.replyTo;
+  const headers = safeHeaders(msg.headers);
   return {
     from: { email: sender.fromAddress, name: sender.fromName },
     to: msg.to,
@@ -331,6 +355,7 @@ function bindingMessage(sender: SenderSettings, msg: EmailMessage): BindingMessa
     html: msg.html,
     text: msg.text,
     ...(replyTo ? { replyTo } : {}),
+    ...(Object.keys(headers).length > 0 ? { headers } : {}),
   };
 }
 

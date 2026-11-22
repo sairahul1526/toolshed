@@ -90,3 +90,13 @@ export async function readFlow(c: Context<AppEnv>, kind: FlowKind): Promise<Flow
 export function clearFlow(c: Context<AppEnv>, kind: FlowKind): void {
   deleteCookie(c, flowName(c, kind), { path: '/', secure: secureCookies(baseUrl(c.env, c.req.url)) });
 }
+
+/**
+ * For a page whose address is itself a secret (a sign-in link, an invite): never tell another
+ * site where the visitor came from. `same-origin` rather than `no-referrer`, because under
+ * `no-referrer` a browser sends `Origin: null` with the page's own form, and the same-origin
+ * guard would turn the person away.
+ */
+export function keepAddressPrivate(c: Context<AppEnv>): void {
+  c.header('referrer-policy', 'same-origin');
+}

@@ -5,12 +5,14 @@
  */
 import type { Context } from 'hono';
 import { z } from 'zod';
-import { parse } from '../../core/errors';
+import { errors, parse } from '../../core/errors';
 import type { AppEnv } from '../../env';
 import { getAuth } from '../auth';
 import { FRESH_SIGN_IN_SEC, MIN_PASSWORD_LENGTH } from '../config';
 import { authErrors } from '../errors';
 import { MAX_PASSWORD_LENGTH } from '../hasher';
+import { clearSessionCookies } from '../signin';
+import { eraseUser, soleOwnerOf, type BlockingWorkspace } from '../user-store';
 import { actorFrom, auditBy, freshFrom, selfFrom } from './actor';
 
 export interface AccountSummary {
@@ -106,8 +108,13 @@ export async function setPassword(c: Context<AppEnv>, input: { password: string 
 /** Go back to signing in without a password. Emailed codes always work, so nobody is locked out. */
 export async function removePassword(c: Context<AppEnv>): Promise<void> {
   const actor = await freshFrom(c);
-  const gone = await c.env.DB.prepare(`DELETE FROM "account" WHERE "userId" = ?1 AND "providerId" = 'credential'`).bind(actor.id).run();
-  if (!gone.meta.changes) return;
+  // The username goes with it. A username left without a password would answer sign-in faster
+  // than one that does not exist, which tells a stranger the name is real.
+  const [gone] = await c.env.DB.batch([
+    c.env.DB.prepare(`DELETE FROM "account" WHERE "userId" = ?1 AND "providerId" = 'credential'`).bind(actor.id),
+    c.env.DB.prepare('UPDATE "user" SET "username" = NULL, "displayUsername" = NULL WHERE "id" = ?1 AND "username" IS NOT NULL').bind(actor.id),
+  ]);
+  if (!gone?.meta.changes) return;
   await auditBy(c.env, actor, { orgId: null, action: 'password.removed', targetType: 'user', targetId: actor.id, summary: 'Removed their password' });
 }
 
@@ -118,7 +125,7 @@ const usernameSchema = z
   .toLowerCase()
   .regex(/^[a-z0-9_.]{3,30}$/, 'Use 3 to 30 letters, numbers, dots or underscores.');
 
-/** Set, change or clear (null) the optional username. It only ever works together with a password. */
+/** Set, change or clear (null) the optional username. It needs a password on the account (`auth.username_needs_password`), and goes when the password does. */
 export async function setUsername(c: Context<AppEnv>, input: { username: string | null }): Promise<{ username: string | null }> {
   const actor = await selfFrom(c);
   const username = input.username === null || input.username === '' ? null : parse(z.object({ username: usernameSchema }), input).username;
@@ -126,15 +133,22 @@ export async function setUsername(c: Context<AppEnv>, input: { username: string 
     const taken = await c.env.DB.prepare('SELECT 1 AS yes FROM "user" WHERE "username" = ?1 AND "id" <> ?2').bind(username, actor.id).first<{ yes: number }>();
     if (taken) throw authErrors.username_taken();
   }
+  let saved: number | undefined;
   try {
-    await c.env.DB.prepare('UPDATE "user" SET "username" = ?1, "displayUsername" = ?1, "updatedAt" = ?2 WHERE "id" = ?3')
+    // Having a password is part of the statement, so removing it at the same moment cannot leave a username behind.
+    const done = await c.env.DB.prepare(
+      `UPDATE "user" SET "username" = ?1, "displayUsername" = ?1, "updatedAt" = ?2
+        WHERE "id" = ?3 AND (?1 IS NULL OR EXISTS (SELECT 1 FROM "account" a WHERE a."userId" = ?3 AND a."providerId" = 'credential' AND a."password" IS NOT NULL))`,
+    )
       .bind(username, new Date().toISOString(), actor.id)
       .run();
+    saved = done.meta.changes;
   } catch (err) {
     // Two people asking for the same name at once: the unique index decides.
     if (/UNIQUE/i.test(String((err as Error)?.message))) throw authErrors.username_taken();
     throw err;
   }
+  if (saved !== 1) throw authErrors.username_needs_password();
   await auditBy(c.env, actor, {
     orgId: null,
     action: 'username.changed',
@@ -143,4 +157,29 @@ export async function setUsername(c: Context<AppEnv>, input: { username: string 
     summary: username ? `Set their username to ${username}` : 'Removed their username',
   });
   return { username };
+}
+
+/**
+ * The workspaces that stop this person deleting their account: the ones they alone own. Each
+ * needs another owner, or to be deleted, first. An empty list means nothing is in the way.
+ */
+export async function accountDeletionBlockers(c: Context<AppEnv>): Promise<BlockingWorkspace[]> {
+  const actor = await actorFrom(c);
+  return soleOwnerOf(c.env, actor.id);
+}
+
+/**
+ * Delete your own account for good. `confirm` must be your email address, typed out. Refused
+ * while you are the only owner of a workspace (`auth.sole_owner`) or of this install
+ * (`auth.last_instance_owner`): both would be left with nobody in charge.
+ */
+export async function deleteAccount(c: Context<AppEnv>, input: { confirm: string }): Promise<void> {
+  const actor = await freshFrom(c);
+  const typed = typeof input.confirm === 'string' ? input.confirm.trim().toLowerCase() : '';
+  if (typed !== actor.email) throw errors.validation_failed(undefined, { confirm: `Type ${actor.email} to confirm.` });
+  const outcome = await eraseUser(c.env, actor);
+  if (outcome === 'last_instance_owner') throw authErrors.last_instance_owner();
+  if (outcome !== 'done') throw authErrors.sole_owner();
+  await auditBy(c.env, actor, { orgId: null, action: 'user.deleted', targetType: 'user', targetId: actor.id, summary: `Deleted their account (${actor.email})` });
+  clearSessionCookies(c);
 }

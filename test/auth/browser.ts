@@ -16,6 +16,8 @@ export function testApp(): Hono<AppEnv> {
 
 export class Browser {
   readonly cookies = new Map<string, string>();
+  /** The referrer policy of the page this browser is on. */
+  private policy: string | null = null;
 
   constructor(
     private readonly app: Hono<AppEnv>,
@@ -54,7 +56,13 @@ export class Browser {
   private async send(path: string, init: RequestInit): Promise<Response> {
     const res = await this.app.request(path, init, this.env);
     this.absorb(res);
+    this.policy = res.headers.get('referrer-policy');
     return res;
+  }
+
+  /** What a real browser puts in Origin for a form on the current page: `null` when the page said `no-referrer`. */
+  private origin(): string {
+    return this.policy === 'no-referrer' ? 'null' : ORIGIN;
   }
 
   get(path: string, headers: Record<string, string> = {}): Promise<Response> {
@@ -64,7 +72,7 @@ export class Browser {
   post(path: string, form: Record<string, string> = {}, headers: Record<string, string> = {}): Promise<Response> {
     return this.send(path, {
       method: 'POST',
-      headers: this.headers({ origin: ORIGIN, 'content-type': 'application/x-www-form-urlencoded', ...headers }),
+      headers: this.headers({ origin: this.origin(), 'content-type': 'application/x-www-form-urlencoded', ...headers }),
       body: new URLSearchParams(form).toString(),
     });
   }
@@ -72,7 +80,7 @@ export class Browser {
   postJson(path: string, body: unknown, headers: Record<string, string> = {}): Promise<Response> {
     return this.send(path, {
       method: 'POST',
-      headers: this.headers({ origin: ORIGIN, 'content-type': 'application/json', ...headers }),
+      headers: this.headers({ origin: this.origin(), 'content-type': 'application/json', ...headers }),
       body: JSON.stringify(body),
     });
   }

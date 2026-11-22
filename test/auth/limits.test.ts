@@ -1,0 +1,89 @@
+/**
+ * The limits a stranger runs into. The per-address and per-account ones are tested beside the
+ * flows they protect; these are the per-IP ones, and the rule that only local development is looser.
+ */
+import { beforeEach, describe, expect, it } from 'vitest';
+import { LIMITS } from '../../src/auth/config';
+import { hit } from '../../src/auth/http';
+import type { Env } from '../../src/env';
+import { createTestSession } from '../helpers/auth';
+import { createTestEnv } from '../helpers/d1';
+import { Browser, lastCode, testApp } from './browser';
+
+const EMAIL = 'ada@example.com';
+const app = testApp();
+
+let env: Env;
+
+const sessions = async () => Number(await env.DB.prepare('SELECT COUNT(*) AS n FROM "session"').first<number>('n'));
+const fill = async (name: keyof typeof LIMITS, who: string, on = env) => {
+  for (let i = 0; i < LIMITS[name].limit; i++) expect(await hit(on, name, who)).toBe(0);
+};
+
+beforeEach(async () => {
+  env = createTestEnv().env;
+  await createTestSession(env, { email: EMAIL });
+  await env.DB.prepare('DELETE FROM "session"').run();
+});
+
+describe('limits per IP address', () => {
+  it('stops one machine asking for codes for address after address', async () => {
+    const noisy = '198.51.100.99';
+    await fill('codePerIp', noisy);
+    const b = new Browser(app, env, noisy);
+    const res = await b.post('/sign-in', { email: 'someone-new@example.com', intent: 'code' });
+    expect(res.headers.get('location')).toBe('/sign-in/limited');
+    const paused = await b.get('/sign-in/limited');
+    expect(paused.status).toBe(429);
+    expect(await paused.text()).toContain('Too many tries');
+    expect(await env.DB.prepare('SELECT COUNT(*) AS n FROM auth_codes').first<number>('n')).toBe(0);
+
+    // Someone else, somewhere else, is not held up by it.
+    const other = new Browser(app, env, '198.51.100.7');
+    expect((await other.post('/sign-in', { email: EMAIL, intent: 'code' })).headers.get('location')).toBe('/sign-in/code');
+  });
+
+  it('stops one machine checking code after code, even with the right one', async () => {
+    const noisy = '198.51.100.99';
+    const b = new Browser(app, env, noisy);
+    await b.post('/sign-in', { email: EMAIL, intent: 'code' });
+    const code = await lastCode(env, EMAIL);
+    await fill('checkPerIp', noisy);
+
+    expect((await b.post('/sign-in/code', { code })).headers.get('location')).toBe('/sign-in/limited');
+    expect(await sessions()).toBe(0);
+    // The refused check did not use the code up.
+    expect(await env.DB.prepare('SELECT attempts FROM auth_codes').first<number>('attempts')).toBe(0);
+  });
+
+  it('stops one machine hammering passkey sign-in', async () => {
+    const noisy = '198.51.100.99';
+    await fill('passkeyPerIp', noisy);
+    const res = await new Browser(app, env, noisy).get('/api/auth/passkey/sign-in-options', { accept: 'application/json' });
+    expect(res.status).toBe(429);
+    expect(JSON.stringify(await res.json())).toContain('rate_limited');
+    expect((await new Browser(app, env, '198.51.100.7').get('/api/auth/passkey/sign-in-options', { accept: 'application/json' })).status).toBe(200);
+  });
+});
+
+describe('how strict the limits are', () => {
+  it('is the same everywhere except local development', async () => {
+    for (const mode of ['production', 'test'] as const) {
+      const strict = createTestEnv({ ENVIRONMENT: mode }).env;
+      await fill('codePerEmail', 'who', strict);
+      expect(await hit(strict, 'codePerEmail', 'who')).toBeGreaterThan(0);
+    }
+    const dev = createTestEnv({ ENVIRONMENT: 'dev' }).env;
+    await fill('codePerEmail', 'who', dev);
+    expect(await hit(dev, 'codePerEmail', 'who')).toBe(0);
+  });
+
+  it('says how long to wait, and counts each name and each person apart', async () => {
+    await fill('codePerEmail', 'ada');
+    const wait = await hit(env, 'codePerEmail', 'ada');
+    expect(wait).toBeGreaterThan(0);
+    expect(wait).toBeLessThanOrEqual(LIMITS.codePerEmail.windowSec);
+    expect(await hit(env, 'codePerEmail', 'bob')).toBe(0);
+    expect(await hit(env, 'emailChangePerAddress', 'ada')).toBe(0);
+  });
+});
