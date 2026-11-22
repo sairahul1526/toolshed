@@ -80,4 +80,3 @@ td .mon-bars { height: 22px; }
 .mon-checklist .tick { font-size: 12px; font-weight: 600; }
 
 /* A ruled card whose body is a form or a stack of fields needs room under the rule. */
-.card-body.after-head { padding-top: 16px; }

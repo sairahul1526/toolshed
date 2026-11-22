@@ -860,3 +860,18 @@ td.actions-col, th.actions-col { text-align: right; }
 :root[data-theme="dark"] .btn.ghost:hover { background: var(--surface-3); }
 :root[data-theme="dark"] .card-foot .btn:not(.primary):not(.ghost):not(.danger-solid) { background: var(--surface-3); }
 .btn.sm.ghost { color: var(--text); }
+
+/* shared fixes from the 2026-11 look pass */
+.card-body.after-head { padding-top: 16px; }
+.form > .hint { margin: -8px 0 0; }
+input[type="file"] { max-width: 100%; color: var(--muted); font: inherit; font-size: 13px; }
+input[type="file"].input { height: auto; padding: 6px; }
+input[type="file"]::file-selector-button { margin-right: 10px; padding: 5px 12px; border: 1px solid var(--border-strong); border-radius: var(--radius-sm); background: var(--surface); color: var(--text); font: inherit; font-size: 13px; cursor: pointer; }
+input[type="file"]::file-selector-button:hover { background: var(--surface-2); }
+td.wrap-cell, th.wrap-cell { white-space: normal; overflow-wrap: anywhere; }
+.code > .icon-btn { position: sticky; float: right; top: 0; right: 0; margin: -6px -38px 0 8px; background: var(--surface-2); }
+@media (max-width: 760px) {
+  .editor-bar { flex-wrap: wrap; }
+  .editor-bar .editor-title { order: 3; flex: 1 1 100%; }
+  .editor-bar .actions { margin-left: auto; }
+}
