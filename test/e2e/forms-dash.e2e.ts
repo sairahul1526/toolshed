@@ -4,7 +4,7 @@
  */
 import { expect, test, type Browser, type Page } from '@playwright/test';
 import { baseURL, ownerState } from './helpers/auth';
-import { enableModule, expectNoSideScroll, shoot, watch } from './helpers/dash';
+import { disableModule, enableModule, expectNoSideScroll, shoot, watch } from './helpers/dash';
 
 test.describe.configure({ mode: 'serial' });
 test.use({ storageState: ownerState });
@@ -289,4 +289,9 @@ test('duplicates, searches, trashes with the confirm dialog, restores and delete
   await dialog.getByRole('button', { name: 'Delete for good' }).click();
   await expect(page.getByText('The trash is empty')).toBeVisible();
   expect(w.problems).toEqual([]);
+});
+
+// Later files (Modules, Overview) expect a workspace with nothing switched on.
+test.afterAll(async ({ browser }) => {
+  await disableModule(browser, 'forms');
 });

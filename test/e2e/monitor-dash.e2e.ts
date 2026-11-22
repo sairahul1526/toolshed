@@ -1,6 +1,6 @@
 import { expect, test, type Browser, type Page } from '@playwright/test';
 import { baseURL, ownerState } from './helpers/auth';
-import { enableModule, expectNoSideScroll, shoot, watch } from './helpers/dash';
+import { disableModule, enableModule, expectNoSideScroll, shoot, watch } from './helpers/dash';
 
 // The owner sets up monitors, an alert channel, a status page, an incident and a maintenance window
 // through the real pages. A visitor in another browser context pings the heartbeat and reads the
@@ -336,4 +336,9 @@ test('channels, components, the status page and monitors are deleted with their 
   await expect(page.getByText('Start with one address')).toBeVisible();
   expect((await page.request.get(pingPath)).status()).toBe(404);
   expect(w.problems).toEqual([]);
+});
+
+// Later files (Modules, Overview) expect a workspace with nothing switched on.
+test.afterAll(async ({ browser }) => {
+  await disableModule(browser, 'monitor');
 });

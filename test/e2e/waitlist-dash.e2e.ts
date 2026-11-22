@@ -1,6 +1,6 @@
 import { expect, test, type Browser, type Page } from '@playwright/test';
 import { baseURL, ownerState } from './helpers/auth';
-import { enableModule, expectNoSideScroll, shoot, watch } from './helpers/dash';
+import { disableModule, enableModule, expectNoSideScroll, shoot, watch } from './helpers/dash';
 
 // The owner builds a waitlist through the real pages, visitors in other browser contexts join it,
 // and the owner then works the people, review, launch, stats and data screens. Tests run in order
@@ -297,4 +297,9 @@ test('test mode, the embed snippets, and deleting the waitlist with the confirm 
   const gone = await page.request.get(`/w/${SLUG}`);
   expect(gone.status()).toBe(404);
   expect(w.problems).toEqual([]);
+});
+
+// Later files (Modules, Overview) expect a workspace with nothing switched on.
+test.afterAll(async ({ browser }) => {
+  await disableModule(browser, 'waitlist');
 });

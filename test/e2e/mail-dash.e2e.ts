@@ -1,7 +1,6 @@
-/// <reference lib="dom" />
 import { expect, test, type APIRequestContext, type Browser, type Page } from '@playwright/test';
 import { baseURL, ownerState, signedInPage } from './helpers/auth';
-import { enableModule, expectNoSideScroll, shoot as takeShot, watch } from './helpers/dash';
+import { disableModule, enableModule, expectNoSideScroll, shoot as takeShot, watch } from './helpers/dash';
 
 // The owner runs a newsletter through the real pages: first run, people, a broadcast written with the
 // editor toolbar and sent to the dev outbox, a welcome series, product emails, RSS, stats, deliverability,
@@ -59,17 +58,18 @@ async function visitorPage(browser: Browser): Promise<Page> {
  * bottom of whatever comes before and the top of the label. Form fields run together when this is 0.
  */
 async function expectSpacedFields(page: Page): Promise<void> {
-  const tight = await page.evaluate(() => {
-    const out: string[] = [];
-    for (const label of Array.from(document.querySelectorAll<HTMLElement>('main label.lbl'))) {
+  // Passed as a string so this file needs no browser type definitions.
+  const tight = await page.evaluate<string[]>(`(() => {
+    const out = [];
+    for (const label of Array.from(document.querySelectorAll('main label.lbl'))) {
       const field = label.parentElement;
-      const before = field?.previousElementSibling as HTMLElement | null;
+      const before = field ? field.previousElementSibling : null;
       if (!field || !before || before.offsetParent === null) continue;
       const gap = field.getBoundingClientRect().top - before.getBoundingClientRect().bottom;
-      if (gap < 8) out.push(`${label.textContent?.trim()} (${Math.round(gap)}px under ${before.tagName.toLowerCase()})`);
+      if (gap < 8) out.push((label.textContent || '').trim() + ' (' + Math.round(gap) + 'px under ' + before.tagName.toLowerCase() + ')');
     }
     return out;
-  });
+  })()`);
   expect(tight, 'form fields with no space above them').toEqual([]);
 }
 
@@ -273,7 +273,7 @@ test('a broadcast is written with the toolbar, previewed, tested and checked bef
   await page.locator('#preheader').fill('Three small things.');
   const body = page.locator('#body');
   // The End key scrolls instead of moving the caret on macOS, so the caret is placed directly.
-  const toEnd = () => body.evaluate((e: HTMLTextAreaElement) => e.setSelectionRange(e.value.length, e.value.length));
+  const toEnd = () => body.evaluate((e: { value: string; setSelectionRange(a: number, b: number): void }) => e.setSelectionRange(e.value.length, e.value.length));
   await body.fill('');
   await page.getByRole('button', { name: 'Heading', exact: true }).click();
   await expect(body).toHaveValue('## Heading');
@@ -660,10 +660,7 @@ test('deleting asks first, and each screen is clean at phone width', async ({ pa
   expect(watched.problems).toEqual([]);
 });
 
-// Later files assume only Links is on, so put the workspace back.
+// Later files (Modules, Overview) expect a workspace with nothing switched on.
 test.afterAll(async ({ browser }) => {
-  const page = await signedInPage(browser);
-  const res = await page.request.post(`${baseURL}/app/modules/mail/toggle`, { form: { enabled: '0' }, headers: { origin: baseURL }, maxRedirects: 0 });
-  expect(res.status()).toBe(303);
-  await page.context().close();
+  await disableModule(browser, 'mail');
 });

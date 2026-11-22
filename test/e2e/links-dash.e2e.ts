@@ -1,6 +1,6 @@
 import { expect, test, type Browser, type Page } from '@playwright/test';
 import { baseURL, ownerState } from './helpers/auth';
-import { enableModule, expectNoSideScroll, shoot, watch } from './helpers/dash';
+import { disableModule, enableModule, expectNoSideScroll, shoot, watch } from './helpers/dash';
 
 // The owner walks the whole Links product through the real pages, and a visitor in a second browser
 // context follows the short link and opens the bio page. Tests run in order and share one database.
@@ -276,4 +276,9 @@ test('settings: folder, blocked domain, defaults; import and export', async ({ p
   expect(await exported.text()).toContain('example.com/one');
   await expectNoSideScroll(page);
   expect(w.problems).toEqual([]);
+});
+
+// Later files (Modules, Overview) expect a workspace with nothing switched on.
+test.afterAll(async ({ browser }) => {
+  await disableModule(browser, 'links');
 });

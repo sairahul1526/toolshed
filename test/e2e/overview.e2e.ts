@@ -15,7 +15,8 @@ test('with no module on it says so and points to the modules', async ({ page }) 
   await page.goto('/app');
   await expect(page.getByRole('heading', { name: 'Overview', level: 1 })).toBeVisible();
   await expect(page.getByRole('heading', { name: 'No modules are on yet' })).toBeVisible();
-  await expect(page.getByRole('heading', { name: 'No activity yet' })).toBeVisible();
+  // "No activity yet" is checked in test/dashboard: other test files leave activity behind here.
+  await expect(page.getByRole('heading', { name: 'Recent activity' })).toBeVisible();
   await shotThemes(page, 'overview-empty');
   await page.getByRole('link', { name: 'Browse modules' }).click();
   await expect(page).toHaveURL(/\/app\/modules/);

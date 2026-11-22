@@ -1,6 +1,6 @@
 import { expect, test, type Browser, type Page } from '@playwright/test';
 import { baseURL, ownerState } from './helpers/auth';
-import { enableModule, expectNoSideScroll, shoot, watch } from './helpers/dash';
+import { disableModule, enableModule, expectNoSideScroll, shoot, watch } from './helpers/dash';
 
 // The owner sets up a feedback portal through the real pages, visitors in other browser contexts use it,
 // and the owner then works the inbox, roadmap, changelog, settings and data screens. Tests run in
@@ -521,4 +521,9 @@ test('the widget script opens the portal on a customer page and the dashboard sh
   expect(v.problems).toEqual([]);
   await visitor.context().close();
   expect(w.problems).toEqual([]);
+});
+
+// Later files (Modules, Overview) expect a workspace with nothing switched on.
+test.afterAll(async ({ browser }) => {
+  await disableModule(browser, 'feedback');
 });

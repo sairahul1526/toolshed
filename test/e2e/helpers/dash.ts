@@ -2,7 +2,8 @@
  * Shared steps for the signed-in product walkthroughs: switching a module on, watching a page for
  * trouble, and taking the three standard screenshots (desktop light, desktop dark, 375 px wide).
  */
-import { expect, type Page } from '@playwright/test';
+import { expect, type Browser, type Page } from '@playwright/test';
+import { baseURL, signedInPage } from './auth';
 
 export interface Watch {
   /** Console errors, uncaught errors, failed requests and 5xx answers seen so far. */
@@ -41,6 +42,21 @@ export async function enableModule(page: Page, id: string): Promise<void> {
     await on.first().click();
     await expect(page.getByRole('button', { name: /^Turn off/ }).first()).toBeVisible();
   }
+}
+
+/**
+ * Switch a module off again. Dashboard test files call this in `afterAll` so that later files
+ * (Modules, Overview) find the workspace as a fresh install leaves it.
+ */
+export async function disableModule(browser: Browser, id: string): Promise<void> {
+  const page = await signedInPage(browser);
+  const res = await page.request.post(`${baseURL}/app/modules/${id}/toggle`, {
+    form: { enabled: '0' },
+    headers: { origin: baseURL },
+    maxRedirects: 0,
+  });
+  expect(res.status()).toBe(303);
+  await page.context().close();
 }
 
 /** No sideways scroll: the page is never wider than the window. */
