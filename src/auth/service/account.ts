@@ -14,6 +14,7 @@ import { MAX_PASSWORD_LENGTH } from '../hasher';
 import { clearSessionCookies } from '../signin';
 import { eraseUser, soleOwnerOf, type BlockingWorkspace } from '../user-store';
 import { actorFrom, auditBy, freshFrom, selfFrom } from './actor';
+import { END_IMPERSONATIONS } from './sessions';
 
 export interface AccountSummary {
   id: string;
@@ -94,7 +95,10 @@ export async function setPassword(c: Context<AppEnv>, input: { password: string 
   if (existing) await ctx.internalAdapter.updatePassword(actor.id, hash);
   else await ctx.internalAdapter.linkAccount({ userId: actor.id, providerId: 'credential', accountId: actor.id, password: hash });
 
-  await c.env.DB.prepare('DELETE FROM "session" WHERE "userId" = ?1 AND "id" <> ?2').bind(actor.id, actor.sessionId).run();
+  await c.env.DB.batch([
+    c.env.DB.prepare('DELETE FROM "session" WHERE "userId" = ?1 AND "id" <> ?2').bind(actor.id, actor.sessionId),
+    c.env.DB.prepare(END_IMPERSONATIONS).bind(actor.id),
+  ]);
   await auditBy(c.env, actor, {
     orgId: null,
     action: existing ? 'password.changed' : 'password.added',

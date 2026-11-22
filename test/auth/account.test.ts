@@ -54,7 +54,8 @@ describe('who may change an account', () => {
   });
 
   it('refuses the owner signed in as someone else', async () => {
-    await env.DB.prepare('UPDATE "session" SET "impersonatedBy" = ?1').bind('usr_owner').run();
+    const owner = await createTestSession(env, { email: 'install-owner@example.com', instanceOwner: true, orgId: 'org_install' });
+    await env.DB.prepare('UPDATE "session" SET "impersonatedBy" = ?1').bind(owner.user.id).run();
     expect(await codeOf(env, b, (c) => setPassword(c, { password: PASSWORD }))).toBe('auth.impersonating');
     expect(await codeOf(env, b, (c) => setUsername(c, { username: 'ada' }))).toBe('auth.impersonating');
     expect(await codeOf(env, b, (c) => startTwoStep(c))).toBe('auth.impersonating');

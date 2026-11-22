@@ -135,7 +135,8 @@ describe('changing the email an account signs in with', () => {
 
     await must(env, b, (c) => startEmailChange(c, { email: NEW }));
     const code = await lastCode(env, NEW);
-    await env.DB.prepare('UPDATE "session" SET "impersonatedBy" = ?1').bind('usr_owner').run();
+    const owner = await createTestSession(env, { email: 'install-owner@example.com', instanceOwner: true, orgId: 'org_install' });
+    await env.DB.prepare('UPDATE "session" SET "impersonatedBy" = ?1').bind(owner.user.id).run();
     expect(await codeOf(env, b, (c) => startEmailChange(c, { email: 'x@new.example.com' }))).toBe('auth.impersonating');
     expect(await codeOf(env, b, (c) => confirmEmailChange(c, { code }))).toBe('auth.impersonating');
     expect(await codeOf(env, b, (c) => cancelEmailChange(c))).toBe('auth.impersonating');

@@ -90,7 +90,8 @@ describe('the devices a person is signed in on', () => {
     expect(await codeOf(env, anon, (c) => revokeOtherSessions(c))).toBe('unauthorized');
 
     const phone = await createTestSession(env, { email: 'ada@example.com' });
-    await env.DB.prepare('UPDATE "session" SET "impersonatedBy" = ?1 WHERE "id" = ?2').bind('usr_owner', ada.sessionId).run();
+    const owner = await createTestSession(env, { email: 'install-owner@example.com', instanceOwner: true, orgId: 'org_install' });
+    await env.DB.prepare('UPDATE "session" SET "impersonatedBy" = ?1 WHERE "id" = ?2').bind(owner.user.id, ada.sessionId).run();
     expect((await must(env, b, (c) => listSessions(c)))[0]).toMatchObject({ current: true, impersonated: true });
     expect(await codeOf(env, b, (c) => revokeSession(c, phone.sessionId))).toBe('auth.impersonating');
     expect(await codeOf(env, b, (c) => revokeOtherSessions(c))).toBe('auth.impersonating');

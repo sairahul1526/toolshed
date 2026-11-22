@@ -378,7 +378,8 @@ describe('deleting a workspace', () => {
   });
 
   it('is not done from a "signed in as" session', async () => {
-    await env.DB.prepare('UPDATE "session" SET "impersonatedBy" = ?1 WHERE "id" = ?2').bind('usr_someone', people.owner.sessionId).run();
+    const owner = await createTestSession(env, { email: 'install-owner@example.com', instanceOwner: true, orgId: 'org_install' });
+    await env.DB.prepare('UPDATE "session" SET "impersonatedBy" = ?1 WHERE "id" = ?2').bind(owner.user.id, people.owner.sessionId).run();
     expect(await codeOf(env, as.owner, (c) => deleteWorkspace(c, { confirm: 'test' }))).toBe('auth.impersonating');
   });
 });

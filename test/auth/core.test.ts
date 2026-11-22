@@ -156,10 +156,11 @@ describe('loadAuth', () => {
     const t = createTestEnv();
     const s = await createTestSession(t.env);
     const old = new Date(Date.now() - (SESSION_REFRESH_SEC + 60) * 1000).toISOString();
-    t.sqlite.prepare('UPDATE "session" SET "updatedAt" = ?, "impersonatedBy" = ? WHERE "id" = ?').run(old, 'usr_owner', s.sessionId);
+    const owner = await createTestSession(t.env, { email: 'install-owner@example.com', instanceOwner: true, orgId: 'org_install' });
+    t.sqlite.prepare('UPDATE "session" SET "updatedAt" = ?, "impersonatedBy" = ? WHERE "id" = ?').run(old, owner.user.id, s.sessionId);
     const { result, queries } = await countQueries(t.env, () => who(probe(), t.env, s.headers));
     expect(queries).toHaveLength(1);
-    expect(result.body.session?.impersonatedBy).toBe('usr_owner');
+    expect(result.body.session?.impersonatedBy).toBe(owner.user.id);
     expect(result.res.headers.get('set-cookie')).toBeNull();
   });
 

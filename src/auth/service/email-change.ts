@@ -20,6 +20,7 @@ import { background } from '../signin';
 import { emailSchema, findUserByEmail } from '../users';
 import { isUniqueClash } from '../workspace-store';
 import { actorFrom, auditBy, freshFrom, selfFrom } from './actor';
+import { END_IMPERSONATIONS } from './sessions';
 
 export interface PendingEmailChange {
   /** The address waiting to be confirmed. */
@@ -110,7 +111,10 @@ export async function confirmEmailChange(c: Context<AppEnv>, input: { code: stri
     throw err;
   }
 
-  await c.env.DB.prepare('DELETE FROM "session" WHERE "userId" = ?1 AND "id" <> ?2').bind(actor.id, actor.sessionId).run();
+  await c.env.DB.batch([
+    c.env.DB.prepare('DELETE FROM "session" WHERE "userId" = ?1 AND "id" <> ?2').bind(actor.id, actor.sessionId),
+    c.env.DB.prepare(END_IMPERSONATIONS).bind(actor.id),
+  ]);
   await auditBy(c.env, actor, {
     orgId: null,
     action: 'user.email_changed',

@@ -65,6 +65,9 @@ export async function listSessions(c: Context<AppEnv>, now = Date.now()): Promis
   return views.sort((a, b) => Number(b.current) - Number(a.current));
 }
 
+/** Ends every "sign in as" session this person started: signing a device out must not leave one running. */
+export const END_IMPERSONATIONS = 'DELETE FROM "session" WHERE "impersonatedBy" = ?1';
+
 /**
  * Sign one device out. `current` is true when it was the one asking: the caller should then send
  * the person to the sign-in page, because their cookie no longer works.
@@ -73,7 +76,13 @@ export async function revokeSession(c: Context<AppEnv>, sessionId: string): Prom
   const actor = await selfFrom(c);
   const id = typeof sessionId === 'string' ? sessionId : '';
   // The user id is part of the statement: an id that belongs to someone else matches nothing.
-  const gone = await c.env.DB.prepare('DELETE FROM "session" WHERE "id" = ?1 AND "userId" = ?2 RETURNING "userAgent"').bind(id, actor.id).first<{ userAgent: string | null }>();
+  const [, removed] = await c.env.DB.batch<{ userAgent: string | null }>([
+    // Nothing ties a "sign in as" session to the device it began on, so all of theirs end. This
+    // runs first, while the row that proves the device is theirs is still there.
+    c.env.DB.prepare(`${END_IMPERSONATIONS} AND EXISTS (SELECT 1 FROM "session" WHERE "id" = ?2 AND "userId" = ?1)`).bind(actor.id, id),
+    c.env.DB.prepare('DELETE FROM "session" WHERE "id" = ?1 AND "userId" = ?2 RETURNING "userAgent"').bind(id, actor.id),
+  ]);
+  const gone = removed?.results[0];
   if (!gone) throw authErrors.session_not_found();
   await auditBy(c.env, actor, {
     orgId: null,
@@ -89,8 +98,11 @@ export async function revokeSession(c: Context<AppEnv>, sessionId: string): Prom
 /** Sign out everywhere except this device. Returns how many were signed out. */
 export async function revokeOtherSessions(c: Context<AppEnv>): Promise<{ count: number }> {
   const actor = await selfFrom(c);
-  const done = await c.env.DB.prepare('DELETE FROM "session" WHERE "userId" = ?1 AND "id" <> ?2').bind(actor.id, actor.sessionId).run();
-  const count = done.meta.changes ?? 0;
+  const [done] = await c.env.DB.batch([
+    c.env.DB.prepare('DELETE FROM "session" WHERE "userId" = ?1 AND "id" <> ?2').bind(actor.id, actor.sessionId),
+    c.env.DB.prepare(END_IMPERSONATIONS).bind(actor.id),
+  ]);
+  const count = done?.meta.changes ?? 0;
   if (count > 0) {
     await auditBy(c.env, actor, {
       orgId: null,

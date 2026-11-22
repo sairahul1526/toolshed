@@ -45,6 +45,10 @@ interface SessionRow {
   oname: string | null;
   oslug: string | null;
   mrole: string | null;
+  /** The person behind a "sign in as" session, as they are now. All null when they are gone. */
+  ibRole: string | null;
+  ibBanned: number | null;
+  ibBanExpires: string | null;
 }
 
 /** The session cookie's name for this origin. `__Secure-` is added wherever cookies are Secure. */
@@ -70,16 +74,26 @@ function isRole(value: string | null): value is Role {
   return !!value && (ROLES as readonly string[]).includes(value);
 }
 
-/** Look a session up by its token. Expired sessions and banned people count as signed out. */
+function suspended(banned: number | null, banExpires: string | null, now: number): boolean {
+  return !!banned && (!banExpires || Date.parse(banExpires) > now);
+}
+
+/**
+ * Look a session up by its token. Expired sessions and banned people count as signed out. So does
+ * a "sign in as" session once the person who started it is gone, suspended, or no longer owns the
+ * install: their reach must not outlast their own.
+ */
 export async function findSession(env: Env, token: string, now = Date.now()): Promise<(LoadedSession & { updatedAt: number }) | null> {
   const row = await env.DB.prepare(
     `SELECT s."id" AS sid, s."token" AS token, s."expiresAt" AS expiresAt, s."createdAt" AS createdAt, s."updatedAt" AS updatedAt,
             s."impersonatedBy" AS impersonatedBy,
             u."id" AS uid, u."email" AS email, u."name" AS name, u."image" AS image, u."role" AS urole,
             u."banned" AS banned, u."banExpires" AS banExpires,
-            o."id" AS oid, o."name" AS oname, o."slug" AS oslug, m."role" AS mrole
+            o."id" AS oid, o."name" AS oname, o."slug" AS oslug, m."role" AS mrole,
+            ib."role" AS ibRole, ib."banned" AS ibBanned, ib."banExpires" AS ibBanExpires
        FROM "session" s
        JOIN "user" u ON u."id" = s."userId"
+       LEFT JOIN "user" ib ON ib."id" = s."impersonatedBy"
        LEFT JOIN "member" m ON m."userId" = s."userId" AND m."organizationId" = s."activeOrganizationId"
        LEFT JOIN "organization" o ON o."id" = m."organizationId"
       WHERE s."token" = ?1`,
@@ -90,7 +104,8 @@ export async function findSession(env: Env, token: string, now = Date.now()): Pr
 
   const expiresAt = Date.parse(row.expiresAt);
   if (!(expiresAt > now)) return null;
-  if (row.banned && (!row.banExpires || Date.parse(row.banExpires) > now)) return null;
+  if (suspended(row.banned, row.banExpires, now)) return null;
+  if (row.impersonatedBy && (row.ibRole !== 'admin' || suspended(row.ibBanned, row.ibBanExpires, now))) return null;
 
   return {
     session: { id: row.sid, createdAt: Date.parse(row.createdAt), expiresAt, impersonatedBy: row.impersonatedBy || null },
