@@ -11,11 +11,13 @@ Toolshed is a single Cloudflare Worker. One sign-in, one dashboard, many modules
 | Part | Where | What it does |
 |---|---|---|
 | App skeleton | [`src/app.tsx`](src/app.tsx), [`src/core/`](src/core/) | The Worker, the module contract, workspace-scoped database access, events, jobs, rate limits, the audit log and stable error codes. [How it's built](docs/architecture.md) |
+| Sign-in | [`src/auth/`](src/auth/) | First-run setup, passwords, email codes and links, passkeys, two-step codes, invites, sessions, API keys and short-lived tokens. [How sign-in works](docs/auth.md) |
+| Dashboard screens | [`src/dashboard/`](src/dashboard/) | Overview, Modules, Appearance, Notifications, API keys, Audit log and Email |
 | Password hasher | [`src/auth/hasher.ts`](src/auth/hasher.ts) | PBKDF2-SHA256 through Web Crypto, sized to fit the Workers Free plan's 10 ms CPU limit. Self-describing hashes, so the cost can be raised later |
 | Hashing spike | [`spikes/hash/`](spikes/hash/) | The benchmark behind that choice: 12 scrypt and PBKDF2 settings, timed in Node and in workerd |
 | Hasher demo | [`spikes/hash/demo/`](spikes/hash/demo/) | A local page that shows the measurements and lets you try the hasher |
 | Design tokens | [`public/assets/toolshed.css`](public/assets/toolshed.css) | Colors, type and components for the dashboard, light and dark |
-| Docs | [`docs/`](docs/) | [How Toolshed is built](docs/architecture.md) · [How passwords are stored](docs/passwords.md) |
+| Docs | [`docs/`](docs/) | [How Toolshed is built](docs/architecture.md) · [How sign-in works](docs/auth.md) · [How passwords are stored](docs/passwords.md) |
 
 ![The hasher demo: measured hash settings against the 10 ms Free-plan line, and a form to hash and check a password](docs/img/hash-demo.jpg)
 
