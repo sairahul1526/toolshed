@@ -53,7 +53,7 @@ and Apple Mail, in light and dark mode.
 | The provider says the address bounced | Log `failed` and add the address to the suppression list. |
 | The provider refuses for good (bad sender, domain not verified) | Log `failed`. No retries, because they would not help. |
 | The address is on the suppression list | Log `suppressed` and do not send. The owner can remove an address from the list. |
-| Too many to one address, or too many overall | Log `capped` and do not send. Defaults: 10 per address per hour and 300 per install per hour. |
+| Too many to one address, or too many overall | Log `capped` and do not send. Defaults: 10 per address per hour and 300 per install per hour. Sign-in emails (codes, links, the claim code, email change) are not counted and never capped here; they have their own limits, listed in [auth.md](auth.md). |
 
 Suppression keeps a bad address from hurting your sending reputation. Removing an address from the list is
 recorded in the audit log.
