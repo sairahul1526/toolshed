@@ -1,0 +1,14 @@
+/* Feedback dashboard extras. Only classes the screens add; everything else comes from the app kit. */
+.fb-admin-grid { display: grid; grid-template-columns: minmax(0, 3fr) minmax(0, 2fr); gap: 16px; align-items: start; }
+.fb-admin-grid > div { display: flex; flex-direction: column; gap: 16px; min-width: 0; }
+.fb-admin-lanes { display: grid; grid-template-columns: repeat(auto-fill, minmax(260px, 1fr)); gap: 16px; }
+.fb-admin-list { list-style: none; margin: 0 0 12px; padding: 0; display: flex; flex-direction: column; gap: 10px; }
+.fb-admin-list li { overflow-wrap: anywhere; }
+.fb-admin-list li.row { justify-content: space-between; align-items: center; }
+.fb-steps { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 16px; }
+.fb-steps li { display: flex; flex-direction: column; gap: 6px; }
+.fb-steps .hint, .hint { margin: 0; color: var(--muted, #6b6b6b); font-size: 13px; }
+.fb-tags { border: 0; padding: 0; margin: 0; display: flex; flex-direction: column; gap: 6px; max-height: 240px; overflow: auto; }
+.fb-tags legend { font-weight: 600; font-size: 13px; padding: 0 0 6px; }
+.wrap { overflow-wrap: anywhere; white-space: pre-wrap; }
+@media (max-width: 860px) { .fb-admin-grid { grid-template-columns: minmax(0, 1fr); } }
