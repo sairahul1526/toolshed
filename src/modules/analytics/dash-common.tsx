@@ -12,21 +12,12 @@ export const BASE = '/app/analytics';
 
 export const siteHref = (site: Pick<Site, 'id'>, rest = ''): string => `${BASE}/sites/${site.id}${rest}`;
 
-/** The shell has no style or script hook, so each screen loads the module's files in its body. */
-function Assets() {
-  return (
-    <>
-      <link rel="stylesheet" href="/m/analytics/report.css" />
-      <link rel="stylesheet" href="/m/analytics/analytics.css" />
-      <script src="/m/analytics/analytics.js" defer></script>
-    </>
-  );
-}
+const STYLES = ['/m/analytics/report.css', '/m/analytics/analytics.css'];
 
 export function page(c: C, title: string, crumbs: Crumb[], body: Child, status?: 200 | 404 | 422): Promise<Response> {
-  return renderPage(c, { title, crumbs, status }, (
+  return renderPage(c, { title, crumbs, status, styles: STYLES }, (
     <>
-      <Assets />
+      <script src="/m/analytics/analytics.js" defer></script>
       {body}
     </>
   ));
