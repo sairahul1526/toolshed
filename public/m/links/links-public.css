@@ -1,0 +1,27 @@
+/* Public pages of the Links module: notices, password gate, preview, report form and bio pages.
+   Loaded after /assets/public.css and uses its tokens. */
+.lk-form { display: flex; flex-direction: column; gap: 16px; }
+.lk-small { font-size: 14px; }
+.lk-hp { position: absolute; left: -9999px; width: 1px; height: 1px; overflow: hidden; }
+.lk-reasons { border: 0; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 8px; }
+.lk-reasons legend { font-size: 14px; font-weight: 500; padding: 0 0 6px; }
+.lk-radio { display: flex; gap: 10px; align-items: center; font-size: 15px; min-height: 36px; }
+.lk-radio input { width: 18px; height: 18px; accent-color: var(--ac); }
+textarea.pub-input { resize: vertical; min-height: 96px; font: inherit; }
+.pub-card .pub-url[data-role="destination"] { word-break: break-all; }
+
+.lk-bio { width: 100%; display: flex; flex-direction: column; align-items: center; gap: 24px; text-align: center; }
+.lk-bio-head { display: flex; flex-direction: column; align-items: center; gap: 8px; }
+.lk-bio-head h1 { margin: 0; font-size: 24px; line-height: 1.2; letter-spacing: -0.02em; overflow-wrap: anywhere; }
+.lk-bio-head p { margin: 0; color: var(--muted); max-width: 46ch; overflow-wrap: anywhere; }
+.lk-avatar { width: 88px; height: 88px; border-radius: 50%; object-fit: cover; background: var(--card); border: 1px solid var(--line); }
+.lk-initials { display: grid; place-items: center; font-size: 28px; font-weight: 600; }
+.lk-blocks, .lk-socials { list-style: none; margin: 0; padding: 0; width: 100%; display: flex; flex-direction: column; gap: 12px; }
+.lk-socials { flex-direction: row; flex-wrap: wrap; justify-content: center; gap: 8px; }
+.lk-btn { display: block; width: 100%; padding: 14px 18px; border-radius: 12px; background: var(--ac); color: var(--on); font-weight: 600; text-decoration: none; overflow-wrap: anywhere; }
+.lk-btn:hover { filter: brightness(1.06); }
+.lk-btn:focus-visible, .lk-soc:focus-visible { outline: 2px solid var(--fg); outline-offset: 2px; }
+.lk-soc { display: inline-block; padding: 8px 14px; border: 1px solid var(--line); border-radius: 999px; color: var(--fg); text-decoration: none; font-size: 14px; }
+.lk-soc:hover { background: var(--card); }
+.lk-heading h2 { margin: 12px 0 0; font-size: 15px; font-weight: 600; text-transform: none; color: var(--muted); }
+.lk-text p { margin: 0; color: var(--fg); overflow-wrap: anywhere; }
