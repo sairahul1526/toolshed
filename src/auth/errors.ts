@@ -29,7 +29,9 @@ export const authErrors = defineErrors('auth', {
   role_self: { status: 403, message: 'You can’t change your own role. Ask another owner.' },
   role_over_owner: { status: 403, message: 'Only an owner can add, change or remove an owner.' },
   last_owner: { status: 409, message: 'A workspace needs at least one owner. Make someone else an owner first.' },
-  last_instance_owner: { status: 409, message: 'This Toolshed needs at least one owner. Make someone else an owner first.' },
+  last_instance_owner: { status: 409, message: 'This Toolshed needs an owner, so this account can’t be deleted.' },
+  is_owner: { status: 409, message: 'That person owns this Toolshed. You can’t do that to their account.' },
+  user_banned: { status: 409, message: 'That account is suspended. Lift the suspension first.' },
   sole_owner: {
     status: 409,
     message: 'This account is the only owner of a workspace. Make someone else an owner or delete the workspace first.',
@@ -46,6 +48,7 @@ export const authErrors = defineErrors('auth', {
   email_taken: { status: 409, message: 'Another account already uses that email.' },
   email_same: { status: 422, message: 'That is already your email.' },
   username_taken: { status: 409, message: 'That username is taken. Try another.' },
+  username_needs_password: { status: 409, message: 'Set a password first. A username only works together with one.' },
   user_not_found: { status: 404, message: 'We couldn’t find that person.' },
   session_not_found: { status: 404, message: 'That device is already signed out.' },
   passkey_not_found: { status: 404, message: 'We couldn’t find that passkey.' },

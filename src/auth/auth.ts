@@ -40,21 +40,34 @@ const ID_PREFIX: Record<string, string> = {
 
 const LOCAL_HOSTS = new Set(['localhost', '127.0.0.1', '[::1]']);
 
+function originOf(candidate: string | undefined): URL | null {
+  if (!candidate) return null;
+  try {
+    const url = new URL(candidate);
+    return url.protocol === 'https:' || url.protocol === 'http:' ? url : null;
+  } catch {
+    return null;
+  }
+}
+
+const isLocal = (url: URL): boolean => url.protocol === 'http:' && LOCAL_HOSTS.has(url.hostname);
+
 /**
  * The public address of this install: `APP_URL` when set, otherwise where the request came in.
  * Only the origin is kept, so a path or query in `APP_URL` cannot leak into links.
+ *
+ * One exception, for a developer's own machine: when `APP_URL` is a local address, a request to
+ * the same port under another local name (`localhost` for `127.0.0.1`) keeps its own name.
+ * Passkeys need it, because browsers refuse them on a bare IP address. An install with a real
+ * address never follows the request, whatever `Host` it claims.
  */
 export function baseUrl(env: Env, requestUrl?: string): string {
-  for (const candidate of [env.APP_URL, requestUrl]) {
-    if (!candidate) continue;
-    try {
-      const url = new URL(candidate);
-      if (url.protocol === 'https:' || url.protocol === 'http:') return url.origin;
-    } catch {
-      // A broken APP_URL falls through to the request's own origin.
-    }
-  }
-  throw new Error('APP_URL is not set and there is no request to read an address from.');
+  const fixed = originOf(env.APP_URL);
+  const asked = originOf(requestUrl);
+  if (fixed && asked && isLocal(fixed) && isLocal(asked) && fixed.port === asked.port) return asked.origin;
+  const url = fixed ?? asked;
+  if (!url) throw new Error('APP_URL is not set and there is no request to read an address from.');
+  return url.origin;
 }
 
 /** Cookies are `Secure` everywhere except plain http on this machine, where browsers would drop them. */

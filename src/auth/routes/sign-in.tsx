@@ -16,7 +16,7 @@ import { LIMITS, TRUST_DEVICE_SEC } from '../config';
 import { fingerprint } from '../crypto';
 import { describeDevice } from '../device';
 import { authErrors } from '../errors';
-import { clearFlow, clientIp, forwardCookies, hit, readFlow, setFlow, waitText } from '../http';
+import { clearFlow, clientIp, forwardCookies, hit, keepAddressPrivate, readFlow, setFlow, waitText } from '../http';
 import { safeNext } from '../next';
 import {
   CodeStep,
@@ -32,8 +32,8 @@ import {
   type LimitedReason,
 } from '../pages/sign-in';
 import { sessionFromRequest } from '../session';
-import { finishSignIn, recordFailedBurst, recordSignIn, signOut, startCodeSignIn, type Finished, type SignInMethod } from '../signin';
-import { emailSchema, findUserByEmail, instanceClaimed } from '../users';
+import { accountFor, finishSignIn, recordFailedBurst, recordSignIn, signOut, startCodeSignIn, type Finished, type SignInMethod } from '../signin';
+import { emailSchema, instanceClaimed } from '../users';
 
 type C = Context<AppEnv>;
 
@@ -51,7 +51,7 @@ const text = (value: unknown): string => (typeof value === 'string' ? value : ''
 const isReason = (value: string | undefined): value is LimitedReason => value === 'codes' || value === 'requests' || value === 'password' || value === 'two-step';
 
 /** Send the browser to the "Too many tries" page, which remembers how long is left. */
-async function limited(c: C, input: { email?: string; wait: number; reason: LimitedReason; next?: string }): Promise<Response> {
+export async function limited(c: C, input: { email?: string; wait: number; reason: LimitedReason; next?: string }): Promise<Response> {
   const until = Date.now() + input.wait * 1000;
   await setFlow(c, 'limited', { ...(input.email ? { email: input.email } : {}), next: input.next ?? '/app', ref: `${input.reason}:${until}` }, Math.max(60, input.wait));
   return c.redirect('/sign-in/limited', 303);
@@ -133,8 +133,8 @@ signInRoutes.post('/sign-in/code', async (c) => {
     const message = result.reason === 'used' ? authErrors.code_used().message : authErrors.code_expired().message;
     return page(c, 'Check your email', <CodeStep email={flow.email} error={message} dead />, 400);
   }
-  const user = await findUserByEmail(c.env, result.email);
-  // A code only ever matches for an address that had an account when it was sent.
+  const user = await accountFor(c, result.email);
+  // A code only matches for an address that had an account or an invite when it was sent. The invite may have been cancelled since.
   if (!user) return page(c, 'Check your email', <CodeStep email={flow.email} error={authErrors.code_expired().message} dead />, 400);
   return after(c, (await finishSignIn(c, user, 'code')).state, user.email, next);
 });
@@ -153,7 +153,7 @@ signInRoutes.post('/sign-in/code/resend', async (c) => {
 
 signInRoutes.get('/sign-in/link/:token', async (c) => {
   // Opening the link changes nothing: mail scanners and link previews fetch it too.
-  c.header('referrer-policy', 'no-referrer');
+  keepAddressPrivate(c);
   const token = c.req.param('token');
   const info = await inspectLink(c.env, token);
   if (info.state !== 'ok' || info.purpose !== 'sign-in' || !info.email) {
@@ -175,12 +175,12 @@ signInRoutes.get('/sign-in/link/:token', async (c) => {
 });
 
 signInRoutes.post('/sign-in/link/:token', async (c) => {
-  c.header('referrer-policy', 'no-referrer');
+  keepAddressPrivate(c);
   const wait = await hit(c.env, 'checkPerIp', clientIp(c));
   if (wait) return limited(c, { wait, reason: 'codes' });
   const result = await redeemLink(c.env, c.req.param('token'), 'sign-in');
   if (!result.ok) return page(c, 'Sign in', <DeadLink state={result.reason === 'used' ? 'used' : 'expired'} />, 400);
-  const user = await findUserByEmail(c.env, result.email);
+  const user = await accountFor(c, result.email);
   if (!user) return page(c, 'Sign in', <DeadLink state="expired" />, 400);
   return after(c, (await finishSignIn(c, user, 'link')).state, user.email, safeNext(result.ref));
 });

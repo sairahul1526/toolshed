@@ -80,6 +80,18 @@ describe('addresses and cookies', () => {
     expect(baseUrl(broken.env, 'https://ok.example.com/')).toBe('https://ok.example.com');
   });
 
+  it('follows another local name on the same port, and only on a local install', () => {
+    const local = createTestEnv({ APP_URL: 'http://127.0.0.1:8787' });
+    expect(baseUrl(local.env, 'http://localhost:8787/sign-in')).toBe('http://localhost:8787');
+    expect(baseUrl(local.env)).toBe('http://127.0.0.1:8787');
+    for (const other of ['http://localhost:9999/', 'https://localhost:8787/', 'http://evil.example:8787/', 'http://localhost.evil.example:8787/', 'http://192.168.1.5:8787/']) {
+      expect([other, baseUrl(local.env, other)]).toEqual([other, 'http://127.0.0.1:8787']);
+    }
+    const real = createTestEnv({ APP_URL: 'https://tools.example.com' });
+    expect(baseUrl(real.env, 'http://localhost/')).toBe('https://tools.example.com');
+    expect(baseUrl(real.env, 'http://127.0.0.1/')).toBe('https://tools.example.com');
+  });
+
   it('relaxes Secure only for plain http on this machine', () => {
     expect(secureCookies('http://localhost')).toBe(false);
     expect(secureCookies('http://127.0.0.1:8787')).toBe(false);

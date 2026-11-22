@@ -8,6 +8,9 @@
  * Role and scope checks live in core/guards.ts and only read what `loadAuth` set. Everything the
  * Members, Account and Users screens need is exported from ./service.
  */
+// Registers the daily clean-up of used codes and ended sessions.
+import './cleanup';
+
 export { loadAuth } from './load';
 export { authApp } from './routes';
 export { currentSession } from './session';

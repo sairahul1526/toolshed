@@ -9,14 +9,24 @@ import { verifyJwt } from '../core/jwt';
 import type { ActiveOrg, AppEnv, Env, Role } from '../env';
 import { clientIp, enforceHit } from './http';
 import { sessionFromRequest } from './session';
+import { isBanned } from './users';
 
 const BEARER = /^Bearer +([A-Za-z0-9._~+/=-]{1,4096})$/;
 
-async function orgFor(env: Env, orgId: string, role: Role): Promise<ActiveOrg | null> {
-  const row = await env.DB.prepare('SELECT "id", "name", "slug" FROM "organization" WHERE "id" = ?1')
-    .bind(orgId)
-    .first<{ id: string; name: string; slug: string }>();
-  return row ? { id: row.id, name: row.name, slug: row.slug, role } : null;
+/**
+ * The workspace a key or token acts in. One that stands for a person (`userId`) stops counting
+ * when that person is suspended or their account is gone. One query either way.
+ */
+async function orgFor(env: Env, orgId: string, role: Role, userId?: string | null): Promise<ActiveOrg | null> {
+  const row = await env.DB.prepare(
+    `SELECT o."id" AS id, o."name" AS name, o."slug" AS slug, u."id" AS uid, u."banned" AS banned, u."banExpires" AS banExpires
+       FROM "organization" o LEFT JOIN "user" u ON u."id" = ?2 WHERE o."id" = ?1`,
+  )
+    .bind(orgId, userId ?? null)
+    .first<{ id: string; name: string; slug: string; uid: string | null; banned: number | null; banExpires: string | null }>();
+  if (!row) return null;
+  if (userId && (!row.uid || isBanned(row))) return null;
+  return { id: row.id, name: row.name, slug: row.slug, role };
 }
 
 /**
@@ -26,7 +36,7 @@ async function orgFor(env: Env, orgId: string, role: Role): Promise<ActiveOrg | 
 async function fromBearer(c: Context<AppEnv>, token: string): Promise<void> {
   if (token.startsWith(KEY_PREFIX)) {
     const key = await verifyApiKey(c.env, token);
-    const org = key ? await orgFor(c.env, key.orgId, key.role) : null;
+    const org = key ? await orgFor(c.env, key.orgId, key.role, key.userId) : null;
     if (!key || !org) return enforceHit(c.env, 'bearerPerIp', clientIp(c));
     await enforceApiKeyRateLimit(c.env, key.keyId);
     const touched = touchApiKey(c.env, key, { ip: clientIp(c) }).catch((err: unknown) => console.error('[auth] could not record key use', err));
@@ -43,7 +53,7 @@ async function fromBearer(c: Context<AppEnv>, token: string): Promise<void> {
   }
   // A token only counts on the address it was made for.
   const claims = await verifyJwt(c.env, token, { issuer: new URL(c.req.url).origin });
-  const org = claims ? await orgFor(c.env, claims.orgId, claims.role) : null;
+  const org = claims ? await orgFor(c.env, claims.orgId, claims.role, claims.kind === 'user' ? claims.sub : null) : null;
   if (!claims || !org) return enforceHit(c.env, 'bearerPerIp', clientIp(c));
   // A token made from a key shares that key's limit, so trading a key for tokens buys no extra calls.
   if (claims.kind === 'key') await enforceApiKeyRateLimit(c.env, claims.sub);
