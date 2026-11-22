@@ -130,9 +130,13 @@ const usernameSchema = z
   .toLowerCase()
   .regex(/^[a-z0-9_.]{3,30}$/, 'Use 3 to 30 letters, numbers, dots or underscores.');
 
-/** Set, change or clear (null) the optional username. It needs a password on the account (`auth.username_needs_password`), and goes when the password does. */
+/**
+ * Set, change or clear (null) the optional username. It needs a password on the account
+ * (`auth.username_needs_password`), and goes when the password does. A username is a name the
+ * account signs in with, so like the password it needs a recent sign-in.
+ */
 export async function setUsername(c: Context<AppEnv>, input: { username: string | null }): Promise<{ username: string | null }> {
-  const actor = await selfFrom(c);
+  const actor = await freshFrom(c);
   const username = input.username === null || input.username === '' ? null : parse(z.object({ username: usernameSchema }), input).username;
   if (username) {
     const taken = await c.env.DB.prepare('SELECT 1 AS yes FROM "user" WHERE "username" = ?1 AND "id" <> ?2').bind(username, actor.id).first<{ yes: number }>();
