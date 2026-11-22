@@ -41,6 +41,14 @@ All are exported from `src/ui/index.ts`.
 - Charts: `BarChart`, `LineChart`, `Sparkline`. SVG with a hidden data table for screen readers. Charts are drawn from the values you pass, never from user HTML.
 - Helpers: `formatNumber`, `formatCompact`, `formatDate`, `formatDateTime`, `timeAgo`, `formatBytes`, `plural`, `initials`. Dates are always UTC.
 
+### Spacing, field with a button, icons
+
+- Direct children of a `Card` body are spaced 16 px apart automatically (hints and errors stay tight to their field). Do not add `margin-top` or a wrapper just to separate blocks. An `EmptyState` followed by a form in the same card gets a rule and padding between them.
+- A field with a button beside it: pass `action` to `Field`, for example `<Field id="code" label="Code" hint="..." action={<Button type="button">Generate</Button>}><Input id="code" /></Field>`. The button lines up with the input (not the hint) and drops under it at 375 px. Do not build this with your own flex row.
+- A table cell that holds text plus a toggle or link (for example text and Details): wrap it in `<div class="cell-stack">`.
+- Icons: `resolveIcon(name)` maps aliases (`sparkles` to `spark`, `calendar` to `cal`, `arrow` to `right`, `trash2` to `trash`) and returns null for unknown names. `Icon` draws nothing for an unknown name, and `EmptyState` falls back to `layers`, so a missing icon never leaves an empty gap. New icons: `pencil`, `pause`, `rss`.
+- Disabled buttons are a flat grey with muted text (AA in both themes). Secondary buttons in dark mode sit on `--surface-3`.
+
 ## Opening things from markup
 
 No inline handlers (the CSP forbids them). `app.js` reads data attributes:

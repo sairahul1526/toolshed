@@ -3,7 +3,7 @@ import { Hono } from 'hono';
 import { devUi } from '../../src/ui/dev';
 import { ErrorPage } from '../../src/ui/error-page';
 import { PublicButton, PublicCard, PublicField, PublicInput, PublicPage } from '../../src/ui/public';
-import { Button, Callout, Field, Input, Pagination, Pill, Segmented, Stat, Table, BarChart, LineChart, Sparkline, Avatar } from '../../src/ui';
+import { Icon, EmptyState, resolveIcon, Button, Callout, Field, Input, Pagination, Pill, Segmented, Stat, Table, BarChart, LineChart, Sparkline, Avatar } from '../../src/ui';
 
 const html = (node: unknown) => String(node);
 
@@ -48,6 +48,25 @@ describe('components', () => {
     expect(html(<Callout tone="warn" title="T">Body</Callout>)).toContain('Body');
     expect(html(<Avatar name="X" />)).toContain('X');
     expect(html(<Segmented name="r" label="R" value="a" options={[{ value: 'a', label: 'A' }, { value: 'b', label: 'B' }]} />)).toContain('type="radio"');
+  });
+});
+
+describe('icons and field action', () => {
+  it('resolves aliases and rejects unknown names', () => {
+    expect(resolveIcon('sparkles')).toBe('spark');
+    expect(resolveIcon('search')).toBe('search');
+    expect(resolveIcon('nope')).toBeNull();
+    expect(resolveIcon('toString')).toBeNull();
+  });
+  it('an unknown icon draws nothing and EmptyState falls back', () => {
+    expect(String(<Icon name={'nope' as never} />)).toBe('');
+    expect(String(<EmptyState icon="nope" title="T" />)).toContain('#i-layers');
+  });
+  it('Field action wraps the control and button together', () => {
+    const html = String(<Field id="x" label="X" hint="h" action={<Button>Go</Button>}><Input id="x" name="x" /></Field>);
+    expect(html).toContain('field-action');
+    expect(html.indexOf('<button')).toBeGreaterThan(html.indexOf('<input'));
+    expect(html.indexOf('class="hint"')).toBeGreaterThan(html.indexOf('<button'));
   });
 });
 

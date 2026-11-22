@@ -1,3 +1,4 @@
+import { resolveIcon } from '../icons';
 import { cx } from './util';
 
 export interface IconProps {
@@ -10,13 +11,16 @@ export interface IconProps {
 
 /** An icon from the page's sprite. Decorative unless it has a label. */
 export function Icon({ name, class: className, label }: IconProps) {
+  const id = resolveIcon(name);
+  // An unknown name draws nothing, so a button never shows an empty gap where the icon should be.
+  if (!id) return null;
   return label ? (
     <svg class={cx('i', className)} role="img" aria-label={label}>
-      <use href={`#i-${name}`} />
+      <use href={`#i-${id}`} />
     </svg>
   ) : (
     <svg class={cx('i', className)} aria-hidden="true" focusable="false">
-      <use href={`#i-${name}`} />
+      <use href={`#i-${id}`} />
     </svg>
   );
 }

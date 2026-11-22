@@ -11,19 +11,31 @@ export interface FieldProps {
   /** Shown under the control in red. Pair it with `invalid` on the control itself. */
   error?: Child;
   optional?: boolean;
+  /**
+   * A button that belongs to the control, for example "Send code" or "Copy". It sits level with the
+   * control (never with the hint) and drops under it at 375 px. The hint and error stay below both.
+   */
+  action?: Child;
   class?: string;
   children?: Child;
 }
 
 /** Label, control, hint and inline error in one block. */
-export function Field({ id, label, hint, error, optional, class: className, children }: FieldProps) {
+export function Field({ id, label, hint, error, optional, action, class: className, children }: FieldProps) {
   return (
     <div class={className}>
       <label class="lbl" for={id}>
         {label}
         {optional ? <span class="opt"> optional</span> : null}
       </label>
-      {children}
+      {action ? (
+        <div class="field-action">
+          {children}
+          {action}
+        </div>
+      ) : (
+        children
+      )}
       {hint ? (
         <p class="hint" id={`${id}-hint`}>
           {hint}

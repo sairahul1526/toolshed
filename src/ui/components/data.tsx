@@ -1,5 +1,6 @@
 import type { Child } from 'hono/jsx';
 import { initials, formatNumber } from '../format';
+import { resolveIcon } from '../icons';
 import { Icon } from './icon';
 import { cx } from './util';
 
@@ -273,7 +274,7 @@ export function EmptyState({ icon = 'layers', title, body, actions, bare }: Empt
   const inner = (
     <div class="empty">
       <span class="tile">
-        <Icon name={icon} />
+        <Icon name={resolveIcon(icon) ?? 'layers'} />
       </span>
       <h3>{title}</h3>
       {body ? <p>{body}</p> : null}

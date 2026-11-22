@@ -129,7 +129,7 @@ function buildRows(items: AuditRecord[], now: number, showWorkspace: boolean) {
         </span>
       ),
       what: (
-        <>
+        <div class="cell-stack">
           <span class="row-text">
             <b class={known ? undefined : 'mono'}>{text}</b>
             {note ? <span>{clip(note, 160)}</span> : null}
@@ -138,7 +138,7 @@ function buildRows(items: AuditRecord[], now: number, showWorkspace: boolean) {
             <summary>Details</summary>
             <EntryDetails record={r} showWorkspace={showWorkspace} />
           </details>
-        </>
+        </div>
       ),
       target:
         r.targetType || r.targetId ? (

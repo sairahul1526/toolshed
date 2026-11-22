@@ -36,5 +36,5 @@ export { PublicPage, PublicCard, PublicButton, PublicField, PublicInput } from '
 export { ErrorPage } from './error-page';
 export type { ErrorPageProps } from './error-page';
 export { formatNumber, formatCompact, formatDate, formatDateTime, timeAgo, formatBytes, plural, initials } from './format';
-export { ICONS, isIconName } from './icons';
+export { ICONS, isIconName, resolveIcon } from './icons';
 export type { IconName } from './icons';

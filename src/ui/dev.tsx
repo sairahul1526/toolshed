@@ -194,6 +194,9 @@ function Gallery({ worst }: { worst: boolean }) {
                 <Input id="f-email" name="email" type="email" invalid value="maya@example.com" />
               </Field>
             </div>
+            <Field id="f-token" label="Invite code" hint="Share this with the person you invite." action={<Button type="button">Generate</Button>}>
+              <Input id="f-token" name="token" placeholder="abc-123" />
+            </Field>
             <Field id="f-slug" label="Short link" optional>
               <Input id="f-slug" name="slug" prefix="tools.example.com/" placeholder="spring" />
             </Field>
@@ -261,6 +264,15 @@ function Gallery({ worst }: { worst: boolean }) {
           <Callout tone="bad" title="Could not save">Check the highlighted fields and try again.</Callout>
           <Card title="Loading">
             <Skeleton lines={4} />
+          </Card>
+          <Card>
+            <EmptyState bare icon="sparkles" title="No lists yet" body="Create the first one below." />
+            <form class="form" method="post" action="#" data-no-busy>
+              <Field id="f-list" label="List name">
+                <Input id="f-list" name="list" placeholder="Launch list" />
+              </Field>
+              <div class="actions"><Button variant="primary">Create list</Button></div>
+            </form>
           </Card>
           <EmptyState icon="form" title="No forms yet" body="Build one in a few minutes." actions={<><Button variant="primary">New form</Button><Button>Import</Button></>} />
           <div class="toast-demo">

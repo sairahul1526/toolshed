@@ -74,7 +74,19 @@ export const ICONS = {
   star: '<path d="m12 3 2.7 5.6 6.1.9-4.4 4.3 1 6.1L12 17l-5.4 2.9 1-6.1-4.4-4.3 6.1-.9Z"/>',
   layers: '<path d="m12 3 9 5-9 5-9-5Z"/><path d="m3 13 9 5 9-5"/>',
   news: '<rect x="3" y="4" width="18" height="16" rx="2"/><path d="M7 8h10M7 12h10M7 16h6"/>',
+  pencil: '<path d="M4 20h4L19 9l-4-4L4 16Z"/><path d="m13.5 6.5 4 4"/>',
+  pause: '<rect x="6" y="4.5" width="4" height="15" rx="1"/><rect x="14" y="4.5" width="4" height="15" rx="1"/>',
+  rss: '<path d="M5 11a8 8 0 0 1 8 8M5 5a14 14 0 0 1 14 14"/><circle cx="6" cy="18" r="1.2"/>',
 } as const;
+
+/** Other names callers use for an icon that already exists. */
+export const ICON_ALIASES: Readonly<Record<string, IconName>> = { sparkles: 'spark', calendar: 'cal', arrow: 'right', trash2: 'trash' };
+
+/** The sprite id for a name, or null when there is no such icon (so callers draw nothing instead of an empty box). */
+export function resolveIcon(name: string): IconName | null {
+  if (isIconName(name)) return name;
+  return Object.prototype.hasOwnProperty.call(ICON_ALIASES, name) ? ICON_ALIASES[name]! : null;
+}
 
 export type IconName = keyof typeof ICONS;
 
