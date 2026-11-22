@@ -4,28 +4,92 @@
  * anonymous caller may see. The one thing it refuses is a caller over a rate limit (429).
  */
 import type { Context, MiddlewareHandler } from 'hono';
-import { enforceApiKeyRateLimit, KEY_PREFIX, touchApiKey, verifyApiKey } from '../core/apikeys';
+import { capRole, enforceApiKeyRateLimit, KEY_PREFIX, liveKeyRole, touchApiKey, verifyApiKey, weakerRole } from '../core/apikeys';
+import type { KeyRole } from '../core/apikeys';
 import { verifyJwt } from '../core/jwt';
 import type { ActiveOrg, AppEnv, Env, Role } from '../env';
+import { ROLES } from '../env';
 import { clientIp, enforceHit } from './http';
 import { sessionFromRequest } from './session';
 import { isBanned } from './users';
 
 const BEARER = /^Bearer +([A-Za-z0-9._~+/=-]{1,4096})$/;
 
+function isRole(value: string | null): value is Role {
+  return !!value && (ROLES as readonly string[]).includes(value);
+}
+
+/** What a key or token says about itself, before the database is asked whether it is still true. */
+interface Bearer {
+  orgId: string;
+  role: KeyRole;
+  /** The person it stands for: a personal key's owner, or who asked for the token. */
+  userId?: string | null;
+  /** The key a token was made from. The key's row then says whose it is and whether it still works. */
+  keyId?: string | null;
+}
+
+interface BearerRow {
+  id: string;
+  name: string;
+  slug: string;
+  kid: string | null;
+  kind: string | null;
+  role: string | null;
+  kuser: string | null;
+  revoked_at: number | null;
+  expires_at: number | null;
+  sa_role: string | null;
+  sa_deleted_at: number | null;
+  uid: string | null;
+  banned: number | null;
+  banExpires: string | null;
+  mrole: string | null;
+}
+
 /**
- * The workspace a key or token acts in. One that stands for a person (`userId`) stops counting
- * when that person is suspended or their account is gone. One query either way.
+ * The workspace a key or token acts in, and the role it has there right now. One query.
+ *
+ * A token is checked without the database, so on its own it would keep working for 15 minutes
+ * whatever happened since. This is where "since" is caught:
+ * - a token made from a key stops when the key is revoked, runs out, or loses its service account;
+ * - anything that stands for a person stops when they are suspended, gone, or no longer a member
+ *   of the workspace, and is never stronger than the role they hold today.
+ * Service account keys stand for nobody, so nobody leaving stops them.
  */
-async function orgFor(env: Env, orgId: string, role: Role, userId?: string | null): Promise<ActiveOrg | null> {
+async function orgFor(env: Env, bearer: Bearer, now = Date.now()): Promise<ActiveOrg | null> {
   const row = await env.DB.prepare(
-    `SELECT o."id" AS id, o."name" AS name, o."slug" AS slug, u."id" AS uid, u."banned" AS banned, u."banExpires" AS banExpires
-       FROM "organization" o LEFT JOIN "user" u ON u."id" = ?2 WHERE o."id" = ?1`,
+    `SELECT o."id" AS id, o."name" AS name, o."slug" AS slug,
+            k.id AS kid, k.kind AS kind, k.role AS role, k.user_id AS kuser, k.revoked_at AS revoked_at, k.expires_at AS expires_at,
+            s.role AS sa_role, s.deleted_at AS sa_deleted_at,
+            u."id" AS uid, u."banned" AS banned, u."banExpires" AS banExpires, m."role" AS mrole
+       FROM "organization" o
+       LEFT JOIN api_keys k ON k.id = ?3 AND k.org_id = o."id"
+       LEFT JOIN service_accounts s ON s.id = k.service_account_id AND s.org_id = k.org_id
+       LEFT JOIN "user" u ON u."id" = COALESCE(?2, k.user_id)
+       LEFT JOIN "member" m ON m."organizationId" = o."id" AND m."userId" = u."id"
+      WHERE o."id" = ?1`,
   )
-    .bind(orgId, userId ?? null)
-    .first<{ id: string; name: string; slug: string; uid: string | null; banned: number | null; banExpires: string | null }>();
+    .bind(bearer.orgId, bearer.userId ?? null, bearer.keyId ?? null)
+    .first<BearerRow>();
   if (!row) return null;
-  if (userId && (!row.uid || isBanned(row))) return null;
+
+  let role = bearer.role;
+  let person = bearer.userId ?? null;
+  if (bearer.keyId) {
+    const current = row.kid && row.kind && row.role ? liveKeyRole({ ...row, kind: row.kind, role: row.role }, now) : null;
+    if (!current) return null;
+    role = weakerRole(role, current);
+    if (row.kind !== 'service') {
+      // A personal key with no owner on record stands for nobody we can check.
+      if (!row.kuser) return null;
+      person = row.kuser;
+    }
+  }
+  if (person) {
+    if (!row.uid || isBanned(row, now) || !isRole(row.mrole)) return null;
+    role = weakerRole(role, capRole(row.mrole));
+  }
   return { id: row.id, name: row.name, slug: row.slug, role };
 }
 
@@ -36,7 +100,7 @@ async function orgFor(env: Env, orgId: string, role: Role, userId?: string | nul
 async function fromBearer(c: Context<AppEnv>, token: string): Promise<void> {
   if (token.startsWith(KEY_PREFIX)) {
     const key = await verifyApiKey(c.env, token);
-    const org = key ? await orgFor(c.env, key.orgId, key.role, key.userId) : null;
+    const org = key ? await orgFor(c.env, { orgId: key.orgId, role: key.role, userId: key.userId }) : null;
     if (!key || !org) return enforceHit(c.env, 'bearerPerIp', clientIp(c));
     await enforceApiKeyRateLimit(c.env, key.keyId);
     const touched = touchApiKey(c.env, key, { ip: clientIp(c) }).catch((err: unknown) => console.error('[auth] could not record key use', err));
@@ -53,7 +117,7 @@ async function fromBearer(c: Context<AppEnv>, token: string): Promise<void> {
   }
   // A token only counts on the address it was made for.
   const claims = await verifyJwt(c.env, token, { issuer: new URL(c.req.url).origin });
-  const org = claims ? await orgFor(c.env, claims.orgId, claims.role, claims.kind === 'user' ? claims.sub : null) : null;
+  const org = claims ? await orgFor(c.env, { orgId: claims.orgId, role: claims.role, ...(claims.kind === 'user' ? { userId: claims.sub } : { keyId: claims.sub }) }) : null;
   if (!claims || !org) return enforceHit(c.env, 'bearerPerIp', clientIp(c));
   // A token made from a key shares that key's limit, so trading a key for tokens buys no extra calls.
   if (claims.kind === 'key') await enforceApiKeyRateLimit(c.env, claims.sub);

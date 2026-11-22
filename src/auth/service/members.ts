@@ -5,7 +5,7 @@
  * the change, so two requests racing each other cannot both take the last owner away.
  */
 import type { Context } from 'hono';
-import { limitKeysForUser, revokeKeysForUser } from '../../core/keys/members';
+import { lowerDemotedKeysStatement, recordKeysLowered, recordKeysRevoked, revokeLeaverKeysStatement } from '../../core/keys/members';
 import type { AppEnv, Env, Role } from '../../env';
 import { roleAtLeast } from '../../env';
 import { authErrors } from '../errors';
@@ -110,7 +110,8 @@ async function refusal(env: Env, orgId: string, userId: string, was: Role) {
 
 /**
  * What follows a person losing their place: they stop being "in" the workspace on every device,
- * the invites they sent stop working, and their personal API keys are revoked.
+ * and the invites they sent stop working. Their personal API keys were already revoked, in the
+ * same step that removed them.
  */
 async function afterGone(env: Env, orgId: string, userId: string): Promise<void> {
   await env.DB.batch([
@@ -121,7 +122,6 @@ async function afterGone(env: Env, orgId: string, userId: string): Promise<void>
     ).bind(orgId, userId),
     env.DB.prepare(`UPDATE "invitation" SET "status" = 'canceled' WHERE "organizationId" = ?1 AND "inviterId" = ?2 AND "status" = 'pending'`).bind(orgId, userId),
   ]);
-  await revokeKeysForUser(env, orgId, userId);
 }
 
 /**
@@ -136,14 +136,18 @@ export async function changeMemberRole(c: Context<AppEnv>, userId: string, role:
   assertMayAssign(actor.role, target.role, next);
   if (target.role === next) return { userId, role: next, changed: false };
 
-  const done = await c.env.DB.prepare(`UPDATE "member" SET "role" = ?6 WHERE ${STILL_SAFE} AND ${ACTOR_STILL}`)
-    .bind(actor.orgId, userId, target.role, actor.id, actor.role, next)
-    .run();
-  if (done.meta.changes !== 1) throw await refusal(c.env, actor.orgId, userId, target.role);
+  // Keys made with the old role must not outlive it, not even for the moment between two
+  // statements, so they come down in the same batch as the role.
+  const lowerKeys = isLowered(target.role, next) ? lowerDemotedKeysStatement(c.env, actor.orgId, userId, next) : null;
+  const [done, lowered] = await c.env.DB.batch([
+    c.env.DB.prepare(`UPDATE "member" SET "role" = ?6 WHERE ${STILL_SAFE} AND ${ACTOR_STILL}`).bind(actor.orgId, userId, target.role, actor.id, actor.role, next),
+    ...(lowerKeys ? [lowerKeys] : []),
+  ]);
+  if (done?.meta.changes !== 1) throw await refusal(c.env, actor.orgId, userId, target.role);
+  if (lowered) await recordKeysLowered(c.env, actor.orgId, userId, next, lowered.meta.changes ?? 0);
 
   if (isLowered(target.role, next)) {
-    // Keys and invites made with the old role must not outlive it.
-    await limitKeysForUser(c.env, actor.orgId, userId, next);
+    // Invites made with the old role must not outlive it either.
     await c.env.DB.prepare(
       `UPDATE "invitation" SET "status" = 'canceled' WHERE "organizationId" = ?1 AND "inviterId" = ?2 AND "status" = 'pending' AND (?3 = 1 OR "role" = 'owner')`,
     )
@@ -162,8 +166,13 @@ export async function changeMemberRole(c: Context<AppEnv>, userId: string, role:
 }
 
 async function takeOut(c: Context<AppEnv>, actor: WorkspaceActor, userId: string, was: Role): Promise<void> {
-  const done = await c.env.DB.prepare(`DELETE FROM "member" WHERE ${STILL_SAFE} AND ${ACTOR_STILL}`).bind(actor.orgId, userId, was, actor.id, actor.role).run();
-  if (done.meta.changes !== 1) throw await refusal(c.env, actor.orgId, userId, was);
+  // One batch: there is no moment when the person is out and their keys still work.
+  const [done, revoked] = await c.env.DB.batch([
+    c.env.DB.prepare(`DELETE FROM "member" WHERE ${STILL_SAFE} AND ${ACTOR_STILL}`).bind(actor.orgId, userId, was, actor.id, actor.role),
+    revokeLeaverKeysStatement(c.env, actor.orgId, userId),
+  ]);
+  if (done?.meta.changes !== 1) throw await refusal(c.env, actor.orgId, userId, was);
+  await recordKeysRevoked(c.env, actor.orgId, userId, revoked?.meta.changes ?? 0);
   await afterGone(c.env, actor.orgId, userId);
 }
 

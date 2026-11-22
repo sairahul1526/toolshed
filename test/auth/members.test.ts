@@ -35,6 +35,7 @@ let as: Record<Role, Browser>;
 const count = async (sql: string, ...binds: unknown[]) => Number(await env.DB.prepare(sql).bind(...binds).first<number>('n'));
 const audits = (action: string) => count('SELECT COUNT(*) AS n FROM audit_log WHERE action = ?1', action);
 const roleOf = (userId: string, org = ORG) => env.DB.prepare('SELECT "role" FROM "member" WHERE "organizationId" = ?1 AND "userId" = ?2').bind(org, userId).first<string>('role');
+const revokedKeys = (userId: string) => count('SELECT COUNT(*) AS n FROM api_keys WHERE user_id = ?1 AND revoked_at IS NOT NULL', userId);
 const codeFrom = (err: unknown) => (err instanceof AppError ? err.code : String(err));
 
 /** What a request carrying this API key is seen as. */
@@ -209,8 +210,18 @@ describe('changing a role', () => {
     expect(await keyHolder(key.secret)).toEqual({ kind: 'apikey', role: 'admin' });
     await must(env, as.owner, (c) => changeMemberRole(c, people.admin.user.id, 'viewer'));
     expect(await keyHolder(key.secret)).toEqual({ kind: 'apikey', role: 'viewer' });
+    expect(await env.DB.prepare('SELECT role FROM api_keys WHERE id = ?1').bind(key.key.id).first<string>('role')).toBe('viewer');
+    expect(await audits('api_key.role_lowered')).toBe(1);
     await must(env, as.owner, (c) => changeMemberRole(c, people.admin.user.id, 'admin'));
     expect(await keyHolder(key.secret)).toEqual({ kind: 'apikey', role: 'viewer' });
+  });
+
+  it('leaves keys alone when the role change is refused', async () => {
+    const key = await keyFor(people.owner, 'admin');
+    // An admin cannot unmake an owner.
+    expect(await codeOf(env, as.admin, (c) => changeMemberRole(c, people.owner.user.id, 'viewer'))).not.toBeNull();
+    expect(await env.DB.prepare('SELECT role FROM api_keys WHERE id = ?1').bind(key.key.id).first<string>('role')).toBe('admin');
+    expect(await audits('api_key.role_lowered')).toBe(0);
   });
 
   it('cancels the invites a person sent once they can no longer invite', async () => {
@@ -265,6 +276,9 @@ describe('removing a member', () => {
     expect((await keyHolder(key.secret)).kind).toBe('apikey');
     await must(env, as.owner, (c) => removeMember(c, people.admin.user.id));
     expect(await keyHolder(key.secret)).toEqual({ kind: 'anon', role: null });
+    // Revoked for good, not only refused while they are out: joining again does not bring it back.
+    expect(await revokedKeys(people.admin.user.id)).toBe(1);
+    expect(await audits('api_key.revoked')).toBe(1);
   });
 
   it('cancels the invites the removed person sent', async () => {
@@ -291,10 +305,14 @@ describe('leaving a workspace', () => {
     expect((await as.member.get('/app')).headers.get('location')).toBe('/welcome');
   });
 
-  it('keeps the last owner in', async () => {
+  it('keeps the last owner in, and their keys working', async () => {
+    const key = await keyFor(people.owner, 'admin');
     expect(await codeOf(env, as.owner, (c) => leaveWorkspace(c))).toBe('auth.last_owner');
     expect(await roleOf(people.owner.user.id)).toBe('owner');
     expect(await audits('member.left')).toBe(0);
+    // The removal and the key revoke are one step: a refused removal revokes nothing.
+    expect(await revokedKeys(people.owner.user.id)).toBe(0);
+    expect(await keyHolder(key.secret)).toEqual({ kind: 'apikey', role: 'admin' });
   });
 
   it('lets an owner leave once there is another, and only one of two at the same moment', async () => {
