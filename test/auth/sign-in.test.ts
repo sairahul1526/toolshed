@@ -288,6 +288,40 @@ describe('the link in the sign-in email', () => {
   });
 });
 
+describe('pages that take a code, a password or an invite', () => {
+  it('tell the browser never to show them inside another site’s frame', async () => {
+    const b = new Browser(app, env);
+    const answers = [
+      await b.get('/sign-in'),
+      await b.post('/sign-in', { email: EMAIL, intent: 'code' }),
+      await b.get('/sign-in/code'),
+      await b.get('/sign-in/password'),
+      await b.get('/sign-in/two-step'),
+      await b.get('/setup'),
+      await b.get('/setup/code'),
+      await b.get('/invite/inv_aaaaaaaaaaaaaaaaaaaaaaaa'),
+      await b.get('/welcome'),
+    ];
+    for (const res of answers) {
+      expect(res.headers.get('content-security-policy'), res.url).toBe("frame-ancestors 'none'");
+      expect(res.headers.get('x-frame-options'), res.url).toBe('DENY');
+    }
+  });
+
+  it('say the same when the answer is a refusal', async () => {
+    const crossSite = await app.request('/sign-in', { method: 'POST', headers: { origin: 'https://evil.example', 'content-type': 'application/x-www-form-urlencoded' }, body: 'email=a%40example.com' }, env);
+    expect(crossSite.status).toBe(403);
+    expect(crossSite.headers.get('content-security-policy')).toBe("frame-ancestors 'none'");
+    expect(crossSite.headers.get('x-frame-options')).toBe('DENY');
+  });
+
+  it('leave pages outside sign-in alone, so public pages can still be embedded', async () => {
+    const res = await app.request('/healthz', {}, env);
+    expect(res.headers.get('content-security-policy')).toBeNull();
+    expect(res.headers.get('x-frame-options')).toBeNull();
+  });
+});
+
 describe('sign out and sign-up', () => {
   it('ends the session and clears the cookie', async () => {
     const b = new Browser(app, env);
