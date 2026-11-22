@@ -109,7 +109,7 @@ setupRoutes.post('/setup', async (c) => {
 
   const issued = await issueCode(c.env, { purpose: 'claim', email: owner, ip: clientIp(c), userAgent: c.req.header('user-agent') });
   const mail = await renderEmail(c.env, { template: 'claim-code', data: { code: issued.code, minutes: CODE_TTL_MS / 60_000 } });
-  const sent = await sendEmail(c.env, { to: owner, template: 'claim-code', tag: 'auth', ...mail });
+  const sent = await sendEmail(c.env, { to: owner, template: 'claim-code', tag: 'auth', lane: 'sign-in', ...mail });
 
   let logged = false;
   if (sent.status === 'not_configured') {

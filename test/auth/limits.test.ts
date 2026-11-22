@@ -5,6 +5,7 @@
 import { beforeEach, describe, expect, it } from 'vitest';
 import { LIMITS } from '../../src/auth/config';
 import { hit } from '../../src/auth/http';
+import { sendEmail } from '../../src/core/email';
 import type { Env } from '../../src/env';
 import { createTestSession } from '../helpers/auth';
 import { createTestEnv } from '../helpers/d1';
@@ -63,6 +64,25 @@ describe('limits per IP address', () => {
     expect(res.status).toBe(429);
     expect(JSON.stringify(await res.json())).toContain('rate_limited');
     expect((await new Browser(app, env, '198.51.100.7').get('/api/auth/passkey/sign-in-options', { accept: 'application/json' })).status).toBe(200);
+  });
+});
+
+describe('emails from the rest of the install', () => {
+  it('cannot use up the room a sign-in code needs', async () => {
+    const sent: string[] = [];
+    const binding = { send: async (m: { subject: string }) => (sent.push(m.subject), { messageId: 'cf_1' }) };
+    const live = createTestEnv({ ENVIRONMENT: 'production', EMAIL: binding as never, EMAIL_FROM: 'hello@mail.example.com' }).env;
+    await createTestSession(live, { email: EMAIL });
+    // A public form, say, that writes to this address until the hourly cap stops it.
+    let last = '';
+    for (let i = 0; i < 12; i++) last = (await sendEmail(live, { to: EMAIL, subject: 'Hello', html: '<p>hello</p>', text: 'hello', template: 'test' })).status;
+    expect(last).toBe('capped');
+    sent.length = 0;
+
+    const b = new Browser(app, live);
+    expect((await b.post('/sign-in', { email: EMAIL, intent: 'code' })).headers.get('location')).toBe('/sign-in/code');
+    expect(sent).toHaveLength(1);
+    expect(await live.DB.prepare(`SELECT status FROM email_log WHERE template = 'sign-in-code'`).first<string>('status')).toBe('sent');
   });
 });
 

@@ -80,7 +80,7 @@ export async function startCodeSignIn(c: Context<AppEnv>, email: string, next: s
     await background(
       c,
       renderEmail(c.env, { template: 'sign-in-code', data: { code: issued.code, minutes: CODE_TTL_MS / 60_000, link } }).then((mail) =>
-        sendEmail(c.env, { to: email, template: 'sign-in-code', tag: 'auth', ...mail }),
+        sendEmail(c.env, { to: email, template: 'sign-in-code', tag: 'auth', lane: 'sign-in', ...mail }),
       ),
     );
   }

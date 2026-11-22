@@ -69,7 +69,7 @@ export async function startEmailChange(c: Context<AppEnv>, input: { email: strin
     await background(
       c,
       renderEmail(c.env, { template: 'email-change', data: { code: issued.code, minutes: CODE_TTL_MS / 60_000 } }).then((mail) =>
-        sendEmail(c.env, { to: email, template: 'email-change', tag: 'auth', ...mail }),
+        sendEmail(c.env, { to: email, template: 'email-change', tag: 'auth', lane: 'sign-in', ...mail }),
       ),
     );
   }
@@ -131,7 +131,7 @@ export async function confirmEmailChange(c: Context<AppEnv>, input: { code: stri
         title: 'Your email address was changed',
         body: `Your account now signs in with ${result.email}. This address no longer works for it. If you did not make this change, tell the person who runs this Toolshed.`,
       },
-    }).then((mail) => sendEmail(c.env, { to: actor.email, template: 'notification', tag: 'auth', ...mail })),
+    }).then((mail) => sendEmail(c.env, { to: actor.email, template: 'notification', tag: 'auth', lane: 'sign-in', ...mail })),
   );
   return { email: result.email };
 }

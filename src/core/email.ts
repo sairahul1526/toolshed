@@ -33,6 +33,14 @@ export interface EmailMessage {
   replyTo?: string;
   /** Extra mail headers, such as `List-Unsubscribe`. Only the names `safeHeaders` allows are sent. */
   headers?: Record<string, string>;
+  /**
+   * `sign-in` marks an email a person needs to get into their account: a sign-in, claim or
+   * confirmation code. These skip the hourly caps, which they would otherwise share with every
+   * tool's email to the same address. Without this, ten emails from a public form could keep a
+   * sign-in code from being sent. Only the sign-in code sets it, and it keeps its own limit per
+   * address for each of these emails (`LIMITS` in src/auth/config.ts).
+   */
+  lane?: 'sign-in';
 }
 
 export type EmailStatus = 'sent' | 'dev' | 'not_configured' | 'failed' | 'retrying' | 'suppressed' | 'capped';
@@ -379,13 +387,15 @@ export async function sendEmail(env: Env, input: EmailMessage): Promise<EmailRes
   const sender = await getSender(env);
   if (!(env.EMAIL && sender.fromAddress)) return done(isDev(env) ? 'dev' : 'not_configured');
 
-  const caps = await getEmailCaps(env);
-  const [one, all] = await Promise.all([
-    rateLimit(env, `email:to:${msg.to}`, { limit: caps.perRecipientPerHour, windowSec: 3600 }),
-    rateLimit(env, 'email:all', { limit: caps.perInstallPerHour, windowSec: 3600 }),
-  ]);
-  if (!one.ok) return done('capped', { error: `Too many emails to this address this hour (limit ${caps.perRecipientPerHour}).` });
-  if (!all.ok) return done('capped', { error: `This install reached its hourly email limit (${caps.perInstallPerHour}).` });
+  if (msg.lane !== 'sign-in') {
+    const caps = await getEmailCaps(env);
+    const [one, all] = await Promise.all([
+      rateLimit(env, `email:to:${msg.to}`, { limit: caps.perRecipientPerHour, windowSec: 3600 }),
+      rateLimit(env, 'email:all', { limit: caps.perInstallPerHour, windowSec: 3600 }),
+    ]);
+    if (!one.ok) return done('capped', { error: `Too many emails to this address this hour (limit ${caps.perRecipientPerHour}).` });
+    if (!all.ok) return done('capped', { error: `This install reached its hourly email limit (${caps.perInstallPerHour}).` });
+  }
 
   try {
     const sent = await sendViaBinding(env.EMAIL as unknown as Binding, bindingMessage(sender, msg));

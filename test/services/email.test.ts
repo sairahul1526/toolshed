@@ -364,6 +364,26 @@ describe('caps', () => {
     expect(items.some((row) => row.error?.includes('hourly email limit'))).toBe(true);
   });
 
+  it('never holds back an email someone needs to sign in, and does not count it either', async () => {
+    const t = liveEnv();
+    await setUpSender(t.env);
+    await setSetting(t.env, INSTANCE, 'email.caps', { perRecipientPerHour: 2, perInstallPerHour: 3 });
+    // Emails from tools use up the room for this address, and then for the whole install.
+    for (let i = 0; i < 3; i++) await sendEmail(t.env, mail('sam@example.com'));
+    await sendEmail(t.env, mail('other@example.com'));
+    expect((await sendEmail(t.env, mail('sam@example.com'))).status).toBe('capped');
+    expect((await sendEmail(t.env, mail('new@example.com'))).status).toBe('capped');
+
+    for (let i = 0; i < 5; i++) expect((await sendEmail(t.env, mail('sam@example.com', { lane: 'sign-in' }))).status).toBe('sent');
+
+    // Sign-in emails take no room from the others.
+    const fresh = liveEnv();
+    await setUpSender(fresh.env);
+    await setSetting(fresh.env, INSTANCE, 'email.caps', { perRecipientPerHour: 2, perInstallPerHour: 100 });
+    for (let i = 0; i < 5; i++) await sendEmail(fresh.env, mail('sam@example.com', { lane: 'sign-in' }));
+    expect((await sendEmail(fresh.env, mail('sam@example.com'))).status).toBe('sent');
+  });
+
   it('has sensible defaults', async () => {
     const t = liveEnv();
     await setUpSender(t.env);

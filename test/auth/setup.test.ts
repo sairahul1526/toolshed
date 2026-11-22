@@ -2,7 +2,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { LIMITS, CODE_MAX_ATTEMPTS } from '../../src/auth/config';
 import { ownerEmail, TIMEZONE_KEY } from '../../src/auth/routes/setup';
 import { sessionCookieName } from '../../src/auth/session';
-import { devOutbox, suppressAddress } from '../../src/core/email';
+import { devOutbox, sendEmail, suppressAddress } from '../../src/core/email';
 import { defineModule } from '../../src/core/module';
 import { moduleState, registerModules } from '../../src/core/registry';
 import { getSetting } from '../../src/core/settings';
@@ -313,6 +313,20 @@ describe('the claim code when the install cannot send email', () => {
       expect(await res.text()).toContain('We couldn’t send the email');
     }
     expect(log).not.toHaveBeenCalled();
+  });
+
+  it('still sends the claim code when other emails used up the hourly room for the owner address', async () => {
+    const calls: unknown[] = [];
+    const on = live({ EMAIL_FROM: 'hello@mail.example.com', EMAIL: binding(() => (calls.push(1), { messageId: 'cf_1' })) as never });
+    const other = { to: OWNER, subject: 'Hello', html: '<p>hello</p>', text: 'hello', template: 'test' };
+    let last = '';
+    for (let i = 0; i < 12; i++) last = (await sendEmail(on, other)).status;
+    expect(last).toBe('capped');
+    calls.length = 0;
+
+    const res = await new Browser(app, on).post('/setup');
+    expect(res.headers.get('location')).toBe('/setup/code');
+    expect(calls).toHaveLength(1);
   });
 
   it('logs nothing at all once the install is claimed, and never a sign-in code', async () => {
