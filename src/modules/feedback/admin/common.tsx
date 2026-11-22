@@ -1,13 +1,20 @@
 /** Helpers shared by the admin screens. */
 import type { Context } from 'hono';
 import type { AppEnv } from '../../../env';
-import { setFlash } from '../../../ui';
+import { renderPage, setFlash } from '../../../ui';
 import { apiCtx } from '../api';
 import { errorText } from '../pub/kit';
 import { getPortal, type Ctx } from '../portal';
 import type { Portal } from '../types';
 
 export const A = '/app/feedback';
+
+type PageOptions = Parameters<typeof renderPage>[1];
+
+/** Every Feedback admin screen goes through here so none can miss the module stylesheet. */
+export function adminPage(c: Context<AppEnv>, options: PageOptions, body: Parameters<typeof renderPage>[2]) {
+  return renderPage(c, { ...options, styles: ['/m/feedback/admin.css', ...(options.styles ?? [])] }, body);
+}
 
 export interface Admin {
   c: Context<AppEnv>;

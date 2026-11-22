@@ -5,7 +5,7 @@ import { needRole } from '../../../core/guards';
 import type { AppEnv } from '../../../env';
 import {
   BarChart, Button, Callout, Card, Checkbox, CodeBlock, ConfirmButton, CopyField, EmptyState, Field, FilterBar, Input, KeyValueList, LineChart, LinkButton, PageHeader, Pill, SearchInput, Section, Select, Stat, StatGrid,
-  Table, Tabs, Textarea, renderPage, formatNumber, plural, timeAgo,
+  Table, Tabs, Textarea, formatNumber, plural, timeAgo,
 } from '../../../ui';
 import { fbErrors } from '../errors';
 import { IMPORT_FIELDS, IMPORT_ROW_LIMIT, exportAll, importPosts, postsCsv, previewCsv, type ImportField, type Mapping } from '../exportimport';
@@ -15,7 +15,7 @@ import {
 } from '../portal';
 import { errorText } from '../pub/kit';
 import { computeStats, formatDuration } from '../stats';
-import { A, done, fail, flag, loadAdmin, str, tone } from './common';
+import { A, adminPage, done, fail, flag, loadAdmin, str, tone } from './common';
 
 export const settings = new Hono<AppEnv>();
 
@@ -60,7 +60,7 @@ async function page(c: Context<AppEnv>, tab: Tab, o: Opts = {}) {
         ) : (
           <Callout tone="good" title="Email is ready">People can verify with a six-digit code, and status emails go out.</Callout>
         )}
-        <Card title="Portal">
+        <Card class="fb-stack" title="Portal">
           <Field id="g-name" label="Name" error={f.name}>
             <Input id="g-name" name="name" required maxlength={60} value={val('name')} invalid={Boolean(f.name)} />
           </Field>
@@ -71,7 +71,7 @@ async function page(c: Context<AppEnv>, tab: Tab, o: Opts = {}) {
             <Input id="g-tag" name="tagline" maxlength={160} value={val('tagline')} invalid={Boolean(f.tagline)} />
           </Field>
         </Card>
-        <Card title="Look" description="Themes are plain. Nothing forces our name on your page.">
+        <Card class="fb-stack" title="Look" description="Themes are plain. Nothing forces our name on your page.">
           <Field id="g-theme" label="Theme" error={f.theme}>
             <Select id="g-theme" name="theme" value={val('theme')} options={PRESETS.map((p) => ({ value: p, label: p[0]!.toUpperCase() + p.slice(1) }))} />
           </Field>
@@ -80,7 +80,7 @@ async function page(c: Context<AppEnv>, tab: Tab, o: Opts = {}) {
           </Field>
           <Checkbox name="show_powered" label="Show a small link to Toolshed in the footer" description="Off by default. You are never required to show it." checked={on('show_powered')} />
         </Card>
-        <Card title="Visibility and voting">
+        <Card class="fb-stack" title="Visibility and voting">
           <Field id="g-limit" label="Votes per person" error={f.vote_limit} hint="0 means no limit.">
             <Input id="g-limit" name="vote_limit" type="number" min={0} max={1000} value={val('vote_limit')} invalid={Boolean(f.vote_limit)} />
           </Field>
@@ -92,7 +92,7 @@ async function page(c: Context<AppEnv>, tab: Tab, o: Opts = {}) {
           <Checkbox name="roadmap_on" label="Public roadmap" checked={on('roadmap_on')} />
           <Checkbox name="changelog_on" label="Public changelog" checked={on('changelog_on')} />
         </Card>
-        <Card title="Email">
+        <Card class="fb-stack" title="Email">
           <Field id="g-reply" label="Reply-to address" optional error={f.reply_to} hint="Where replies to status emails go.">
             <Input id="g-reply" name="reply_to" type="email" maxlength={254} value={val('reply_to')} invalid={Boolean(f.reply_to)} />
           </Field>
@@ -112,7 +112,7 @@ async function page(c: Context<AppEnv>, tab: Tab, o: Opts = {}) {
     body = (
       <div class="stack">
         {boards.map((b) => (
-          <Card title={b.name} description={`/feedback/${portal.slug}?board=${b.slug}`}>
+          <Card class="fb-stack" title={b.name} description={`/feedback/${portal.slug}?board=${b.slug}`}>
             <form method="post" action={`${S}/boards/${b.id}`} class="stack">
               <Field id={`b-n-${b.id}`} label="Name">
                 <Input id={`b-n-${b.id}`} name="name" required maxlength={60} value={b.name} />
@@ -131,7 +131,11 @@ async function page(c: Context<AppEnv>, tab: Tab, o: Opts = {}) {
                 <Button type="submit">Save board</Button>
               </div>
             </form>
-            <Section title="Categories" description="Visitors pick one when they post.">
+            <div class="fb-sub">
+              <div>
+                <h3>Categories</h3>
+                <p class="hint">Visitors pick one when they post.</p>
+              </div>
               <ul class="fb-admin-list">
                 {cats.filter((k) => k.board_id === b.id).map((k) => (
                   <li class="row">
@@ -150,7 +154,7 @@ async function page(c: Context<AppEnv>, tab: Tab, o: Opts = {}) {
                   Add
                 </Button>
               </form>
-            </Section>
+            </div>
             {boards.length > 1 ? (
               <form method="post" action={`${S}/boards/${b.id}/delete`}>
                 <ConfirmButton id={`db-${b.id}`} variant="danger" title="Delete this board" body="The board and every post on it will be removed. This cannot be undone." confirmLabel="Delete board">
@@ -160,7 +164,7 @@ async function page(c: Context<AppEnv>, tab: Tab, o: Opts = {}) {
             ) : null}
           </Card>
         ))}
-        <Card title="Add a board">
+        <Card class="fb-stack" title="Add a board">
           <form method="post" action={`${S}/boards`} class="stack">
             <Field id="nb-name" label="Name" error={f.name}>
               <Input id="nb-name" name="name" required maxlength={60} value={v.name ?? ''} invalid={Boolean(f.name)} />
@@ -184,7 +188,6 @@ async function page(c: Context<AppEnv>, tab: Tab, o: Opts = {}) {
             columns={[
               { key: 'name', label: 'Status' },
               { key: 'kind', label: 'Meaning', hideOnMobile: true },
-              { key: 'road', label: 'Roadmap' },
               { key: 'act', label: 'Actions', srOnly: true },
             ]}
             rows={sts.map((s, i) => ({
@@ -200,7 +203,6 @@ async function page(c: Context<AppEnv>, tab: Tab, o: Opts = {}) {
                 </form>
               ),
               kind: <Pill tone={tone(s.tone)}>{s.name}</Pill>,
-              road: s.in_roadmap ? 'Yes' : 'No',
               act: (
                 <form method="post" class="row">
                   <Button size="sm" variant="ghost" type="submit" formAction={`${S}/statuses/${s.id}/up`} disabled={i === 0} aria-label={`Move ${s.name} up`}>
@@ -217,7 +219,7 @@ async function page(c: Context<AppEnv>, tab: Tab, o: Opts = {}) {
             }))}
           />
         </Card>
-        <Card title="Add a status">
+        <Card class="fb-stack" title="Add a status">
           <form method="post" action={`${S}/statuses`} class="stack">
             <Field id="ns-name" label="Name" error={f.name}>
               <Input id="ns-name" name="name" required maxlength={30} value={v.name ?? ''} invalid={Boolean(f.name)} />
@@ -264,7 +266,7 @@ async function page(c: Context<AppEnv>, tab: Tab, o: Opts = {}) {
             empty={<EmptyState bare icon="list" title="No tags yet" body="Add tags to group posts, like Billing or Mobile." />}
           />
         </Card>
-        <Card title="Add a tag">
+        <Card class="fb-stack" title="Add a tag">
           <form method="post" action={`${S}/tags`} class="stack">
             <Field id="nt-name" label="Name" error={f.name}>
               <Input id="nt-name" name="name" required maxlength={30} value={v.name ?? ''} invalid={Boolean(f.name)} />
@@ -341,7 +343,7 @@ async function page(c: Context<AppEnv>, tab: Tab, o: Opts = {}) {
         ) : (
           <Callout tone="info" title="Not seen yet">Add the code to your site and load a page. This message turns green after the first view.</Callout>
         )}
-        <Card title="Feedback button" description="A floating button that opens your portal in a panel. It loads one small file and never touches your page styles.">
+        <Card class="fb-stack" title="Feedback button" description="A floating button that opens your portal in a panel. It loads one small file and never touches your page styles.">
           <CodeBlock label="Paste before the closing body tag" code={snippet} copy />
           <KeyValueList
             items={[
@@ -352,10 +354,10 @@ async function page(c: Context<AppEnv>, tab: Tab, o: Opts = {}) {
             ]}
           />
         </Card>
-        <Card title="Changelog popover" description="A button with a dot that shows when there is something new.">
+        <Card class="fb-stack" title="Changelog popover" description="A button with a dot that shows when there is something new.">
           <CodeBlock label="Paste instead, or as well" code={log} copy />
         </Card>
-        <Card title="Direct links">
+        <Card class="fb-stack" title="Direct links">
           <CopyField label="Portal" value={`${origin}/feedback/${portal.slug}`} secret={false} />
           <CopyField label="Roadmap" value={`${origin}/roadmap/${portal.slug}`} secret={false} />
           <CopyField label="Changelog" value={`${origin}/changelog/${portal.slug}`} secret={false} />
@@ -366,7 +368,7 @@ async function page(c: Context<AppEnv>, tab: Tab, o: Opts = {}) {
   } else {
     body = (
       <div class="stack">
-        <Card title="Export" description="Everything in this workspace, as files you keep.">
+        <Card class="fb-stack" title="Export" description="Everything in this workspace, as files you keep.">
           <div class="row">
             <LinkButton href={`${A}/export.csv`} icon="download">
               Posts as CSV
@@ -376,7 +378,7 @@ async function page(c: Context<AppEnv>, tab: Tab, o: Opts = {}) {
             </LinkButton>
           </div>
         </Card>
-        <Card title="Import from a CSV" description="Works with a Canny export or any file with a title column. You map the columns on the next step. Imported people are never emailed.">
+        <Card class="fb-stack" title="Import from a CSV" description="Works with a Canny export or any file with a title column. You map the columns on the next step. Imported people are never emailed.">
           {o.error ? <Callout tone="bad" title="That file did not work">{o.error}</Callout> : null}
           <form method="post" action={`${A}/import`} enctype="multipart/form-data" class="stack" data-busy-form>
             <Field id="imp-file" label="CSV file" hint="Up to 2 MB. The first row must be column names.">
@@ -393,9 +395,8 @@ async function page(c: Context<AppEnv>, tab: Tab, o: Opts = {}) {
     );
   }
 
-  return renderPage(c, { title: 'Settings', status: o.status, crumbs: [{ label: 'Feedback', href: A }, { label: 'Settings' }] }, (
+  return adminPage(c, { title: 'Settings', status: o.status, crumbs: [{ label: 'Feedback', href: A }, { label: 'Settings' }] }, (
     <>
-      <link rel="stylesheet" href="/m/feedback/admin.css" />
       <PageHeader title="Settings" description="Portal, boards, statuses, people and the widget." />
       {o.error && tab !== 'import-export' ? <Callout tone="bad" title="That did not save">{o.error}</Callout> : null}
       <Tabs label="Settings" items={TABS.map((t) => ({ id: t.id, label: t.label, href: `${S}/${t.id}` }))} active={tab} />
@@ -633,12 +634,11 @@ settings.post('/import', async (c) => {
 
 function mappingPage(c: Context<AppEnv>, text: string, headers: string[], rows: string[][], total: number, mapping: Mapping, truncated: boolean, offset = 0) {
   const opts = [{ value: '', label: 'Not in the file' }, ...headers.map((h, i) => ({ value: String(i), label: h || `Column ${i + 1}` }))];
-  return renderPage(c, { title: 'Import', crumbs: [{ label: 'Feedback', href: A }, { label: 'Settings', href: `${S}/import-export` }, { label: 'Import' }] }, (
+  return adminPage(c, { title: 'Import', crumbs: [{ label: 'Feedback', href: A }, { label: 'Settings', href: `${S}/import-export` }, { label: 'Import' }] }, (
     <>
-      <link rel="stylesheet" href="/m/feedback/admin.css" />
       <PageHeader title="Match the columns" description={`${plural(total, 'row')} found. Rows import ${IMPORT_ROW_LIMIT} at a time, so you can stop and carry on later.`} />
       {truncated ? <Callout tone="warn" title="Large file">Only the first 5,000 rows are read.</Callout> : null}
-      <Card title="Columns">
+      <Card class="fb-stack" title="Columns">
         <form method="post" action={`${A}/import/run`} class="stack" data-busy-form>
           <input type="hidden" name="offset" value={String(offset)} />
           <textarea name="csv" hidden>{text}</textarea>
@@ -681,7 +681,7 @@ settings.post('/import/run', async (c) => {
   try {
     const res = await importPosts(ctx, text, mapping, offset);
     const pv = previewCsv(text);
-    return renderPage(c, { title: 'Import' , crumbs: [{ label: 'Feedback', href: A }, { label: 'Settings', href: `${S}/import-export` }, { label: 'Import' }] }, (
+    return adminPage(c, { title: 'Import' , crumbs: [{ label: 'Feedback', href: A }, { label: 'Settings', href: `${S}/import-export` }, { label: 'Import' }] }, (
       <>
         <PageHeader title="Import progress" />
         <Callout tone="good" title={`${plural(res.imported, 'post')} imported`}>
@@ -689,7 +689,7 @@ settings.post('/import/run', async (c) => {
           {res.notes.slice(0, 5).join(' ')}
         </Callout>
         {res.next !== null ? (
-          <Card>
+          <Card class="fb-stack">
             <form method="post" action={`${A}/import/run`} class="stack" data-busy-form>
               <input type="hidden" name="offset" value={String(res.next)} />
               <textarea name="csv" hidden>{text}</textarea>
@@ -728,9 +728,8 @@ settings.get('/stats', async (c) => {
   const days = [7, 30, 90].includes(Number(c.req.query('days'))) ? Number(c.req.query('days')) : 30;
   const s = await computeStats(ctx, days);
   const empty = s.totals.posts + s.totals.votes + s.totals.comments === 0;
-  return renderPage(c, { title: 'Stats', crumbs: [{ label: 'Feedback', href: A }, { label: 'Stats' }] }, (
+  return adminPage(c, { title: 'Stats', crumbs: [{ label: 'Feedback', href: A }, { label: 'Stats' }] }, (
     <>
-      <link rel="stylesheet" href="/m/feedback/admin.css" />
       <PageHeader
         title="Stats"
         description={`The last ${days} days.`}
@@ -753,7 +752,7 @@ settings.get('/stats', async (c) => {
       {empty ? (
         <EmptyState icon="chart" title="Nothing to chart yet" body="Numbers appear once people post, vote and comment." />
       ) : (
-        <Card title="Activity by day">
+        <Card class="fb-stack" title="Activity by day">
           <LineChart
             title="Posts, votes and comments by day"
             labels={s.series.map((d) => d.day.slice(5))}
@@ -773,10 +772,10 @@ settings.get('/stats', async (c) => {
           empty={<EmptyState bare icon="list" title="No posts yet" />}
         />
       </Card>
-      <Card title="Posts by status">
+      <Card class="fb-stack" title="Posts by status">
         {s.flow.some((f) => f.count) ? <BarChart title="Posts by status" data={s.flow.map((f) => ({ label: f.name, value: f.count }))} unit="posts" /> : <p class="hint">No posts yet.</p>}
       </Card>
-      <Card title="Status moves" description="How posts moved between statuses in this period.">
+      <Card class="fb-stack" title="Status moves" description="How posts moved between statuses in this period.">
         {s.moves.length === 0 ? <p class="hint">No status changes in this period.</p> : null}
         <ul class="fb-admin-list">
           {s.moves.map((m) => (
