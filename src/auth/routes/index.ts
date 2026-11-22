@@ -2,9 +2,11 @@
 import { Hono } from 'hono';
 import type { AppEnv } from '../../env';
 import { passkeyRoutes } from './passkey';
+import { setupRoutes } from './setup';
 import { signInRoutes } from './sign-in';
 
 export const authApp = new Hono<AppEnv>();
 
 authApp.route('/', signInRoutes);
 authApp.route('/', passkeyRoutes);
+authApp.route('/', setupRoutes);
