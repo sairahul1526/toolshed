@@ -13,6 +13,8 @@ export const USER_AGENT = 'Toolshed-Webhooks/1';
 /** Seconds to wait before attempt 2, 3 ... 7. After the seventh failure the delivery is marked failed. */
 export const RETRY_DELAYS_SECONDS = [30, 120, 600, 3600, 6 * 3600, 24 * 3600] as const;
 export const MAX_ATTEMPTS = RETRY_DELAYS_SECONDS.length + 1;
+/** The whole retry schedule. Two failures of one event are never further apart than this. */
+export const RETRY_HORIZON_MS = RETRY_DELAYS_SECONDS.reduce((sum, s) => sum + s, 0) * 1000;
 /** Queues delay a message by 12 hours at most, so a longer wait is made of several hops. */
 export const MAX_QUEUE_DELAY_SECONDS = 12 * 3600;
 

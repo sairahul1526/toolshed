@@ -3,7 +3,6 @@ import { z } from 'zod';
 import type { Env } from '../../env';
 import { newId, orgDb } from '../db';
 import { errors, parse } from '../errors';
-import { assertPublicUrl } from '../net';
 import { forgetActiveEndpoints } from './active';
 import { eventPattern } from './catalog';
 import { webhookErrors } from './errors';
@@ -12,6 +11,7 @@ import { type EndpointRow, toEndpoint } from './rows';
 import { open, seal, headersAad, secretAad } from './seal';
 import { generateSecret } from './signing';
 import { type Actor, MAX_ENDPOINTS, SECRET_OVERLAP_MS, type WebhookEndpoint } from './types';
+import { endpointUrl } from './url';
 
 const name = z.string('Add a name.').trim().min(1, 'Add a name.').max(80, 'Keep the name under 80 characters.');
 const description = z
@@ -26,32 +26,18 @@ const events = z
   .max(50, 'Pick up to 50 events. Use * to send everything.')
   .transform((v) => [...new Set(v)]);
 
-const url = z
-  .string('Enter the address to send events to.')
-  .trim()
-  .max(2000, 'Keep the address under 2,000 characters.')
-  .superRefine((value, ctx) => {
-    let parsed: URL | null = null;
-    try {
-      parsed = assertPublicUrl(value);
-    } catch {
-      // The message below says it for every kind of refusal.
-    }
-    if (!parsed || parsed.protocol !== 'https:') {
-      ctx.addIssue({ code: 'custom', message: 'Enter a public address that starts with https://. Local, private and plain http addresses can’t be used.' });
-    }
+const createSchema = (env: Env) =>
+  z.strictObject({ name, description: description.optional(), url: endpointUrl(env), events, headers: headersField.optional() });
+
+const updateSchema = (env: Env) =>
+  z.strictObject({
+    name: name.optional(),
+    description: description.optional(),
+    url: endpointUrl(env).optional(),
+    events: events.optional(),
+    headers: headersField.optional(),
+    status: z.enum(['active', 'paused'], 'Use active or paused.').optional(),
   });
-
-const createSchema = z.strictObject({ name, description: description.optional(), url, events, headers: headersField.optional() });
-
-const updateSchema = z.strictObject({
-  name: name.optional(),
-  description: description.optional(),
-  url: url.optional(),
-  events: events.optional(),
-  headers: headersField.optional(),
-  status: z.enum(['active', 'paused'], 'Use active or paused.').optional(),
-});
 
 export async function loadEndpointRow(env: Env, orgId: string, id: string): Promise<EndpointRow> {
   const row = await orgDb(env.DB, orgId).get<EndpointRow>('webhook_endpoints', id);
@@ -65,7 +51,7 @@ export async function createEndpoint(
   actor: Actor,
   input: unknown,
 ): Promise<{ endpoint: WebhookEndpoint; secret: string }> {
-  const data = parse(createSchema, input);
+  const data = parse(createSchema(env), input);
   const id = newId('whe');
   const now = Date.now();
   const secret = generateSecret();
@@ -101,7 +87,8 @@ export async function getEndpoint(env: Env, orgId: string, id: string): Promise<
 
 /**
  * Change an endpoint. `headers`, when sent, replaces all the custom headers. Turning a disabled
- * endpoint back on (or pausing it) clears the reason and the failure streak.
+ * endpoint back on (or pausing it) clears the reason and the failure streak, and so does turning a
+ * paused one back on or changing the address.
  * Returns the endpoint and the names of the fields that changed.
  */
 export async function updateEndpoint(
@@ -111,7 +98,7 @@ export async function updateEndpoint(
   input: unknown,
   now = Date.now(),
 ): Promise<{ endpoint: WebhookEndpoint; changed: string[] }> {
-  const data = parse(updateSchema, input);
+  const data = parse(updateSchema(env), input);
   const row = await loadEndpointRow(env, orgId, id);
   const patch: Record<string, string | number | null> = {};
   if (data.name !== undefined) patch.name = data.name;
@@ -123,9 +110,13 @@ export async function updateEndpoint(
     patch.header_names = JSON.stringify(names);
     patch.headers_enc = names.length > 0 ? await seal(env, headersAad(id), JSON.stringify(data.headers)) : null;
   }
+  const fresh = { consecutive_failures: 0, failing_since: null };
+  // A new address or a return to active is a new start: failures counted against the old one say nothing about it.
+  if (data.url !== undefined && data.url !== row.url) Object.assign(patch, fresh);
   if (data.status !== undefined) {
     patch.status = data.status;
-    if (row.status === 'disabled') Object.assign(patch, { disabled_reason: null, consecutive_failures: 0, failing_since: null });
+    if (row.status === 'disabled') Object.assign(patch, { disabled_reason: null }, fresh);
+    if (data.status === 'active' && row.status !== 'active') Object.assign(patch, fresh);
   }
   const changed = Object.keys(data).filter((k) => (data as Record<string, unknown>)[k] !== undefined);
   if (changed.length === 0) return { endpoint: toEndpoint(row, now), changed };
@@ -161,14 +152,19 @@ export async function rotateEndpointSecret(
   const row = await loadEndpointRow(env, orgId, id);
   const secret = generateSecret();
   const expiresAt = now + SECRET_OVERLAP_MS;
-  const updated = await orgDb(env.DB, orgId).update<EndpointRow>('webhook_endpoints', id, {
-    secret_enc: await seal(env, secretAad(id), secret),
-    // Sealed under the same row and column, so it is copied as it is.
-    prev_secret_enc: row.secret_enc,
-    prev_secret_expires_at: expiresAt,
-    updated_at: now,
-  });
-  return { endpoint: toEndpoint(updated ?? row, now), secret, previousSecretExpiresAt: expiresAt };
+  // Only the secret we read may be replaced, so two rotations at once cannot lose one of them or hand out a secret that was never stored.
+  // `prev_secret_enc` is sealed under the same row and column, so it is copied as it is.
+  const updated = await env.DB.prepare(
+    `UPDATE webhook_endpoints SET secret_enc = ?4, prev_secret_enc = secret_enc, prev_secret_expires_at = ?5, updated_at = ?6
+     WHERE org_id = ?1 AND id = ?2 AND secret_enc = ?3 RETURNING *`,
+  )
+    .bind(orgId, id, row.secret_enc, await seal(env, secretAad(id), secret), expiresAt, now)
+    .first<EndpointRow>();
+  if (!updated) {
+    await loadEndpointRow(env, orgId, id);
+    throw errors.conflict('This secret was just changed by someone else. Reload the endpoint to see the current state, then make a new secret again if you still need one.');
+  }
+  return { endpoint: toEndpoint(updated, now), secret, previousSecretExpiresAt: expiresAt };
 }
 
 export async function revealEndpointSecret(env: Env, orgId: string, id: string): Promise<{ secret: string }> {

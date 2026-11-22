@@ -68,12 +68,20 @@ export async function getDelivery(env: Env, orgId: string, id: string): Promise<
 }
 
 const PURGE_BATCH = 1000;
+/** Slices per run: 20,000 deliveries, with a few more queries than that, which fits a free plan's query budget. The clean-up runs every hour. */
+const PURGE_ROUNDS = 20;
+const ORPHAN_ROUNDS = 5;
 
-/** Delete deliveries older than 30 days, with their attempts, in slices so no single statement grows large. Returns how many went. */
+/**
+ * Delete deliveries older than 30 days, with their attempts, in slices so no single statement grows
+ * large, then any attempts older than 30 days that are left without a delivery (a clean-up that was
+ * cut short, for one). Stops after a fixed number of slices and the next run carries on. Returns how
+ * many deliveries went.
+ */
 export async function purgeOldDeliveries(env: Env, now = Date.now()): Promise<number> {
   const cutoff = now - DELIVERY_KEEP_DAYS * 86_400_000;
   let total = 0;
-  for (let round = 0; round < 50; round++) {
+  for (let round = 0; round < PURGE_ROUNDS; round++) {
     const [, gone] = await env.DB.batch([
       env.DB.prepare(
         `DELETE FROM webhook_attempts WHERE delivery_id IN (SELECT id FROM webhook_deliveries WHERE created_at < ?1 ORDER BY created_at LIMIT ${PURGE_BATCH})`,
@@ -86,7 +94,15 @@ export async function purgeOldDeliveries(env: Env, now = Date.now()): Promise<nu
     total += n;
     if (n < PURGE_BATCH) break;
   }
+  for (let round = 0; round < ORPHAN_ROUNDS; round++) {
+    const res = await env.DB.prepare(
+      `DELETE FROM webhook_attempts WHERE id IN (SELECT id FROM webhook_attempts WHERE created_at < ?1 LIMIT ${PURGE_BATCH})`,
+    )
+      .bind(cutoff)
+      .run();
+    if ((res.meta.changes ?? 0) < PURGE_BATCH) break;
+  }
   return total;
 }
 
-registerCoreSchedule({ name: 'webhook-cleanup', every: 'day', run: async (env, at) => void (await purgeOldDeliveries(env, at.getTime())) });
+registerCoreSchedule({ name: 'webhook-cleanup', every: 'hour', run: async (env, at) => void (await purgeOldDeliveries(env, at.getTime())) });

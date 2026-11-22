@@ -12,6 +12,8 @@ const BLOCKED_PREFIXES = ['webhook-', 'cf-', 'sec-', 'proxy-', 'x-forwarded-', '
 const NAME = /^[A-Za-z0-9-]{1,64}$/;
 // eslint-disable-next-line no-control-regex
 const CONTROL = /[\u0000-\u001f\u007f]/;
+// `new Headers()` throws on anything above U+00FF, so it is refused here rather than failing every send.
+const OUTSIDE_LATIN1 = /[^\u0000-\u00ff]/;
 
 function blocked(name: string): boolean {
   const lower = name.toLowerCase();
@@ -29,7 +31,9 @@ export const headersField = z.record(z.string(), z.string('Header values must be
     else if (seen.has(lower)) ctx.addIssue({ code: 'custom', path: [name], message: 'This header is listed twice.' });
     seen.add(lower);
     const value = headers[name] ?? '';
-    if (value.length === 0 || value.length > 1024 || CONTROL.test(value)) {
+    if (OUTSIDE_LATIN1.test(value)) {
+      ctx.addIssue({ code: 'custom', path: [name], message: 'Header values can’t contain emoji or letters outside the Latin set, such as Chinese or Arabic. Use plain letters, numbers and punctuation.' });
+    } else if (value.length === 0 || value.length > 1024 || CONTROL.test(value)) {
       ctx.addIssue({ code: 'custom', path: [name], message: 'Use a value of 1 to 1,024 characters on a single line.' });
     }
   }

@@ -12,6 +12,7 @@ import { errors } from '../errors';
 import { enqueue, registerCoreJob, registerCoreSchedule } from '../jobs';
 import { performAttempt } from './attempt';
 import { disableEndpoint } from './disable';
+import { healthStatement } from './health';
 import { webhookErrors } from './errors';
 import { buildBody } from './payload';
 import { type DeliveryRow, type EndpointRow, toDelivery } from './rows';
@@ -77,18 +78,7 @@ async function settle(env: Env, endpoint: EndpointRow, delivery: DeliveryRow, r:
       `UPDATE webhook_deliveries SET status = ?2, last_status_code = ?3, last_error = ?4, next_attempt_at = ?5, completed_at = ?6, updated_at = ?7 WHERE id = ?1`,
     ).bind(delivery.id, status, r.statusCode, r.errorCode, dueAt, final ? now : null, now),
   ];
-  if (live) {
-    statements.push(
-      r.ok
-        ? env.DB.prepare(
-            `UPDATE webhook_endpoints SET last_success_at = ?3, consecutive_failures = 0, failing_since = NULL WHERE org_id = ?1 AND id = ?2 RETURNING failing_since`,
-          ).bind(endpoint.org_id, endpoint.id, now)
-        : env.DB.prepare(
-            `UPDATE webhook_endpoints SET last_failure_at = ?3, consecutive_failures = consecutive_failures + 1, failing_since = COALESCE(failing_since, ?3)
-             WHERE org_id = ?1 AND id = ?2 RETURNING failing_since`,
-          ).bind(endpoint.org_id, endpoint.id, now),
-    );
-  }
+  if (live) statements.push(healthStatement(env, endpoint, r.ok, now));
   const out = await env.DB.batch(statements);
   if (!live || r.ok) return;
 
@@ -159,10 +149,11 @@ export async function sendTestEvent(env: Env, orgId: string, endpointId: string,
     data: { message: 'This is a test event from Toolshed. Your endpoint is set up correctly if you can read this.' },
   });
   const row = await env.DB.prepare(
-    `INSERT INTO webhook_deliveries (id, org_id, endpoint_id, message_id, event_type, status, attempt_count, payload, created_at, updated_at)
-     VALUES (?1, ?2, ?3, ?4, 'webhook.test', 'pending', 1, ?5, ?6, ?6) RETURNING *`,
+    `INSERT INTO webhook_deliveries (id, org_id, endpoint_id, message_id, event_type, status, attempt_count, next_attempt_at, payload, created_at, updated_at)
+     VALUES (?1, ?2, ?3, ?4, 'webhook.test', 'pending', 1, ?5, ?6, ?7, ?7) RETURNING *`,
   )
-    .bind(newId('whd', now), orgId, endpoint.id, eventId, body, now)
+    // Due at the end of the lease, so the sweeper can find a test whose isolate died before it was settled.
+    .bind(newId('whd', now), orgId, endpoint.id, eventId, now + LEASE_MS, body, now)
     .first<DeliveryRow>();
   const result = await performAttempt(env, endpoint, row!, now);
   await settle(env, endpoint, row!, result, now, false);
@@ -193,8 +184,19 @@ export async function resendDelivery(env: Env, orgId: string, deliveryId: string
   return toDelivery(row);
 }
 
+/** A test is never retried, so one still pending long after it was sent is closed instead of sent again. */
+async function closeStaleTests(env: Env, now: number): Promise<void> {
+  await env.DB.prepare(
+    `UPDATE webhook_deliveries SET status = 'failed', last_error = 'test_interrupted', next_attempt_at = NULL, completed_at = ?2, updated_at = ?2
+     WHERE status = 'pending' AND event_type = 'webhook.test' AND next_attempt_at <= ?1`,
+  )
+    .bind(now - SWEEP_GRACE_MS, now)
+    .run();
+}
+
 /** Queue a job again for deliveries that are overdue and have no job. Returns how many it queued. */
 export async function sweepDeliveries(env: Env, now = Date.now()): Promise<number> {
+  await closeStaleTests(env, now);
   const { results } = await env.DB.prepare(
     `UPDATE webhook_deliveries SET next_attempt_at = ?2 + ?3
      WHERE id IN (SELECT id FROM webhook_deliveries WHERE status = 'pending' AND next_attempt_at <= ?1 LIMIT ${SWEEP_BATCH})

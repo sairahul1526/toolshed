@@ -6,6 +6,7 @@ import { safeFetch } from '../net';
 import type { EndpointRow } from './rows';
 import { headersAad, open, secretAad } from './seal';
 import { signPayload } from './signing';
+import { pointsAtThisInstall } from './url';
 import { type AttemptResult, MAX_RESPONSE_BYTES, SNIPPET_BYTES, TIMEOUT_MS, USER_AGENT } from './types';
 
 export interface Sendable {
@@ -40,11 +41,19 @@ export async function performAttempt(env: Env, endpoint: EndpointRow, delivery: 
     ...partial,
   });
   try {
+    // Rows saved before this check, or an APP_URL set later, can still point back at this install.
+    if (pointsAtThisInstall(env, endpoint.url)) return done({ ok: false, statusCode: null, errorCode: 'url_not_allowed', responseSnippet: null });
     const timestampSec = Math.floor(now / 1000);
     const signature = await signatures(env, endpoint, delivery, timestampSec, now);
     if (!signature) return done({ ok: false, statusCode: null, errorCode: 'secret_unreadable', responseSnippet: null });
 
-    const custom = endpoint.headers_enc ? parseJson<Record<string, string>>(await open(env, headersAad(endpoint.id), endpoint.headers_enc), {}) : {};
+    let custom: Record<string, string> = {};
+    if (endpoint.headers_enc) {
+      // Sending without headers the receiver expects (an Authorization header, say) would only make it refuse the event.
+      const opened = await open(env, headersAad(endpoint.id), endpoint.headers_enc);
+      if (opened === null) return done({ ok: false, statusCode: null, errorCode: 'headers_unreadable', responseSnippet: null });
+      custom = parseJson<Record<string, string>>(opened, {});
+    }
     const headers = new Headers(custom);
     headers.set('content-type', 'application/json');
     headers.set('user-agent', USER_AGENT);
