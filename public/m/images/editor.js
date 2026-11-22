@@ -29,9 +29,13 @@ function start(mount) {
   let selected = null;
   /** Values tried in the fields panel. They only change the preview and are never saved. */
   const values = {};
+  /** Field rows the person has opened, so they stay open when the panel is drawn again. */
+  const openFields = new Set();
   const studio = createStudio({ custom: JSON.parse(mount.dataset.custom || '[]'), picture: (src) => `${api}/picture?src=${encodeURIComponent(src)}` });
 
   const hosts = { layers: el('section', { class: 'img-ed-panel' }), fields: el('section', { class: 'img-ed-panel' }), props: el('section', { class: 'img-ed-panel img-ed-props' }) };
+  /** A panel in a collapsible section, so the picture stays in view while a person works. */
+  const section = (title, host, open, extra = '') => el('details', { class: `img-ed-sect${extra}`, open }, el('summary', { text: title }), host);
   const problems = el('ul', { class: 'img-problems', role: 'status', hidden: true });
   const undoButton = el('button', { type: 'button', class: 'btn sm', text: 'Undo', disabled: true, click: () => travel(-1) });
   const redoButton = el('button', { type: 'button', class: 'btn sm', text: 'Redo', disabled: true, click: () => travel(1) });
@@ -45,6 +49,7 @@ function start(mount) {
       return selected;
     },
     values,
+    openFields,
     hosts,
     catalog: studio.catalog,
     pictures: JSON.parse(mount.dataset.pictures || '[]'),
@@ -74,9 +79,9 @@ function start(mount) {
     el(
       'div',
       { class: 'img-ed-main' },
-      el('div', { class: 'img-ed-side' }, hosts.layers, hosts.fields),
+      el('div', { class: 'img-ed-side' }, section('Layers', hosts.layers, true), section('Fields', hosts.fields, false)),
       el('div', { class: 'img-ed-center' }, stage.canvas, el('p', { class: 'hint', text: 'Drag a layer to move it, or pull a corner to resize it. With the keyboard: arrow keys move it, Shift moves it 10 at a time, Alt changes its size, Delete removes it.' }), problems),
-      hosts.props,
+      section('Settings', hosts.props, true, ' img-ed-props'),
     ),
   );
   const fallback = document.querySelector('[data-editor-fallback]');

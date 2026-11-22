@@ -165,7 +165,6 @@ export function renderLayers(host, ed) {
     .reverse();
   rebuild(
     host,
-    heading('Layers'),
     rows.length ? el('ol', { class: 'img-ed-layers' }, rows) : el('p', { class: 'muted', text: 'No layers yet. Add one from the bar above.' }),
     el('button', { type: 'button', class: `img-ed-layer-name img-ed-canvas-pick${ed.selected ? '' : ' on'}`, 'aria-pressed': String(!ed.selected), 'data-focus': 'pick:', text: 'Canvas and background', click: () => ed.select(null) }),
   );
@@ -335,30 +334,40 @@ function fieldRow(entry, index, used, ed) {
     else ed.values[entry.name] = tryIt.value;
     ed.preview();
   });
-  return el(
-    'fieldset',
-    { class: 'img-ed-fieldset' },
-    el('legend', {}, el('code', { text: `{{${entry.name}}}` }), used ? null : el('span', { class: 'muted', text: ' not used yet' })),
-    group(
-      line(entry, 'label', 'Label', { maxlength: 60, placeholder: entry.name }, plain),
-      choice(entry, 'type', 'Holds', [{ value: 'text', label: 'Text' }, { value: 'color', label: 'A colour' }, { value: 'image', label: 'A picture' }], {}, () => {
-        // A colour field must start from a real colour, and a text limit means nothing for the others.
-        if (entry.type === 'color' && !HEX.test(entry.default)) entry.default = '#000000';
-        if (entry.type !== 'text') delete entry.maxLength;
-        ed.changed('all');
-      }),
-    ),
-    sample,
-    entry.type === 'text' ? number(entry, 'maxLength', 'Longest text allowed', { min: 1, max: 2000, whole: true, optional: true, placeholder: '500' }, plain) : null,
-    field('Try another value', tryIt, { hint: entry.type === 'text' ? 'Paste a long one to check how it wraps and shrinks.' : undefined }),
-    used
-      ? el('p', { class: 'hint', text: 'A layer uses this field. Take it out of the layer before deleting it.' })
-      : el('button', { type: 'button', class: 'btn sm danger', text: 'Delete field', 'data-focus': `drop:${entry.name}`, click: () => {
-          ed.doc.fields.splice(index, 1);
-          delete ed.values[entry.name];
+  const open = ed.openFields.has(entry.name);
+  const details = el(
+    'details',
+    { class: 'img-ed-fieldset', open },
+    el('summary', {}, el('code', { text: `{{${entry.name}}}` }), used ? null : el('span', { class: 'muted', text: ' not used yet' })),
+    el(
+      'div',
+      { class: 'img-ed-body' },
+      group(
+        line(entry, 'label', 'Label', { maxlength: 60, placeholder: entry.name }, plain),
+        choice(entry, 'type', 'Holds', [{ value: 'text', label: 'Text' }, { value: 'color', label: 'A colour' }, { value: 'image', label: 'A picture' }], {}, () => {
+          // A colour field must start from a real colour, and a text limit means nothing for the others.
+          if (entry.type === 'color' && !HEX.test(entry.default)) entry.default = '#000000';
+          if (entry.type !== 'text') delete entry.maxLength;
           ed.changed('all');
-        } }),
+        }),
+      ),
+      sample,
+      entry.type === 'text' ? number(entry, 'maxLength', 'Longest text allowed', { min: 1, max: 2000, whole: true, optional: true, placeholder: '500' }, plain) : null,
+      field('Try another value', tryIt, { hint: entry.type === 'text' ? 'Paste a long one to check how it wraps and shrinks.' : undefined }),
+      used
+        ? el('p', { class: 'hint', text: 'A layer uses this field. Take it out of the layer before deleting it.' })
+        : el('button', { type: 'button', class: 'btn sm danger', text: 'Delete field', 'data-focus': `drop:${entry.name}`, click: () => {
+            ed.doc.fields.splice(index, 1);
+            delete ed.values[entry.name];
+            ed.changed('all');
+          } }),
+    ),
   );
+  details.addEventListener('toggle', () => {
+    if (details.open) ed.openFields.add(entry.name);
+    else ed.openFields.delete(entry.name);
+  });
+  return details;
 }
 
 function nameProblem(name, doc) {
@@ -390,7 +399,6 @@ export function renderFields(host, ed) {
   };
   rebuild(
     host,
-    heading('Fields'),
     el('p', { class: 'hint', text: 'A field is a part of the image the URL can change, such as ?title=Hello.' }),
     missing.map((name) => el('p', { class: 'err-text' }, `A layer uses {{${name}}}, which is not a field yet. `, small('Add it', `Add the field ${name}`, () => add(name), { class: 'btn sm', 'data-focus': `add:${name}` }))),
     doc.fields.map((entry, index) => fieldRow(entry, index, used.has(entry.name), ed)),

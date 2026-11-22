@@ -2,7 +2,7 @@
 
 /* --- Shared pieces --- */
 .img-row { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; margin: 0; }
-.img-two { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 16px; align-items: start; }
+.img-two { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 16px; align-items: stretch; }
 .img-small { font-size: 12.5px; }
 .img-cell { display: flex; flex-direction: column; gap: 2px; min-width: 0; }
 .img-cell .trunc { max-width: min(420px, 60vw); }
@@ -11,6 +11,8 @@ a.img-name { text-decoration: none; }
 a.img-name:hover { text-decoration: underline; text-underline-offset: 3px; }
 .img-actions { display: inline-flex; gap: 6px; justify-content: flex-end; }
 .img-more { margin: 16px 0 0; text-align: center; }
+/* Siblings in a card never touch. */
+.img-starters + .img-row { margin-top: 20px; }
 .img-status { margin: 0; font-size: 13px; min-height: 1.4em; }
 .img-fieldset { border: 0; margin: 0; padding: 0; min-width: 0; display: flex; flex-direction: column; gap: 16px; }
 .img-fieldset.img-group { border: 1px solid var(--border); border-radius: var(--radius); padding: 12px 14px 14px; }
@@ -58,10 +60,13 @@ a.img-name:hover { text-decoration: underline; text-underline-offset: 3px; }
 .img-ed-side { display: flex; flex-direction: column; gap: 12px; min-width: 0; }
 .img-ed-center { display: flex; flex-direction: column; gap: 8px; min-width: 0; position: sticky; top: 12px; }
 .img-ed-center > .hint { margin: 0; }
-.img-ed-panel { display: flex; flex-direction: column; gap: 12px; min-width: 0; padding: 14px; border: 1px solid var(--border); border-radius: var(--radius); background: var(--surface); }
+.img-ed-sect { min-width: 0; border: 1px solid var(--border); border-radius: var(--radius); background: var(--surface); }
+.img-ed-sect > summary { cursor: pointer; padding: 12px 14px; font-size: 12px; font-weight: 600; letter-spacing: .04em; text-transform: uppercase; color: var(--muted); }
+.img-ed-sect > summary:focus-visible, .img-ed-fieldset > summary:focus-visible { outline: 2px solid var(--accent-ink); outline-offset: -2px; border-radius: var(--radius-sm); }
+.img-ed-panel { display: flex; flex-direction: column; gap: 12px; min-width: 0; padding: 0 14px 14px; }
 .img-ed-panel .hint, .img-ed-panel .err-text { margin: 0; }
 .img-ed-panel .err-text .btn { margin-left: 4px; }
-.img-ed-h { margin: 4px 0 0; font-size: 12px; font-weight: 600; letter-spacing: .04em; text-transform: uppercase; color: var(--muted); }
+.img-ed-h { margin: 6px 0 0; font-size: 12px; font-weight: 600; letter-spacing: .04em; text-transform: uppercase; color: var(--muted); }
 .img-ed-h:first-child { margin-top: 0; }
 .img-ed-field { min-width: 0; }
 .img-ed-field > .hint { margin-top: 6px; }
@@ -71,8 +76,9 @@ a.img-name:hover { text-decoration: underline; text-underline-offset: 3px; }
 .img-ed-paint .input { min-width: 0; }
 .img-ed-swatch { flex: none; width: 36px; height: 36px; padding: 2px; border: 1px solid var(--border-strong); border-radius: var(--radius-sm); background: var(--surface); cursor: pointer; }
 .img-ed-panel [aria-invalid="true"] { border-color: var(--down); }
-.img-ed-fieldset { margin: 0; min-width: 0; padding: 10px 12px 12px; border: 1px solid var(--border); border-radius: var(--radius); display: flex; flex-direction: column; gap: 10px; }
-.img-ed-fieldset > legend { padding: 0 6px; font-size: 13px; }
+.img-ed-fieldset { margin: 0; min-width: 0; border: 1px solid var(--border); border-radius: var(--radius); }
+.img-ed-fieldset > summary { cursor: pointer; padding: 8px 12px; font-size: 13px; display: flex; flex-wrap: wrap; gap: 4px 8px; align-items: baseline; }
+.img-ed-body { display: flex; flex-direction: column; gap: 10px; padding: 2px 12px 12px; }
 .img-ed-add { display: flex; flex-direction: column; gap: 8px; align-items: flex-start; margin: 0; }
 .img-ed-add .img-ed-field { align-self: stretch; }
 
@@ -122,3 +128,6 @@ a.img-name:hover { text-decoration: underline; text-underline-offset: 3px; }
   .img-thumb.small { width: 72px; height: 40px; }
   .img-publish { align-items: stretch; }
 }
+.form > .hint { margin: -8px 0 0; }
+input[type="file"].input { height: auto; padding: 6px; color: var(--muted); }
+input[type="file"].input::file-selector-button { margin-right: 10px; padding: 5px 12px; border: 1px solid var(--border-strong); border-radius: var(--radius-sm); background: var(--surface); color: var(--text); font: inherit; font-size: 13px; cursor: pointer; }
