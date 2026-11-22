@@ -61,6 +61,9 @@ describe('mail screen actions', () => {
     const bad = await post(app, '/app/mail/lists', { name: 'Notes' });
     expect(bad.status).toBe(422);
     expect(await bad.text()).toContain('postal address');
+    const both = await post(app, '/app/mail/lists', { name: '' });
+    expect(both.status).toBe(422);
+    expect((await both.text()).match(/err-text|field-error/g)?.length).toBeGreaterThanOrEqual(2);
     const ok = await post(app, '/app/mail/lists', { name: 'Notes', postal: 'Example Ltd, 1 Main Street' });
     expect(ok.status).toBe(303);
     expect(f.t.sqlite.prepare("SELECT COUNT(*) n FROM mail_lists WHERE name = 'Notes'").get()).toEqual({ n: 1 });
@@ -87,12 +90,16 @@ describe('mail screen actions', () => {
   it('adds a subscriber only with consent, and imports with a report', async () => {
     const { f, app } = await setup();
     const no = await post(app, '/app/mail/subscribers', { email: 'a@example.com', list: f.list.id });
-    expect(no.headers.get('location')).toBe('/app/mail/subscribers');
+    expect(no.status).toBe(422);
+    expect(await no.text()).toContain('field-error');
     expect(f.t.sqlite.prepare('SELECT COUNT(*) n FROM mail_subscribers').get()).toEqual({ n: 0 });
     await post(app, '/app/mail/subscribers', { email: 'a@example.com', list: f.list.id, consent: '1' });
     expect(f.t.sqlite.prepare('SELECT COUNT(*) n FROM mail_subscribers').get()).toEqual({ n: 1 });
-    const missing = await post(app, '/app/mail/subscribers/import', { list: f.list.id, csv: 'email\nb@example.com' });
+    const missing = await post(app, '/app/mail/subscribers/import', { list: f.list.id, csv: 'email\nb@example.com', tags: 'vip' });
     expect(missing.status).toBe(422);
+    const missingHtml = await missing.text();
+    expect(missingHtml).toContain('email\nb@example.com');
+    expect(missingHtml).toContain('vip');
     const done = await post(app, '/app/mail/subscribers/import', { list: f.list.id, csv: 'email,name\nb@example.com,Bee\nbad\n', consent: '1' });
     expect(done.status).toBe(200);
     expect(await done.text()).toContain('1 added');
@@ -104,6 +111,9 @@ describe('mail screen actions', () => {
     expect(seg.status).toBe(303);
     const bad = await post(app, '/app/mail/segments', { name: 'Bad', match: 'all', kind0: 'tag:has', value0: '', go: 'save' });
     expect(bad.status).toBe(422);
+    const noRules = await post(app, '/app/mail/segments', { name: 'Empty', match: 'all', go: 'save' });
+    expect(noRules.status).toBe(422);
+    expect(await noRules.text()).toContain('Add at least one rule');
     const s = await post(app, '/app/mail/sequence', { list: f.list.id, delay0: '0', subject0: 'Welcome', body0: 'Hi', go: 'on' });
     expect(s.status).toBe(303);
     expect(await (await app.request(`/app/mail/sequence?list=${f.list.id}`)).text()).toContain('This series is on');
@@ -127,6 +137,37 @@ describe('mail screen actions', () => {
   });
 });
 
+describe('screen details', () => {
+  it('links a scheduled email to the editor, where it can be unscheduled', async () => {
+    const { f, app } = await setup();
+    await addPeople(f, 1);
+    const created = await app.request('/app/mail/new', { redirect: 'manual' });
+    const id = created.headers.get('location')!.split('/').pop()!;
+    await post(app, `/app/mail/b/${id}`, { subject: 'Issue', body: 'Hello', list_id: f.list.id, format: 'markdown', segment: '' });
+    const when = new Date(Date.now() + 2 * 86_400_000).toISOString().slice(0, 16);
+    await post(app, `/app/mail/b/${id}/schedule`, { when });
+    const home = await (await app.request('/app/mail')).text();
+    expect(home).toContain(`/app/mail/b/${id}"`);
+  });
+
+  it('reports field errors for custom fields and keeps list checkboxes after a refusal', async () => {
+    const { f, app } = await setup();
+    const bad = await post(app, '/app/mail/fields', { key: '', label: '' });
+    expect(bad.status).toBe(422);
+    expect(await bad.text()).toMatch(/err-text|field-error/);
+    const refused = await post(app, `/app/mail/lists/${f.list.id}`, { name: '', postal: '1 Example Street', archive_public: '1' });
+    expect(refused.status).toBe(422);
+    expect(await refused.text()).toMatch(/name="archive_public"[^>]*checked|checked[^>]*name="archive_public"/);
+  });
+
+  it('names the rule selects for screen readers', async () => {
+    const { app } = await setup();
+    const html = await (await app.request('/app/mail/segments')).text();
+    expect(html).toContain('aria-label');
+    expect(html).not.toMatch(/<select[^>]* label=/);
+  });
+});
+
 describe('viewers', () => {
   it('see the screens without write buttons and cannot post', async () => {
     const { f, app } = await setup();
@@ -138,5 +179,7 @@ describe('viewers', () => {
     expect((await viewer.request('/app/mail/settings')).status).toBe(200);
     expect((await post(viewer, '/app/mail/settings', { postal: '1 Example Street' })).status).toBe(403);
     expect((await viewer.request('/app/mail/new')).status).toBe(403);
+    const seg = await (await viewer.request('/app/mail/segments')).text();
+    expect(seg).not.toMatch(/<button[^>]*>\s*(Save|Check)/);
   });
 });

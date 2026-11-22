@@ -97,7 +97,7 @@ sendScreens.get('/', (c) =>
               { key: 'when', label: 'When', hideOnMobile: true },
             ]}
             rows={out.items.map((b) => ({
-              subject: <a class="ml-name" href={b.status === 'draft' ? `${HOME}/b/${b.id}` : `${HOME}/b/${b.id}/stats`}>{b.subject || 'Untitled'}</a>,
+              subject: <a class="ml-name" href={b.status === 'draft' || b.status === 'scheduled' ? `${HOME}/b/${b.id}` : `${HOME}/b/${b.id}/stats`}>{b.subject || 'Untitled'}</a>,
               status: <StatusPill status={b.status} />,
               list: lists.find((l) => l.id === b.list_id)?.name ?? 'Deleted',
               sent: b.status === 'draft' ? '' : `${formatNumber(b.sent_count)} of ${formatNumber(b.total)}`,
@@ -156,7 +156,7 @@ async function editor(c: import('hono').Context<AppEnv>, b: Broadcast, errors: R
       {b.status === 'scheduled' && b.scheduled_at ? <Callout tone="info" title={`Scheduled for ${formatDateTime(b.scheduled_at)} UTC`}>You can still edit it until it starts.</Callout> : null}
       <div class="ml-editor">
         <form method="post" action={`${HOME}/b/${b.id}`} class="ml-form-col" data-ml-editor>
-          <Card title="Email">
+          <Card title="Email" class="ml-fields">
             <Field id="list_id" label="Newsletter">
               <Select id="list_id" name="list_id" value={v('list_id', b.list_id)} options={lists.map((l) => ({ value: l.id, label: `${l.name} (${l.active})` }))} disabled={locked} />
             </Field>
@@ -178,7 +178,7 @@ async function editor(c: import('hono').Context<AppEnv>, b: Broadcast, errors: R
               <Textarea id="body" name="body" rows={16} value={v('body', b.body)} invalid={!!errors.body} disabled={locked} class="ml-body" spellcheck />
             </Field>
           </Card>
-          <Card title="Who gets it">
+          <Card title="Who gets it" class="ml-fields">
             {segments.length ? (
               <Field id="segment" label="Only send to a segment" optional hint="Leave empty to send to everyone confirmed on the newsletter.">
                 <Select id="segment" name="segment" value={v('segment', filter.rules.length ? 'keep' : '')} options={[{ value: '', label: 'Everyone on the newsletter' }, ...(filter.rules.length ? [{ value: 'keep', label: `Keep current filter: ${describeFilter(filter)}` }] : []), ...segments.map((s) => ({ value: s.id, label: s.name }))]} disabled={locked} />
@@ -204,7 +204,7 @@ async function editor(c: import('hono').Context<AppEnv>, b: Broadcast, errors: R
           </Card>
           {write ? (
             <Card title="Send">
-              <form method="post" action={`${HOME}/b/${b.id}/test`} class="ml-stack">
+              <form novalidate method="post" action={`${HOME}/b/${b.id}/test`} class="ml-stack">
                 <Field id="to" label="Send a test to" error={errors.to}>
                   <Input id="to" name="to" type="email" value={v('to', '')} placeholder="you@example.com" invalid={!!errors.to} autocomplete="email" />
                 </Field>

@@ -45,7 +45,7 @@ async function sequencePage(c: import('hono').Context<AppEnv>, listId: string, e
     <>
       <PageHeader title="Welcome emails" description="Up to 10 emails sent after someone confirms. Each one waits after the one before." />
       {lists.length > 1 ? (
-        <form method="get" action={`${HOME}/sequence`} class="ml-filterbar"><Select name="list" label="Newsletter" value={list.id} options={lists.map((l) => ({ value: l.id, label: l.name }))} /><Button type="submit">Show</Button></form>
+        <form method="get" action={`${HOME}/sequence`} class="ml-filterbar"><Select name="list" aria-label="Newsletter" value={list.id} options={lists.map((l) => ({ value: l.id, label: l.name }))} /><Button type="submit">Show</Button></form>
       ) : null}
       {sequence?.status === 'active' ? <Callout tone="good" title="This series is on">New subscribers to {list.name} get these emails.</Callout> : <Callout tone="info" title="This series is off">Nothing is sent until you turn it on. People who joined before you turned it on are not added.</Callout>}
       <form method="post" action={`${HOME}/sequence`} class="ml-form-col">
@@ -53,7 +53,7 @@ async function sequencePage(c: import('hono').Context<AppEnv>, listId: string, e
         {Array.from({ length: Math.min(SLOTS, Math.max(filled + (write ? 1 : 0), 1)) }, (_, i) => {
           const s = slots[i];
           return (
-            <Card title={`Email ${i + 1}`} class="ml-step">
+            <Card title={`Email ${i + 1}`} class="ml-step ml-fields">
               <Field id={`d${i}`} label={i === 0 ? 'Send after confirming (hours)' : 'Wait after the previous email (hours)'} error={errors[`delay${i}`]} hint="0 sends it right away.">
                 <Input id={`d${i}`} name={`delay${i}`} type="number" min={0} max={8760} value={v(`delay${i}`, s ? String(Math.round(s.delay_minutes / 60)) : i === 0 ? '0' : '48')} invalid={!!errors[`delay${i}`]} disabled={!write} />
               </Field>
@@ -136,7 +136,7 @@ async function templatesPage(c: import('hono').Context<AppEnv>, errors: Record<s
       ) : null}
       <Card title="Send from your app" class="ml-gap">
         <p class="muted ml-small">Create an API key with the mail:send scope in settings, then call:</p>
-        <CodeBlock label="Send a product email" code={`curl -X POST ${base}/api/mail/send \\\n  -H "Authorization: Bearer YOUR_KEY" \\\n  -H "Idempotency-Key: order-1042" \\\n  -H "Content-Type: application/json" \\\n  -d '{"to":"ada@example.com","template":"welcome-receipt","data":{"first_name":"Ada"}}'`} />
+        <CodeBlock label="Send a product email" code={`curl -X POST ${base}/api/v1/mail/send \\\n  -H "Authorization: Bearer YOUR_KEY" \\\n  -H "Idempotency-Key: order-1042" \\\n  -H "Content-Type: application/json" \\\n  -d '{"to":"ada@example.com","template":"welcome-receipt","data":{"first_name":"Ada"}}'`} />
       </Card>
       <Card title="Recent sends" flush class="ml-gap">
         <Table caption="Recent product emails" columns={[{ key: 'to', label: 'To' }, { key: 'template', label: 'Template', hideOnMobile: true }, { key: 'status', label: 'Status' }, { key: 'when', label: 'When', hideOnMobile: true }]}
@@ -180,7 +180,7 @@ async function templatePage(c: import('hono').Context<AppEnv>, id: string, error
       {write ? (
         <>
           <Card title="Send a test" class="ml-gap">
-            <form method="post" action={`${HOME}/templates/${t.id}/test`} class="ml-form-col">
+            <form novalidate method="post" action={`${HOME}/templates/${t.id}/test`} class="ml-form-col">
               <Field id="x-to" label="Send to" error={errors.to}><Input id="x-to" name="to" type="email" value={v('to', '')} invalid={!!errors.to} placeholder="you@example.com" /></Field>
               <div class="ml-actions"><Button type="submit">Send test</Button></div>
             </form>
@@ -252,7 +252,7 @@ async function feedsPage(c: import('hono').Context<AppEnv>, errors: Record<strin
       </Card>
       {write && lists.length ? (
         <Card title="Add a feed" class="ml-gap">
-          <form method="post" action={`${HOME}/feeds`} class="ml-form-col">
+          <form novalidate method="post" action={`${HOME}/feeds`} class="ml-form-col">
             <Field id="r-url" label="Feed address" error={errors.url} hint="Starts with https://."><Input id="r-url" name="url" type="url" value={values.url ?? ''} invalid={!!errors.url} placeholder="https://example.com/feed.xml" /></Field>
             <Field id="r-list" label="Newsletter"><Select id="r-list" name="list_id" value={values.list_id ?? lists[0]!.id} options={lists.map((l) => ({ value: l.id, label: l.name }))} /></Field>
             <Field id="r-mode" label="What to do with new posts"><Select id="r-mode" name="mode" value={values.mode ?? 'draft'} options={[{ value: 'draft', label: 'Make a draft for me to review' }, { value: 'send', label: 'Send automatically' }]} /></Field>

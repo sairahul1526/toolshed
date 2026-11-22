@@ -5,6 +5,7 @@
 .ml-actions { display: flex; gap: 8px; flex-wrap: wrap; align-items: center; }
 .ml-actions form { margin: 0; }
 .ml-stack { display: flex; flex-direction: column; gap: 12px; }
+.ml-fields > .card-body { display: flex; flex-direction: column; gap: 16px; }
 .ml-form-col { display: flex; flex-direction: column; gap: 16px; max-width: 720px; }
 .ml-name { font-weight: 600; color: var(--text); text-decoration: none; overflow-wrap: anywhere; }
 .ml-name:hover { text-decoration: underline; }
@@ -40,7 +41,6 @@
 .ml-rules { border: 0; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 12px; }
 .ml-rules legend { font-weight: 600; font-size: 14px; padding: 0 0 8px; }
 .ml-rule { display: grid; grid-template-columns: minmax(160px, 260px) 1fr; gap: 12px; }
-.ml-step .field { margin-bottom: 12px; }
 
 @media (max-width: 900px) {
   .ml-editor { grid-template-columns: minmax(0, 1fr); }

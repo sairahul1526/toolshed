@@ -79,9 +79,11 @@ peopleScreens.post('/lists', async (c) => {
   try {
     const postal = text(f, 'postal');
     const settings = await getMailSettings(c.env, ctx.org.id);
-    if (!settings.postalAddress && postal.length < 8) {
-      return listsPage(c, { postal: 'Add a postal address so your emails follow the law.' }, valuesOf(f), 422);
-    }
+    // Both fields are checked together, so one press shows everything that is missing.
+    const missing: Record<string, string> = {};
+    if (!text(f, 'name')) missing.name = 'Give the newsletter a name.';
+    if (!settings.postalAddress && postal.length < 8) missing.postal = 'Add a postal address so your emails follow the law.';
+    if (Object.keys(missing).length) return listsPage(c, missing, valuesOf(f), 422);
     const list = await createList(ctx, { name: text(f, 'name'), description: text(f, 'description') });
     if (!settings.postalAddress) await saveMailSettings(c.env, ctx.org.id, { postalAddress: postal });
     await auditFromRequest(c, { action: 'mail.list.create', targetType: 'mail_list', targetId: list.id, summary: `Created newsletter ${list.name}` });
@@ -100,18 +102,20 @@ peopleScreens.get('/lists/:id', async (c) => {
 
 function listSettings(l: import('./types').List, errors: Record<string, string>, values: Record<string, string>) {
   const v = (k: string, d: string) => (k in values ? values[k]! : d);
+  /** After a refused save the form shows what was typed, including boxes left unticked. */
+  const reshown = 'name' in values;
   return (
     <>
       <PageHeader title={l.name} description="Settings for this newsletter." />
       <Card>
-        <form method="post" action={`${HOME}/lists/${l.id}`} class="ml-form-col">
+        <form novalidate method="post" action={`${HOME}/lists/${l.id}`} class="ml-form-col">
           <Field id="name" label="Name" error={errors.name}><Input id="name" name="name" value={v('name', l.name)} invalid={!!errors.name} /></Field>
           <Field id="slug" label="Address of the signup page" error={errors.slug} hint="Letters, numbers and dashes. Changing it breaks links you already shared."><Input id="slug" name="slug" value={v('slug', l.slug)} invalid={!!errors.slug} /></Field>
           <Field id="description" label="Short description" optional><Input id="description" name="description" value={v('description', l.description)} /></Field>
           <Field id="reply_to" label="Replies go to" optional error={errors.reply_to} hint="Leave empty to use your sender address."><Input id="reply_to" name="reply_to" type="email" value={v('reply_to', l.reply_to)} invalid={!!errors.reply_to} /></Field>
           <Field id="thanks_text" label="Message after signing up" optional><Input id="thanks_text" name="thanks_text" value={v('thanks_text', l.thanks_text)} /></Field>
-          <Checkbox name="double_opt_in" value="1" label="Ask people to confirm by email" description="Recommended. It keeps fake and mistyped addresses off your list." checked={values.double_opt_in !== undefined ? true : !!l.double_opt_in} />
-          <Checkbox name="archive_public" value="1" label="Publish sent emails in a public archive" checked={values.archive_public !== undefined ? true : !!l.archive_public} />
+          <Checkbox name="double_opt_in" value="1" label="Ask people to confirm by email" description="Recommended. It keeps fake and mistyped addresses off your list." checked={reshown ? values.double_opt_in !== undefined : !!l.double_opt_in} />
+          <Checkbox name="archive_public" value="1" label="Publish sent emails in a public archive" checked={reshown ? values.archive_public !== undefined : !!l.archive_public} />
           <div class="ml-actions"><Button type="submit" variant="primary">Save</Button><LinkButton href={`${HOME}/lists`}>Back</LinkButton></div>
         </form>
       </Card>
@@ -157,8 +161,8 @@ async function filterFor(c: import('hono').Context<AppEnv>): Promise<Filter | un
   return seg ? (await getSegment(reqCtx(c), seg)).parsed : undefined;
 }
 
-peopleScreens.get('/subscribers', (c) =>
-  safely(c, 'Subscribers', async () => {
+async function subscribersPage(c: import('hono').Context<AppEnv>, errors: Record<string, string> = {}, values: Record<string, string> = {}, status?: 422): Promise<Response> {
+  {
     const ctx = reqCtx(c);
     const q = c.req.query();
     const pageNo = Math.max(1, Number(q.page) || 1);
@@ -180,7 +184,7 @@ peopleScreens.get('/subscribers', (c) =>
       return `${HOME}/subscribers?${p}`;
     };
     const filtered = !!(q.list || q.status || q.tag || q.q || q.segment);
-    return (
+    return page(c, 'Subscribers', (
       <>
         <PageHeader
           title="Subscribers"
@@ -194,9 +198,9 @@ peopleScreens.get('/subscribers', (c) =>
         />
         <form method="get" action={`${HOME}/subscribers`} class="ml-filterbar" role="search">
           <SearchInput name="q" value={q.q ?? ''} label="Search by email or name" />
-          <Select name="list" label="Newsletter" value={q.list ?? ''} options={[{ value: '', label: 'All newsletters' }, ...lists.map((l) => ({ value: l.id, label: l.name }))]} />
-          <Select name="status" label="Status" value={q.status ?? ''} options={[{ value: '', label: 'Any status' }, { value: 'active', label: 'Subscribed' }, { value: 'pending', label: 'Waiting to confirm' }, { value: 'unsubscribed', label: 'Unsubscribed' }, { value: 'suppressed', label: 'Blocked' }]} />
-          {segments.length ? <Select name="segment" label="Segment" value={q.segment ?? ''} options={[{ value: '', label: 'No segment' }, ...segments.map((s) => ({ value: s.id, label: s.name }))]} /> : null}
+          <Select name="list" aria-label="Newsletter" value={q.list ?? ''} options={[{ value: '', label: 'All newsletters' }, ...lists.map((l) => ({ value: l.id, label: l.name }))]} />
+          <Select name="status" aria-label="Status" value={q.status ?? ''} options={[{ value: '', label: 'Any status' }, { value: 'active', label: 'Subscribed' }, { value: 'pending', label: 'Waiting to confirm' }, { value: 'unsubscribed', label: 'Unsubscribed' }, { value: 'suppressed', label: 'Blocked' }]} />
+          {segments.length ? <Select name="segment" aria-label="Segment" value={q.segment ?? ''} options={[{ value: '', label: 'No segment' }, ...segments.map((s) => ({ value: s.id, label: s.name }))]} /> : null}
           <Input name="tag" value={q.tag ?? ''} placeholder="Tag" aria-label="Tag" maxlength={60} />
           <Button type="submit">Filter</Button>
           {filtered ? <LinkButton href={`${HOME}/subscribers`}>Clear</LinkButton> : null}
@@ -228,34 +232,39 @@ peopleScreens.get('/subscribers', (c) =>
         {out.total > PAGE ? <Pagination page={pageNo} pageSize={PAGE} total={out.total} href={(p) => keep({ page: String(p) })} noun={['person', 'people']} /> : null}
         {write && lists.length ? (
           <Card title="Add someone" description="Only add people who asked to hear from you. They are marked as subscribed without a confirmation email." class="ml-gap">
-            <form method="post" action={`${HOME}/subscribers`} class="ml-form-col">
-              <Field id="a-email" label="Email"><Input id="a-email" name="email" type="email" required autocomplete="off" /></Field>
-              <Field id="a-name" label="Name" optional><Input id="a-name" name="name" maxlength={120} /></Field>
-              <Field id="a-list" label="Newsletter"><Select id="a-list" name="list" value={q.list ?? lists[0]!.id} options={lists.map((l) => ({ value: l.id, label: l.name }))} /></Field>
-              <Field id="a-tags" label="Tags" optional hint="Separate with commas."><Input id="a-tags" name="tags" /></Field>
-              <Checkbox name="consent" value="1" label="This person agreed to receive these emails" description="Required. Your note is saved with them." />
+            <form method="post" action={`${HOME}/subscribers`} class="ml-form-col" novalidate>
+              <Field id="a-email" label="Email" error={errors.email}><Input id="a-email" name="email" type="email" required autocomplete="off" value={values.email ?? ''} invalid={!!errors.email} /></Field>
+              <Field id="a-name" label="Name" optional><Input id="a-name" name="name" maxlength={120} value={values.name ?? ''} /></Field>
+              <Field id="a-list" label="Newsletter"><Select id="a-list" name="list" value={values.list ?? q.list ?? lists[0]!.id} options={lists.map((l) => ({ value: l.id, label: l.name }))} /></Field>
+              <Field id="a-tags" label="Tags" optional hint="Separate with commas."><Input id="a-tags" name="tags" value={values.tags ?? ''} /></Field>
+              <Checkbox name="consent" value="1" label="This person agreed to receive these emails" description="Required. Your note is saved with them." checked={values.consent === '1'} />
+              {errors.consent ? <p class="field-error" role="alert">{errors.consent}</p> : null}
               <div class="ml-actions"><Button type="submit" variant="primary">Add subscriber</Button></div>
             </form>
           </Card>
         ) : null}
         {fields.length ? <p class="muted ml-small">Custom fields: {fields.map((f) => f.key).join(', ')}. <a href={`${HOME}/fields`}>Manage</a></p> : null}
       </>
-    );
-  }),
-);
+    ), undefined, status);
+  }
+}
+
+peopleScreens.get('/subscribers', (c) => guard(c, 'Subscribers', () => subscribersPage(c)));
 
 peopleScreens.post('/subscribers', async (c) => {
   writer(c);
   const ctx = reqCtx(c);
   const f = await readForm(c);
-  if (!checked(f, 'consent')) return flashAndGo(c, 'error', 'Tick the box to confirm this person agreed to receive your emails.', `${HOME}/subscribers`);
+  const kept = valuesOf(f);
+  if (!checked(f, 'consent')) return subscribersPage(c, { consent: 'Tick the box to confirm this person agreed to receive your emails.' }, kept, 422);
   try {
     const list = await getList(ctx, text(f, 'list'));
     const res = await joinList(ctx, list, { email: text(f, 'email'), name: text(f, 'name'), tags: text(f, 'tags').split(',').map((t) => t.trim()).filter(Boolean), source: 'manual', confirmed: true }, { base: await rememberBase(c) });
-    if (res.outcome === 'blocked') return flashAndGo(c, 'error', 'That address is blocked because it bounced or complained before.', `${HOME}/subscribers`);
+    if (res.outcome === 'blocked') return subscribersPage(c, { email: 'That address is blocked because it bounced or complained before.' }, kept, 422);
     return flashAndGo(c, 'ok', 'Subscriber added.', res.subscriber ? `${HOME}/subscribers/${res.subscriber.id}` : `${HOME}/subscribers`);
   } catch (e) {
-    return flashAndGo(c, 'error', plainError(e).fields.email ?? plainError(e).message, `${HOME}/subscribers`);
+    const { message, fields } = plainError(e);
+    return subscribersPage(c, { email: fields.email ?? message }, kept, 422);
   }
 });
 
@@ -267,7 +276,7 @@ peopleScreens.get('/subscribers/export', async (c) => {
 
 // import
 
-async function importPage(c: import('hono').Context<AppEnv>, report?: import('./subscribers').ImportReport, errors: Record<string, string> = {}, status?: 422) {
+async function importPage(c: import('hono').Context<AppEnv>, report?: import('./subscribers').ImportReport, errors: Record<string, string> = {}, status?: 422, values: Record<string, string> = {}) {
   const lists = await listLists(reqCtx(c));
   return page(c, 'Import subscribers', (
     <>
@@ -286,11 +295,11 @@ async function importPage(c: import('hono').Context<AppEnv>, report?: import('./
       ) : null}
       <Card>
         <form method="post" action={`${HOME}/subscribers/import`} enctype="multipart/form-data" class="ml-form-col">
-          <Field id="i-list" label="Newsletter"><Select id="i-list" name="list" value={lists[0]?.id ?? ''} options={lists.map((l) => ({ value: l.id, label: l.name }))} /></Field>
-          <Field id="i-file" label="CSV file" error={errors.file} hint="First row is the header."><input id="i-file" class="input" type="file" name="file" accept=".csv,text/csv" /></Field>
-          <Field id="i-csv" label="Or paste the CSV" optional><Textarea id="i-csv" name="csv" rows={6} placeholder={'email,name\nada@example.com,Ada'} /></Field>
-          <Field id="i-tags" label="Add tags to everyone" optional hint="Separate with commas."><Input id="i-tags" name="tags" /></Field>
-          <Checkbox name="consent" value="1" label="Everyone in this file agreed to receive these emails" description="Required. People who unsubscribed, bounced or complained before are skipped, even if they are in the file." />
+          <Field id="i-list" label="Newsletter"><Select id="i-list" name="list" value={values.list ?? lists[0]?.id ?? ''} options={lists.map((l) => ({ value: l.id, label: l.name }))} /></Field>
+          <Field id="i-file" label="CSV file" error={errors.file} hint="First row is the header."><input id="i-file" class="input" type="file" name="file" accept=".csv,text/csv" aria-invalid={errors.file ? 'true' : undefined} /></Field>
+          <Field id="i-csv" label="Or paste the CSV" optional><Textarea id="i-csv" name="csv" rows={6} value={values.csv ?? ''} placeholder={'email,name\nada@example.com,Ada'} /></Field>
+          <Field id="i-tags" label="Add tags to everyone" optional hint="Separate with commas."><Input id="i-tags" name="tags" value={values.tags ?? ''} /></Field>
+          <Checkbox name="consent" value="1" label="Everyone in this file agreed to receive these emails" description="Required. People who unsubscribed, bounced or complained before are skipped, even if they are in the file." checked={values.consent === '1'} />
           {errors.consent ? <p class="field-error" role="alert">{errors.consent}</p> : null}
           <div class="ml-actions"><Button type="submit" variant="primary" disabled={lists.length === 0}>Import</Button><LinkButton href={`${HOME}/subscribers`}>Back</LinkButton></div>
         </form>
@@ -307,20 +316,21 @@ peopleScreens.get('/subscribers/import', (c) => {
 peopleScreens.post('/subscribers/import', async (c) => {
   writer(c);
   const f = await readForm(c);
+  const kept = valuesOf(f);
   const file = Array.isArray(f.file) ? f.file[0] : f.file;
   let csv = text(f, 'csv');
   if (file && typeof file !== 'string' && file.size > 0) {
-    if (file.size > 2_000_000) return importPage(c, undefined, { file: 'That file is too large. Keep it under 2 MB.' }, 422);
+    if (file.size > 2_000_000) return importPage(c, undefined, { file: 'That file is too large. Keep it under 2 MB.' }, 422, kept);
     csv = await file.text();
   }
-  if (!csv.trim()) return importPage(c, undefined, { file: 'Choose a file or paste some rows.' }, 422);
-  if (!checked(f, 'consent')) return importPage(c, undefined, { consent: 'Confirm that these people agreed to receive your emails.' }, 422);
+  if (!csv.trim()) return importPage(c, undefined, { file: 'Choose a file or paste some rows.' }, 422, kept);
+  if (!checked(f, 'consent')) return importPage(c, undefined, { consent: 'Confirm that these people agreed to receive your emails.' }, 422, kept);
   try {
     const report = await importSubscribers(reqCtx(c), { listId: text(f, 'list'), csv, consent: true, tags: text(f, 'tags').split(',').map((t) => t.trim()).filter(Boolean) });
     await auditFromRequest(c, { action: 'mail.subscribers.import', targetType: 'mail_list', targetId: text(f, 'list'), summary: `Imported ${report.added} subscribers` });
     return importPage(c, report);
   } catch (e) {
-    return importPage(c, undefined, { file: plainError(e).message }, 422);
+    return importPage(c, undefined, { file: plainError(e).message }, 422, kept);
   }
 });
 
@@ -414,11 +424,11 @@ peopleScreens.post('/subscribers/:id/delete', async (c) => {
 
 // -- custom fields ---------------------------------------------------------------------------------
 
-peopleScreens.get('/fields', (c) =>
-  safely(c, 'Custom fields', async () => {
+async function fieldsPage(c: import('hono').Context<AppEnv>, errors: Record<string, string> = {}, values: Record<string, string> = {}, status?: 422): Promise<Response> {
+  {
     const fields = await listFields(reqCtx(c));
     const write = canWrite(c);
-    return (
+    return page(c, 'Custom fields', (
       <>
         <PageHeader title="Custom fields" description="Extra details about people, like company or plan. Use them in emails as {{company|there}} and in segments." />
         <Card flush>
@@ -428,18 +438,20 @@ peopleScreens.get('/fields', (c) =>
         </Card>
         {write ? (
           <Card title="Add a field" class="ml-gap">
-            <form method="post" action={`${HOME}/fields`} class="ml-form-col">
-              <Field id="f-key" label="Key" hint="Lowercase letters, numbers and underscores."><Input id="f-key" name="key" required /></Field>
-              <Field id="f-label" label="Label"><Input id="f-label" name="label" required /></Field>
-              <Field id="f-type" label="Type"><Select id="f-type" name="type" value="text" options={[{ value: 'text', label: 'Text' }, { value: 'number', label: 'Number' }, { value: 'date', label: 'Date' }]} /></Field>
+            <form method="post" action={`${HOME}/fields`} class="ml-form-col" novalidate>
+              <Field id="f-key" label="Key" error={errors.key} hint="Lowercase letters, numbers and underscores."><Input id="f-key" name="key" required value={values.key ?? ''} invalid={!!errors.key} /></Field>
+              <Field id="f-label" label="Label" error={errors.label}><Input id="f-label" name="label" required value={values.label ?? ''} invalid={!!errors.label} /></Field>
+              <Field id="f-type" label="Type"><Select id="f-type" name="type" value={values.type ?? 'text'} options={[{ value: 'text', label: 'Text' }, { value: 'number', label: 'Number' }, { value: 'date', label: 'Date' }]} /></Field>
               <div class="ml-actions"><Button type="submit" variant="primary">Add field</Button></div>
             </form>
           </Card>
         ) : null}
       </>
-    );
-  }),
-);
+    ), undefined, status);
+  }
+}
+
+peopleScreens.get('/fields', (c) => guard(c, 'Custom fields', () => fieldsPage(c)));
 
 peopleScreens.post('/fields', async (c) => {
   writer(c);
@@ -448,7 +460,7 @@ peopleScreens.post('/fields', async (c) => {
     await createField(reqCtx(c), { key: text(f, 'key'), label: text(f, 'label'), type: text(f, 'type') || 'text' });
   } catch (e) {
     const { message, fields } = plainError(e);
-    return flashAndGo(c, 'error', fields.key ?? fields.label ?? message, `${HOME}/fields`);
+    return fieldsPage(c, { ...fields, ...(Object.keys(fields).length ? {} : { key: message }) }, valuesOf(f), 422);
   }
   return flashAndGo(c, 'ok', 'Field added.', `${HOME}/fields`);
 });
@@ -510,6 +522,7 @@ function rowsToFilter(f: Record<string, string>): { filter: unknown; error?: str
 
 async function segmentForm(c: import('hono').Context<AppEnv>, id: string | null, name: string, filter: Filter, errors: Record<string, string> = {}, status?: 422) {
   const ctx = reqCtx(c);
+  const write = canWrite(c);
   const count = filter.rules.length || id ? (await querySubscribers(ctx, { segment: filter, limit: 1 })).total : null;
   const rows = [...filter.rules.map(ruleToRow), ...Array.from({ length: SLOTS }, () => ({ kind: '', value: '' }))].slice(0, SLOTS);
   return page(c, id ? 'Edit segment' : 'New segment', (
@@ -518,20 +531,20 @@ async function segmentForm(c: import('hono').Context<AppEnv>, id: string | null,
       {count !== null ? <Callout tone="info" title={`${formatNumber(count)} ${count === 1 ? 'person matches' : 'people match'} now`}>{describeFilter(filter)}</Callout> : null}
       <Card>
         <form method="post" action={id ? `${HOME}/segments/${id}` : `${HOME}/segments`} class="ml-form-col">
-          <Field id="s-name" label="Name" error={errors.name}><Input id="s-name" name="name" value={name} invalid={!!errors.name} maxlength={80} /></Field>
-          <Field id="s-match" label="People match"><Select id="s-match" name="match" value={filter.match} options={[{ value: 'all', label: 'All of these rules' }, { value: 'any', label: 'Any of these rules' }]} /></Field>
+          <Field id="s-name" label="Name" error={errors.name}><Input id="s-name" name="name" value={name} invalid={!!errors.name} maxlength={80} disabled={!write} /></Field>
+          <Field id="s-match" label="People match"><Select id="s-match" name="match" disabled={!write} value={filter.match} options={[{ value: 'all', label: 'All of these rules' }, { value: 'any', label: 'Any of these rules' }]} /></Field>
           {errors.rules ? <p class="field-error" role="alert">{errors.rules}</p> : null}
           <fieldset class="ml-rules"><legend>Rules</legend>
             {rows.map((r, i) => (
               <div class="ml-rule">
-                <Select name={`kind${i}`} label={`Rule ${i + 1}`} value={r.kind} options={[{ value: '', label: i === 0 ? 'Choose a rule' : 'No rule' }, ...RULE_KINDS.map((k) => ({ value: k.value, label: k.label }))]} />
-                <Input name={`value${i}`} value={r.value} aria-label={`Value for rule ${i + 1}`} maxlength={200} />
+                <Select name={`kind${i}`} disabled={!write} aria-label={`Rule ${i + 1}`} value={r.kind} options={[{ value: '', label: i === 0 ? 'Choose a rule' : 'No rule' }, ...RULE_KINDS.map((k) => ({ value: k.value, label: k.label }))]} />
+                <Input name={`value${i}`} disabled={!write} value={r.value} aria-label={`Value for rule ${i + 1}`} maxlength={200} />
               </div>
             ))}
           </fieldset>
-          <div class="ml-actions"><Button type="submit" variant="primary" name="go" value="save">Save segment</Button><Button type="submit" name="go" value="count">Check who matches</Button><LinkButton href={`${HOME}/segments`}>Back</LinkButton></div>
+          <div class="ml-actions">{write ? <><Button type="submit" variant="primary" name="go" value="save">Save segment</Button><Button type="submit" name="go" value="count">Check who matches</Button></> : null}<LinkButton href={`${HOME}/segments`}>Back</LinkButton></div>
         </form>
-        {id && canWrite(c) ? <form method="post" action={`${HOME}/segments/${id}/delete`} class="ml-gap"><ConfirmButton id="del-seg" title="Delete this segment?" body="Emails already sent are not affected." confirmLabel="Delete segment" danger>Delete segment</ConfirmButton></form> : null}
+        {id && write ? <form method="post" action={`${HOME}/segments/${id}/delete`} class="ml-gap"><ConfirmButton id="del-seg" title="Delete this segment?" body="Emails already sent are not affected." confirmLabel="Delete segment" danger>Delete segment</ConfirmButton></form> : null}
       </Card>
     </>
   ), [{ label: 'Mail', href: HOME }, { label: 'Segments', href: `${HOME}/segments` }, { label: id ? name || 'Segment' : 'New' }], status);
@@ -576,6 +589,7 @@ async function saveSeg(c: import('hono').Context<AppEnv>, id: string | null) {
   if (f.go === 'count') {
     try { return segmentForm(c, id, name, (await import('./segments')).parseFilter(built.filter)); } catch (e) { return show({ rules: plainError(e).message }); }
   }
+  if (!(built.filter as { rules?: unknown[] }).rules?.length) return show({ rules: 'Add at least one rule, or send to the whole newsletter instead.' });
   try {
     const row = await saveSegment(ctx, { id: id ?? undefined, name, filter: built.filter });
     return flashAndGo(c, 'ok', 'Segment saved.', `${HOME}/segments/${row.id}`);
