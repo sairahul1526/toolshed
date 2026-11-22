@@ -247,7 +247,7 @@ bioScreen.post('/bio/:id/blocks', async (c) => {
   const f = await readForm(c);
   const id = c.req.param('id');
   try {
-    await addBlock(ctxOf(c), id, blockInputOf(f));
+    await addBlock(ctxOf(c), id, { ...blockInputOf(f), visible: true });
     await auditFromRequest(c, { action: 'links.bio.updated', targetType: 'bio', targetId: id, summary: 'Added a bio block', meta: {} });
     return flashAndGo(c, 'ok', 'Block added.', `${BIO}/${id}`);
   } catch (e) {

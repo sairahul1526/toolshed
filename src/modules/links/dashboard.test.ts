@@ -156,6 +156,7 @@ describe('links dashboard', () => {
     await post(app, `/app/links/bio/${bio.id}/blocks`, { kind: 'link', title: 'Shop', url: 'https://example.com/shop' });
     await post(app, `/app/links/bio/${bio.id}/blocks`, { kind: 'heading', title: 'Follow' });
     let current = (await (await app.request('/api/v1/links/bios/maya')).json()) as any;
+    expect(current.blocks.map((b: any) => b.visible)).toEqual([true, true]);
     expect(current.blocks.map((b: any) => b.title)).toEqual(['Shop', 'Follow']);
     await post(app, `/app/links/bio/blocks/${current.blocks[1].id}/move?dir=up`);
     current = (await (await app.request('/api/v1/links/bios/maya')).json()) as any;

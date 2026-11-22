@@ -29,8 +29,17 @@ const RAW_VALUE: Record<Dim, string> = {
 };
 const RAW_FILTER: Partial<Record<Dim, string>> = { utm_source: `utm_source <> ''`, utm_medium: `utm_medium <> ''`, utm_campaign: `utm_campaign <> ''` };
 
-export function rawDimSelects(): string {
-  return DIMS.map((d) => `SELECT '${d}' AS dim, ${RAW_VALUE[d]} AS value, COUNT(*) AS clicks, COUNT(DISTINCT visitor) AS uniques FROM r${RAW_FILTER[d] ? ` WHERE ${RAW_FILTER[d]}` : ''} GROUP BY 2`).join(' UNION ALL ');
+/**
+ * One query per breakdown. D1 refuses a compound SELECT of more than five parts, so the breakdowns
+ * cannot be joined with UNION ALL; they travel in one batch instead.
+ */
+export function rawDimQueries(DB: D1Database, orgId: string, kind: VisitKind, targetParam: string[], target: string, from: string, to: string): D1PreparedStatement[] {
+  const withRaw = `WITH r AS (SELECT * FROM links_clicks WHERE org_id = ? AND kind = ?${target} AND day BETWEEN ? AND ?)`;
+  const bind = (sql: string) => DB.prepare(`${withRaw} ${sql}`).bind(orgId, kind, ...targetParam, from, to);
+  return [
+    bind(`SELECT 'all' AS dim, day AS value, COUNT(*) AS clicks, COUNT(DISTINCT visitor) AS uniques FROM r GROUP BY day`),
+    ...DIMS.map((d) => bind(`SELECT '${d}' AS dim, ${RAW_VALUE[d]} AS value, COUNT(*) AS clicks, COUNT(DISTINCT visitor) AS uniques FROM r${RAW_FILTER[d] ? ` WHERE ${RAW_FILTER[d]}` : ''} GROUP BY 2`)),
+  ];
 }
 
 export async function rolledThrough(ctx: LinksCtx): Promise<string> {
@@ -92,18 +101,12 @@ export async function getStats(ctx: LinksCtx, opts: StatsOptions = {}, now = Dat
         ctx.orgId, kind, ...targetParam, from, rollTo,
       )
     : null;
-  const rawQ = hasRaw
-    ? DB.prepare(
-        `WITH r AS (SELECT * FROM links_clicks WHERE org_id = ? AND kind = ?${target} AND day BETWEEN ? AND ?)
-         SELECT 'all' AS dim, day AS value, COUNT(*) AS clicks, COUNT(DISTINCT visitor) AS uniques FROM r GROUP BY day
-         UNION ALL ${rawDimSelects()}`,
-      ).bind(ctx.orgId, kind, ...targetParam, rawFrom, to)
-    : null;
-  const batch = await DB.batch([dailyQ, ...(rollQ ? [rollQ] : []), ...(rawQ ? [rawQ] : [])]);
+  const rawQs = hasRaw ? rawDimQueries(DB, ctx.orgId, kind, targetParam, target, rawFrom, to) : [];
+  const batch = await DB.batch([dailyQ, ...(rollQ ? [rollQ] : []), ...rawQs]);
   const dailyRows = batch[0]!.results as { day: string; clicks: number; qr: number; bots: number }[];
   let idx = 1;
   const rollRows = rollQ ? (batch[idx++]!.results as { dim: string; day: string; value: string; clicks: number; uniques: number }[]) : [];
-  const rawRows = rawQ ? (batch[idx++]!.results as { dim: string; value: string; clicks: number; uniques: number }[]) : [];
+  const rawRows = batch.slice(idx).flatMap((r) => r.results as { dim: string; value: string; clicks: number; uniques: number }[]);
 
   const uniquesByDay = new Map<string, number>();
   const buckets = new Map<Dim, Map<string, number>>(DIMS.map((d) => [d, new Map()]));

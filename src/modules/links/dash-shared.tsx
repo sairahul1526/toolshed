@@ -81,6 +81,7 @@ export async function safely(c: Context<AppEnv>, title: string, build: () => Pro
     body = await build();
   } catch (e) {
     if (e instanceof AppError) throw e;
+    console.error(`[links] ${title} failed to load`, e);
     return page(c, title, (
       <Callout tone="bad" title="This didn’t load" actions={<LinkButton href={new URL(c.req.url).pathname + new URL(c.req.url).search}>Try again</LinkButton>}>
         We couldn’t read your links just now. Nothing was lost. Try again in a moment.
