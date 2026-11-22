@@ -6,6 +6,7 @@ import type { Env, Role } from '../../env';
 import { roleAtLeast } from '../../env';
 import { audit } from '../audit';
 import { defineErrors, errors } from '../errors';
+import { refuseWhileImpersonating } from '../guards';
 
 /** Roles a key or token may act with. Never `owner`: owner-only actions need a signed-in person. */
 export const KEY_ROLES = ['admin', 'member', 'viewer'] as const;
@@ -21,6 +22,8 @@ export interface KeyActor {
   ip?: string | null;
   /** How the request signed in. Only a session may create or change keys. Always set it: there is no default. */
   via: 'session' | 'apikey' | 'jwt';
+  /** The install owner's id on a "sign in as" session (`auth.impersonatedBy`). Always pass it on from the request. */
+  impersonatedBy?: string | null;
 }
 
 export const keyErrors = defineErrors('keys', {
@@ -67,6 +70,16 @@ export function requireSession(actor: KeyActor): void {
   if (actor.via !== 'session') throw keyErrors.session_required();
 }
 
+/**
+ * For making a key, replacing one, or making a service account to hang keys on. On top of
+ * `requireSession`, an install owner signed in as someone else may not: what they made would keep
+ * working after their hour as that person ends.
+ */
+export function requireOwnSession(actor: KeyActor): void {
+  requireSession(actor);
+  refuseWhileImpersonating(actor.impersonatedBy);
+}
+
 export function requireAdmin(actor: KeyActor, message: string): void {
   if (!isAdmin(actor)) throw errors.forbidden(message);
 }
@@ -83,8 +96,17 @@ export interface KeyAudit {
   meta?: Record<string, unknown>;
 }
 
+/** A line written on a "sign in as" session always says so in `meta.impersonatedBy`. */
 export function auditKeys(env: Env, actor: KeyActor, entry: KeyAudit): Promise<void> {
-  return audit(env, { orgId: actor.orgId, actorId: actor.userId, actorType: 'user', actorLabel: actor.label ?? null, ip: actor.ip ?? null, ...entry });
+  return audit(env, {
+    orgId: actor.orgId,
+    actorId: actor.userId,
+    actorType: 'user',
+    actorLabel: actor.label ?? null,
+    ip: actor.ip ?? null,
+    ...entry,
+    ...(actor.impersonatedBy ? { meta: { ...entry.meta, impersonatedBy: actor.impersonatedBy } } : {}),
+  });
 }
 
 /** D1 reports a broken unique index with this text. */

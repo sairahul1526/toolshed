@@ -74,7 +74,8 @@ export const loadAuth: MiddlewareHandler<AppEnv> = async (c, next) => {
       if (loaded) {
         c.set('user', loaded.user);
         c.set('org', loaded.org);
-        c.set('auth', { kind: 'session', scopes: ['*'] });
+        const impersonatedBy = loaded.session.impersonatedBy;
+        c.set('auth', { kind: 'session', scopes: ['*'], ...(impersonatedBy ? { impersonatedBy } : {}) });
       }
     }
   }

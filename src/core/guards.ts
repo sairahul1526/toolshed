@@ -67,6 +67,15 @@ export function requireScope(scope: string): MiddlewareHandler<AppEnv> {
   };
 }
 
+/**
+ * Refuses while an install owner is signed in as someone else. A "sign in as" session ends within
+ * the hour; a key, token, signing secret or export made during it would keep working afterwards,
+ * so none can be made. Pass `auth.impersonatedBy` (or the same field of a service's actor).
+ */
+export function refuseWhileImpersonating(impersonatedBy: string | null | undefined): void {
+  if (impersonatedBy) throw errors.forbidden('You can’t do this while signed in as someone else.');
+}
+
 /** Only the person who claimed this install. */
 export const requireInstanceOwner: MiddlewareHandler<AppEnv> = async (c, next) => {
   if (!c.get('user')?.isInstanceOwner) throw errors.forbidden('Only the owner of this install can open that.');

@@ -10,7 +10,7 @@ import type { AppEnv } from '../../env';
 import { auditFromRequest } from '../audit';
 import { errors } from '../errors';
 import { getExport, listExports, openExportFile, requestExport } from '../export';
-import { needRole } from '../guards';
+import { needRole, refuseWhileImpersonating } from '../guards';
 
 const app = new Hono<AppEnv>();
 
@@ -23,6 +23,8 @@ app.post('/', async (c) => {
   const org = c.get('org')!;
   const user = c.get('user');
   const auth = c.get('auth');
+  // The file holds the whole workspace and can be downloaded for a day.
+  refuseWhileImpersonating(auth.impersonatedBy);
   const baseUrl = c.env.APP_URL?.trim() || new URL(c.req.url).origin;
   const item = await requestExport(c.env, {
     orgId: org.id,

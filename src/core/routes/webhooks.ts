@@ -23,7 +23,7 @@ import type { CoreRoutes } from '../../app';
 import type { AppEnv } from '../../env';
 import { auditFromRequest } from '../audit';
 import { errors, readJson } from '../errors';
-import { hasScope, needRole } from '../guards';
+import { hasScope, needRole, refuseWhileImpersonating } from '../guards';
 import { enforceRateLimit } from '../ratelimit';
 import {
   createEndpoint,
@@ -60,8 +60,10 @@ function actorOf(c: Context<AppEnv>): Actor {
   return { userId: user?.id ?? c.get('auth').keyId ?? '', label: user ? user.name || user.email : null };
 }
 
+/** Reading or replacing a signing secret: a signed-in person, and not an install owner acting as them. */
 function needSession(c: Context<AppEnv>): void {
   if (c.get('auth').kind !== 'session') throw webhookErrors.session_required();
+  refuseWhileImpersonating(c.get('auth').impersonatedBy);
 }
 
 const describe = (e: WebhookEndpoint): string => `“${e.name}”`;
@@ -71,6 +73,8 @@ api.get('/events', (c) => c.json({ events: eventCatalog() }));
 api.get('/', async (c) => c.json({ endpoints: await listEndpoints(c.env, orgOf(c)) }));
 
 api.post('/', async (c) => {
+  // A new endpoint keeps receiving this workspace's events, and its secret is in the response.
+  refuseWhileImpersonating(c.get('auth').impersonatedBy);
   await enforceRateLimit(c.env, `webhooks.create:${orgOf(c)}`, { limit: 20, windowSec: 3600 });
   const { endpoint, secret } = await createEndpoint(c.env, orgOf(c), actorOf(c), await readJson(c));
   await auditFromRequest(c, {

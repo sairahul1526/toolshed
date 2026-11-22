@@ -49,7 +49,10 @@ export async function audit(env: Env, entry: AuditEntry): Promise<void> {
     .run();
 }
 
-/** `audit()` with the actor, workspace and IP filled in from the request. */
+/**
+ * `audit()` with the actor, workspace and IP filled in from the request. A line written while an
+ * install owner is signed in as someone else always says so in `meta.impersonatedBy`.
+ */
 export function auditFromRequest(
   c: Context<AppEnv>,
   entry: Omit<AuditEntry, 'actorId' | 'actorType' | 'actorLabel' | 'ip' | 'orgId'> & { orgId?: string | null },
@@ -63,6 +66,7 @@ export function auditFromRequest(
     actorLabel: user?.email ?? (auth.kind === 'apikey' ? 'API key' : null),
     ip: c.req.header('cf-connecting-ip') ?? null,
     ...entry,
+    ...(auth.impersonatedBy ? { meta: { ...entry.meta, impersonatedBy: auth.impersonatedBy } } : {}),
   });
 }
 
