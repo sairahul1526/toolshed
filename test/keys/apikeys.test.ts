@@ -181,6 +181,13 @@ describe('only a signed-in person changes keys', () => {
     expect(tableRows(t, 'api_keys')).toHaveLength(1);
     expect((await getApiKey(t.env, admin, key.id, T0)).status).toBe('active');
   });
+
+  it('treats an actor with no `via` as not a session, so a caller that forgets it cannot make keys', async () => {
+    const { via: _via, ...unknown } = admin;
+    const err = await failure(() => make(unknown as KeyActor));
+    expect(err.code).toBe('keys.session_required');
+    expect(tableRows(t, 'api_keys')).toHaveLength(0);
+  });
 });
 
 describe('verifyApiKey', () => {

@@ -486,7 +486,7 @@ describe('expiry', () => {
     expect((await getExport(t.env, t.org.id, fresh.id))!.status).toBe('done');
 
     t.sqlite.prepare(`UPDATE exports SET expires_at = ? WHERE id = ?`).run(Date.now() - 5_000, fresh.id);
-    const out = await runSchedules(t.env, new Date(Date.UTC(2026, 10, 22, 0, 0)));
+    const out = await runSchedules(t.env, new Date(Math.ceil(Date.now() / 86_400_000) * 86_400_000));
     expect(out.ran).toContain('core.export-cleanup');
     expect(t.files.store.size).toBe(0);
   });

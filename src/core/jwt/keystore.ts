@@ -21,6 +21,7 @@ import type { Env } from '../../env';
 import { audit } from '../audit';
 import { errors } from '../errors';
 import { b64uDecode, b64uEncode, fromUtf8, randomBytes, sha256, utf8 } from '../keys/encoding';
+import { MIN_SECRET_LENGTH, secretStatus } from '../secret';
 
 export const JWT_ALG = 'ES256';
 /** The longest any token may live (embed tokens). Access tokens live 15 minutes. */
@@ -42,7 +43,6 @@ const RETIRED_PUBLISH_MS = MAX_TOKEN_TTL_SECONDS * 1000 + SIGNER_CACHE_MS + 2 * 
 const KV_KEY = 'core:jwt:jwks:v1';
 /** The KV copy rebuilds itself from D1 this often, which also bounds how long a failed write can linger. */
 const KV_TTL_SECONDS = 15 * 60;
-const MIN_SECRET_LENGTH = 32;
 const EC = { name: 'ECDSA', namedCurve: 'P-256' } as const;
 
 /** A public key as published at /.well-known/jwks.json. */
@@ -207,7 +207,7 @@ export async function getJwks(env: Env, now = Date.now()): Promise<Jwks> {
 }
 
 async function wrappingKey(env: Env, salt: Uint8Array<ArrayBuffer>): Promise<CryptoKey> {
-  if (typeof env.AUTH_SECRET !== 'string' || env.AUTH_SECRET.length < MIN_SECRET_LENGTH) {
+  if (secretStatus(env.AUTH_SECRET) !== 'ok') {
     throw errors.needs_setup(`Set AUTH_SECRET to a random value of at least ${MIN_SECRET_LENGTH} characters, then try again.`);
   }
   const material = await crypto.subtle.importKey('raw', utf8(env.AUTH_SECRET), 'HKDF', false, ['deriveKey']);

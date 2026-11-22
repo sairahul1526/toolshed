@@ -168,9 +168,11 @@ Small, dependency-free helpers any module can import. Each one is covered by tes
 | `core/net.ts`: `baseUrl`, `clientIp`, `geo` | The public address of the install, the visitor's IP, and country, region, city and time zone from Cloudflare. |
 | `core/net.ts`: `parseUserAgent`, `isBot`, `isPreviewBot` | Device, browser and system for analytics, and telling people from crawlers and link-preview fetchers. |
 | `core/net.ts`: `visitorId` | A 16 character id for counting unique visitors per day without storing the IP. It hashes a salt that changes every day, kept in KV for 48 hours. |
-| `core/net.ts`: `assertPublicUrl`, `safeFetch` | Fetching an address a stranger typed. Refuses private and local addresses, checks every redirect, and caps time and size. |
+| `core/net.ts`: `assertPublicUrl`, `safeFetch` | Fetching an address a stranger typed. Refuses private and local addresses, checks every redirect, and caps time and size. A redirect to another origin drops every header except `accept`, `accept-language`, `user-agent` and `content-type`, is never followed with a request body, and is never followed from https to http (`redirect_not_followed`). |
 | `core/markdown.ts`: `renderMarkdown`, `markdownToText`, `excerpt` | Markdown from strangers as safe HTML (raw HTML is shown as text), plain text for email, and short previews. |
 | `core/csv-parse.ts`: `parseCsv`, `guessColumns`, `rowsToObjects` | Reading imports: quotes, byte order marks, `;` and tab files, then matching columns to fields. The writer is `core/csv.ts`. |
-| `core/signing.ts`: `sign`, `verify`, `signedToken`, `readSignedToken` | Links that must not be forged (unsubscribe, confirm, download). Each purpose gets its own key derived from `AUTH_SECRET`. |
+| `core/signing.ts`: `sign`, `verify`, `signedToken`, `readSignedToken` | Links that must not be forged (unsubscribe, confirm, download). Each purpose gets its own key derived from `AUTH_SECRET`, which must be at least 32 characters (`openssl rand -base64 32`). |
 
-`assertPublicUrl` works on the text of the address only. A Worker cannot look up DNS, so a public name that points at a private address is not caught. Do not use `safeFetch` as the only protection for anything that sits on a private network.
+`assertPublicUrl` works on the text of the address only. A Worker cannot look up DNS, so a public name that points at a private address is not caught. Do not use `safeFetch` as the only protection for anything that sits on a private network. That matters most for a copy that runs on `workerd` inside a LAN, which can reach private hosts: block those ranges at the network too.
+
+`clientIp` returns a value only when it is a valid IPv4 or IPv6 address, so a spoofed header cannot put arbitrary text into rate-limit keys or logs.

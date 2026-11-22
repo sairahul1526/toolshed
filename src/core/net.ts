@@ -12,6 +12,10 @@ export const netErrors = defineErrors('', {
   fetch_timeout: { status: 504, message: 'That address took too long to answer. Try again in a moment.' },
   fetch_too_large: { status: 502, message: 'The page at that address is too large to read.' },
   too_many_redirects: { status: 502, message: 'That address sends visitors around in circles. Check where it redirects to.' },
+  redirect_not_followed: {
+    status: 502,
+    message: 'That address redirects somewhere we can’t follow safely, so we stopped. Use the final address directly, and make sure it starts with https://.',
+  },
 });
 
 // ---------------------------------------------------------------------------------------------
@@ -25,12 +29,12 @@ export function baseUrl(c: Context<AppEnv>): string {
   return new URL(c.req.url).origin;
 }
 
-/** The visitor's IP address. Never store or log it: hash it with `visitorId`, or use it only for rate limits. */
+/** The visitor's IP address, or null. Anything that is not an IPv4 or IPv6 address is ignored. Never store or log it: hash it with `visitorId`, or use it only for rate limits. */
 export function clientIp(req: Request): string | null {
   const direct = req.headers.get('cf-connecting-ip')?.trim();
-  if (direct) return direct;
+  if (direct && isIpAddress(direct)) return direct;
   const forwarded = req.headers.get('x-forwarded-for')?.split(',')[0]?.trim();
-  return forwarded || null;
+  return forwarded && isIpAddress(forwarded) ? forwarded : null;
 }
 
 export interface Geo {
@@ -236,6 +240,11 @@ function parseIPv6(text: string): number[] | null {
   return out.length === 8 && out.every((n) => !Number.isNaN(n)) ? out : null;
 }
 
+/** True for a plain IPv4 address or an IPv6 address without brackets or a zone. Says nothing about public or private. */
+function isIpAddress(text: string): boolean {
+  return text.includes(':') ? parseIPv6(text) !== null : parseIPv4(text) !== null;
+}
+
 function privateIPv6(g: number[]): boolean {
   const first = g[0]!;
   const embedded = (hi: number, lo: number) => privateIPv4([hi >> 8, hi & 255, lo >> 8, lo & 255]);
@@ -247,9 +256,11 @@ function privateIPv6(g: number[]): boolean {
   if ((first & 0xffc0) === 0xfec0) return true; // site local, fec0::/10 (deprecated)
   if ((first & 0xff00) === 0xff00) return true; // multicast
   if (zeros(0, 5) && g[5] === 0xffff) return embedded(g[6]!, g[7]!); // IPv4-mapped ::ffff:a.b.c.d
+  if (zeros(0, 4) && g[4] === 0xffff && g[5] === 0) return embedded(g[6]!, g[7]!); // IPv4-translated ::ffff:0:a.b.c.d
   if (zeros(0, 6)) return embedded(g[6]!, g[7]!); // IPv4-compatible ::a.b.c.d (deprecated)
   if (first === 0x64 && g[1] === 0xff9b) return g.slice(2, 6).every((n) => n === 0) ? embedded(g[6]!, g[7]!) : true; // NAT64 64:ff9b::/96 and 64:ff9b:1::/48
   if (first === 0x2002) return embedded(g[1]!, g[2]!); // 6to4 2002:a.b.c.d::/48
+  if (first === 0x2001 && g[1] === 0) return true; // Teredo 2001::/32 tunnels to an address we cannot read from the text
   return false;
 }
 
@@ -261,7 +272,9 @@ const BLOCKED_SUFFIXES = ['.localhost', '.local', '.internal', '.home.arpa'];
  * spelling the URL parser normalises (decimal, hex, octal, IPv4-mapped IPv6 and so on).
  *
  * A Worker cannot resolve DNS, so a public name that points at a private address is not caught
- * here. Workers cannot reach private networks anyway, which is what makes this check enough.
+ * here. On Cloudflare that is acceptable because Workers cannot reach private networks. A copy
+ * that runs on `workerd` inside a LAN can, so this text check alone is not enough there: block
+ * private ranges at the network as well.
  */
 export function assertPublicUrl(raw: string): URL {
   let url: URL;
@@ -345,23 +358,31 @@ async function readCapped(res: Response, maxBytes: number, truncate: boolean): P
   return out;
 }
 
+/** Headers that are safe to send to a site the caller did not name. Everything else (tokens, cookies, API keys, custom headers) stays behind. */
+const CROSS_ORIGIN_HEADERS = new Set(['accept', 'accept-language', 'user-agent', 'content-type']);
+
 /**
  * Fetch a user-supplied URL without letting it reach anything private. Every hop (the first
  * request and each redirect) goes through `assertPublicUrl`, the time and size are capped, and
  * the whole body is buffered, so the caller gets an ordinary `Response` it can read twice.
- * Cookies and authorization headers are dropped when a redirect leaves the original host.
- * Throws `url_not_allowed`, `fetch_timeout`, `fetch_too_large`, `too_many_redirects` or `fetch_failed`.
+ *
+ * Redirects: a hop to another origin (scheme, host or port) keeps only `accept`, `accept-language`,
+ * `user-agent` and `content-type`, so no token or cookie the caller set follows it. A request body is
+ * never replayed to another origin, and a redirect from https to http is never followed.
+ * A caller `signal` that is already aborted stops the call before anything is sent.
+ * Throws `url_not_allowed`, `fetch_timeout`, `fetch_too_large`, `too_many_redirects`,
+ * `redirect_not_followed` or `fetch_failed`.
  */
 export async function safeFetch(url: string | URL, init: SafeFetchInit = {}): Promise<Response> {
   const { timeoutMs = 8000, maxBytes = 1_000_000, maxRedirects = 3, truncate = false, ...rest } = init;
   let current = assertPublicUrl(String(url));
   let method = (rest.method ?? 'GET').toUpperCase();
   let body = rest.body;
-  const headers = new Headers(rest.headers);
-  if (!headers.has('user-agent')) headers.set('user-agent', 'Toolshed');
 
   const controller = new AbortController();
-  rest.signal?.addEventListener('abort', () => controller.abort(), { once: true });
+  const onAbort = () => controller.abort();
+  if (rest.signal?.aborted) controller.abort();
+  else rest.signal?.addEventListener('abort', onAbort, { once: true });
   let timer: ReturnType<typeof setTimeout> | undefined;
   const timedOut = new Promise<never>((_, reject) => {
     timer = setTimeout(() => {
@@ -371,6 +392,9 @@ export async function safeFetch(url: string | URL, init: SafeFetchInit = {}): Pr
   });
 
   const run = async (): Promise<Response> => {
+    // Built here, inside the try below, so a header value fetch refuses gives a typed error.
+    const headers = new Headers(rest.headers);
+    if (!headers.has('user-agent')) headers.set('user-agent', 'Toolshed');
     for (let hop = 0; ; hop++) {
       const res = await fetch(current.toString(), { ...rest, method, body, headers, redirect: 'manual', signal: controller.signal });
       const location = res.headers.get('location');
@@ -383,17 +407,17 @@ export async function safeFetch(url: string | URL, init: SafeFetchInit = {}): Pr
       await res.body?.cancel();
       if (hop >= maxRedirects) throw netErrors.too_many_redirects();
       const next = assertPublicUrl(new URL(location, current).toString());
-      if (next.host !== current.host) {
-        headers.delete('cookie');
-        headers.delete('authorization');
-        headers.delete('proxy-authorization');
-      }
+      if (current.protocol === 'https:' && next.protocol === 'http:') throw netErrors.redirect_not_followed();
       // Browsers turn a redirected POST into a GET; a 307 or 308 keeps the method and body.
       if (res.status === 303 ? method !== 'GET' && method !== 'HEAD' : (res.status === 301 || res.status === 302) && method === 'POST') {
         method = 'GET';
         body = undefined;
         headers.delete('content-type');
         headers.delete('content-length');
+      }
+      if (next.origin !== current.origin) {
+        if (body !== undefined && body !== null) throw netErrors.redirect_not_followed();
+        for (const name of [...headers.keys()]) if (!CROSS_ORIGIN_HEADERS.has(name)) headers.delete(name);
       }
       current = next;
     }
@@ -406,6 +430,7 @@ export async function safeFetch(url: string | URL, init: SafeFetchInit = {}): Pr
     throw netErrors.fetch_failed();
   } finally {
     clearTimeout(timer);
+    rest.signal?.removeEventListener('abort', onAbort);
     controller.abort();
   }
 }

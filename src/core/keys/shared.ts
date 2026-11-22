@@ -19,8 +19,8 @@ export interface KeyActor {
   /** Name or email. Stored as "Made by" and written to the audit log. */
   label?: string | null;
   ip?: string | null;
-  /** How the request signed in. Only a session may create or change keys. Defaults to `session`. */
-  via?: 'session' | 'apikey' | 'jwt';
+  /** How the request signed in. Only a session may create or change keys. Always set it: there is no default. */
+  via: 'session' | 'apikey' | 'jwt';
 }
 
 export const keyErrors = defineErrors('keys', {
@@ -64,7 +64,7 @@ export function isAdmin(actor: KeyActor): boolean {
 
 /** A key that could make keys could outlive its own revocation, so only a signed-in person may. */
 export function requireSession(actor: KeyActor): void {
-  if (actor.via !== undefined && actor.via !== 'session') throw keyErrors.session_required();
+  if (actor.via !== 'session') throw keyErrors.session_required();
 }
 
 export function requireAdmin(actor: KeyActor, message: string): void {
