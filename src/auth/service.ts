@@ -7,3 +7,6 @@ export * from './service/actor';
 export * from './service/account';
 export * from './service/two-step';
 export * from './service/workspaces';
+export * from './service/roles';
+export * from './service/members';
+export * from './service/invites';

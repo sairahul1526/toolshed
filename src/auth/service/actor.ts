@@ -6,7 +6,8 @@
 import type { Context } from 'hono';
 import { audit, type AuditEntry } from '../../core/audit';
 import { errors } from '../../core/errors';
-import type { AppEnv, Env } from '../../env';
+import type { AppEnv, Env, Role } from '../../env';
+import { roleAtLeast } from '../../env';
 import { FRESH_SIGN_IN_SEC } from '../config';
 import { authErrors } from '../errors';
 import { clientIp } from '../http';
@@ -64,6 +65,26 @@ export async function freshFrom(c: Context<AppEnv>, now = Date.now()): Promise<S
   const actor = await selfFrom(c);
   if (now - actor.signedInAt > FRESH_SIGN_IN_SEC * 1000) throw authErrors.sign_in_again();
   return actor;
+}
+
+export interface WorkspaceActor extends SignedIn {
+  orgId: string;
+  orgName: string;
+  orgSlug: string;
+  /** The person's role in the active workspace, as the database has it for this request. */
+  role: Role;
+}
+
+/**
+ * The signed-in person together with their active workspace and their role in it. Throws when
+ * they have no active workspace or their role is below `min`.
+ */
+export async function workspaceActor(c: Context<AppEnv>, min: Role = 'viewer'): Promise<WorkspaceActor> {
+  const actor = await actorFrom(c);
+  const org = (await sessionFromRequest(c))?.org;
+  if (!org) throw authErrors.workspace_not_found();
+  if (!roleAtLeast(org.role, min)) throw authErrors.role_needed();
+  return { ...actor, orgId: org.id, orgName: org.name, orgSlug: org.slug, role: org.role };
 }
 
 /** True when this person owns the install. Read from the database every time. */

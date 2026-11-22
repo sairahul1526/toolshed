@@ -17,8 +17,9 @@ import { issueCode } from './codes';
 import { CODE_TTL_MS, LIMITS } from './config';
 import { fingerprint } from './crypto';
 import { clientIp, forwardCookies, hit, setFlow } from './http';
+import { hasOpenInvite } from './invites';
 import { sessionCookieName, sessionFromRequest } from './session';
-import { findUserByEmail } from './users';
+import { findUserByEmail, type UserRow } from './users';
 
 export type SignInMethod = 'code' | 'link' | 'password' | 'passkey' | 'two-step' | 'recovery-code' | 'claim' | 'invite';
 
@@ -53,8 +54,8 @@ export function background(c: Context<AppEnv>, work: Promise<unknown>): Promise<
 
 /**
  * Email a sign-in code and link, and remember the code for this browser. An address with no
- * account gets the same answer and the same page, but no email. Returns seconds to wait when a
- * limit was hit, otherwise 0.
+ * account and no open invite gets the same answer and the same page, but no email. Returns
+ * seconds to wait when a limit was hit, otherwise 0.
  */
 export async function startCodeSignIn(c: Context<AppEnv>, email: string, next: string): Promise<number> {
   const ip = clientIp(c);
@@ -62,16 +63,18 @@ export async function startCodeSignIn(c: Context<AppEnv>, email: string, next: s
   const wait = (await hit(c.env, 'codePerIp', ip)) || (await hit(c.env, 'codePerEmail', who));
   if (wait) return wait;
 
-  const user = await findUserByEmail(c.env, email);
+  // Both lookups always run, so the work done is the same for every address.
+  const [user, invited] = await Promise.all([findUserByEmail(c.env, email), hasOpenInvite(c.env, email)]);
+  const known = !!user || invited;
   const issued = await issueCode(c.env, {
     purpose: 'sign-in',
     email,
     ref: next,
-    deliverable: !!user,
+    deliverable: known,
     ip,
     userAgent: c.req.header('user-agent'),
   });
-  if (user) {
+  if (known) {
     const link = `${baseUrl(c.env, c.req.url)}/sign-in/link/${issued.linkToken}`;
     await background(
       c,
@@ -82,6 +85,47 @@ export async function startCodeSignIn(c: Context<AppEnv>, email: string, next: s
   }
   await setFlow(c, 'sign-in', { codeId: issued.id, email, next });
   return 0;
+}
+
+/** The name a new account starts with: the part of the address before the @. The invite page asks for a real one. */
+export function defaultName(email: string): string {
+  return email.slice(0, email.lastIndexOf('@')).replace(/[\u0000-\u001f\u007f<>]/g, '').slice(0, 80) || 'New member';
+}
+
+/**
+ * The account behind an address that has just proved it owns the inbox. Accounts are by invite
+ * only: an address with no account gets one here when, and only when, it has an invite it can
+ * still accept. Everyone else gets null.
+ */
+export async function accountFor(c: Context<AppEnv>, email: string): Promise<UserRow | null> {
+  const user = await findUserByEmail(c.env, email);
+  if (user) return user;
+  if (!(await hasOpenInvite(c.env, email))) return null;
+
+  const auth = await getAuth(c.env, c.req.url);
+  const name = defaultName(email);
+  let made = false;
+  try {
+    made = (await callAuth(() => auth.api.createAccount({ body: { email, name, instanceOwner: false }, asResponse: true }))).ok;
+  } catch (err) {
+    // Two tabs finishing at the same moment: the second finds the account the first one made.
+    console.error('[auth] could not create the invited account', err);
+  }
+  const created = await findUserByEmail(c.env, email);
+  if (!created) throw errors.internal();
+  if (made) {
+    await audit(c.env, {
+      orgId: null,
+      actorId: created.id,
+      actorLabel: created.email,
+      action: 'user.created',
+      targetType: 'user',
+      targetId: created.id,
+      summary: `Created an account for ${created.email} from an invite`,
+      ip: clientIp(c),
+    });
+  }
+  return created;
 }
 
 export type Finished = { state: 'done'; sessionId: string } | { state: 'two-step' } | { state: 'banned' };

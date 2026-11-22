@@ -141,7 +141,7 @@ const ID = /^[a-z][a-z0-9-]{1,30}$/;
 export const RESERVED_IDS = [
   'overview', 'welcome', 'modules', 'members', 'appearance', 'api-keys', 'settings', 'account',
   'users', 'audit-log', 'updates', 'email', 'core', 'auth', 'app', 'api', 'assets', 'dev', 'setup',
-  'sign-in', 'sign-up', 'invite', 'healthz', 'm',
+  'sign-in', 'sign-up', 'sign-out', 'invite', 'healthz', 'm',
   'token', 'keys', 'export', 'me', 'workspace', 'events', 'audit', 'notifications', 'search', 'jobs', 'errors',
 ];
 

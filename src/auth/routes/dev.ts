@@ -10,7 +10,7 @@ import { errors } from '../../core/errors';
 import { sameOrigin } from '../../core/guards';
 import type { AppEnv } from '../../env';
 import { isDev } from '../../env';
-import { createWorkspace, listWorkspaces, switchWorkspace } from '../service';
+import { changeMemberRole, createWorkspace, inviteMember, listInvites, listMembers, listWorkspaces, removeMember, switchWorkspace } from '../service';
 
 type Door = (c: Context<AppEnv>, body: Record<string, unknown>) => Promise<unknown>;
 
@@ -20,6 +20,11 @@ const doors: Record<string, Door> = {
   'list-workspaces': (c) => listWorkspaces(c),
   'create-workspace': (c, body) => createWorkspace(c, { name: text(body.name), slug: text(body.slug) || null }),
   'switch-workspace': (c, body) => switchWorkspace(c, text(body.workspaceId)),
+  'list-members': (c) => listMembers(c),
+  'list-invites': (c) => listInvites(c),
+  invite: (c, body) => inviteMember(c, { email: text(body.email), role: text(body.role) }),
+  'change-role': (c, body) => changeMemberRole(c, text(body.userId), text(body.role)),
+  'remove-member': (c, body) => removeMember(c, text(body.userId)),
 };
 
 export const devAuthRoutes = new Hono<AppEnv>();

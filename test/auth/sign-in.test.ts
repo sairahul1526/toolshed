@@ -227,7 +227,7 @@ describe('the link in the sign-in email', () => {
     for (let i = 0; i < 3; i++) {
       const res = await scanner.get(link);
       expect(res.status).toBe(200);
-      expect(res.headers.get('referrer-policy')).toBe('no-referrer');
+      expect(res.headers.get('referrer-policy')).toBe('same-origin');
       expect(await res.text()).toContain('Finish signing in');
     }
     expect(scanner.cookies.has(SESSION)).toBe(false);

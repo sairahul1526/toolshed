@@ -6,9 +6,11 @@
  *
  *   test.use({ storageState: ownerState });
  *
- * or asks for a page with `signedInPage(browser)`. Other people sign in with a code read from the
- * dev outbox (`signInAs`). Everything here goes through the real pages; workspaces are made
- * through `/dev/auth/*`, which runs the real service with the page's own session.
+ * or asks for a page with `signedInPage(browser)`. `signedInPage(browser, { role: 'viewer' })`
+ * gives a page signed in as an admin, member or viewer instead: the owner invites that person
+ * and they accept through the real invite page. Other people sign in with a code read from the
+ * dev outbox (`signInAs`). Everything here goes through the real pages; workspaces and invites
+ * are made through `/dev/auth/*`, which runs the real service with the page's own session.
  */
 import { resolve } from 'node:path';
 import { expect, type APIRequestContext, type Browser, type Page } from '@playwright/test';
@@ -60,6 +62,14 @@ export async function readCode(request: APIRequestContext, email: string, opts: 
     if (Date.now() > deadline) throw new Error(`No new email reached ${email}. Only people with an account get one.`);
     await new Promise((done) => setTimeout(done, 100));
   }
+}
+
+/** The path of the one-time sign-in link in the newest email to an address (newer than `after`). */
+export async function readLink(request: APIRequestContext, email: string, opts: { after?: string | null; timeoutMs?: number } = {}): Promise<string> {
+  await readCode(request, email, opts);
+  const path = (await outbox(request, email))[0]?.text?.match(/\/sign-in\/link\/[A-Za-z0-9_-]+/)?.[0];
+  if (!path) throw new Error(`The newest email to ${email} has no sign-in link in it`);
+  return path;
 }
 
 /** Type a code into the six boxes. The form sends itself after the last digit. */
@@ -122,32 +132,90 @@ export async function authDoor<T>(page: Page, door: string, body: Record<string,
   return json.result as T;
 }
 
+export type MemberRole = 'admin' | 'member' | 'viewer';
+
+/** The one person who holds each role in tests. The same person in every workspace. */
+export const ROLE_PEOPLE: Record<MemberRole, { email: string; name: string }> = {
+  admin: { email: 'admin@example.com', name: 'Adam Admin' },
+  member: { email: 'member@example.com', name: 'Mel Member' },
+  viewer: { email: 'viewer@example.com', name: 'Vic Viewer' },
+};
+
 export interface SignedInOptions {
   /**
    * A workspace other than the first one, by name. It is made if it is not there yet and becomes
    * the active one for this page only.
    */
   workspace?: string;
+  /**
+   * Sign in as the admin, member or viewer of the workspace (see `ROLE_PEOPLE`) instead of its
+   * owner. The first time, the owner invites them and they accept; after that they just sign in.
+   */
+  role?: MemberRole;
 }
 
-/**
- * A new page signed in as the owner, in its own browser context, on the dashboard. Close the
- * page's context when done (`await page.context().close()`).
- */
-export async function signedInPage(browser: Browser, opts: SignedInOptions = {}): Promise<Page> {
-  if (!opts.workspace) {
-    const page = await (await browser.newContext({ baseURL, storageState: ownerState })).newPage();
-    await page.goto('/app');
-    return page;
-  }
+async function openWorkspace(page: Page, name: string, create: boolean): Promise<void> {
+  const known = await authDoor<{ id: string; name: string }[]>(page, 'list-workspaces');
+  const found = known.find((w) => w.name === name);
+  if (found) await authDoor(page, 'switch-workspace', { workspaceId: found.id });
+  else if (create) await authDoor(page, 'create-workspace', { name });
+  else throw new Error(`${name} is not a workspace this person is in`);
+}
+
+async function ownerPage(browser: Browser, workspace?: string): Promise<Page> {
+  if (!workspace) return (await browser.newContext({ baseURL, storageState: ownerState })).newPage();
   // The active workspace belongs to the sign-in, so a second workspace gets a sign-in of its own
   // and tests that share the saved owner sign-in stay in the first one.
   const page = await (await browser.newContext({ baseURL })).newPage();
   await signInAs(page, OWNER_EMAIL);
-  const known = await authDoor<{ id: string; name: string }[]>(page, 'list-workspaces');
-  const found = known.find((w) => w.name === opts.workspace);
-  if (found) await authDoor(page, 'switch-workspace', { workspaceId: found.id });
-  else await authDoor(page, 'create-workspace', { name: opts.workspace });
+  await openWorkspace(page, workspace, true);
+  return page;
+}
+
+/** Accept an invite the way a person does: open its link, prove the inbox with a code, press Join. */
+export async function acceptInvite(page: Page, link: string, email: string, name: string): Promise<void> {
+  await page.goto(new URL(link).pathname);
+  // The invite email is already in the outbox, so the code email is the one after it.
+  const mark = await outboxMark(page.request, email);
+  await page.getByRole('button', { name: 'Email me a code' }).click();
+  await expect(page.getByRole('heading', { name: 'Check your email' })).toBeVisible();
+  await enterCode(page, await readCode(page.request, email, { after: mark }));
+  await page.waitForURL('**/invite/**');
+  const ask = page.getByLabel('Your name');
+  if (await ask.isVisible()) await ask.fill(name);
+  await page.getByRole('button', { name: 'Join workspace' }).click();
+  await page.waitForURL((url) => url.pathname.startsWith('/app'));
+}
+
+async function memberPage(browser: Browser, role: MemberRole, workspace?: string): Promise<Page> {
+  const person = ROLE_PEOPLE[role];
+  const owner = await ownerPage(browser, workspace);
+  const page = await (await browser.newContext({ baseURL })).newPage();
+  try {
+    const members = await authDoor<{ userId: string; email: string; role: string }[]>(owner, 'list-members');
+    const there = members.find((m) => m.email === person.email);
+    if (!there) {
+      const invite = await authDoor<{ link: string }>(owner, 'invite', { email: person.email, role });
+      await acceptInvite(page, invite.link, person.email, person.name);
+      return page;
+    }
+    // A test may have changed their role; put it back.
+    if (there.role !== role) await authDoor(owner, 'change-role', { userId: there.userId, role });
+  } finally {
+    await owner.context().close();
+  }
+  await signInAs(page, person.email);
+  await openWorkspace(page, workspace ?? FIRST_WORKSPACE, false);
+  return page;
+}
+
+/**
+ * A new page signed in as the owner (or, with `role`, as that workspace's admin, member or
+ * viewer), in its own browser context, on the dashboard. Close the page's context when done
+ * (`await page.context().close()`).
+ */
+export async function signedInPage(browser: Browser, opts: SignedInOptions = {}): Promise<Page> {
+  const page = opts.role ? await memberPage(browser, opts.role, opts.workspace) : await ownerPage(browser, opts.workspace);
   await page.goto('/app');
   return page;
 }
