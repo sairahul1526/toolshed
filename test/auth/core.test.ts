@@ -29,7 +29,7 @@ function probe() {
 interface Who {
   user: { id: string; email: string; isInstanceOwner: boolean } | null;
   org: { id: string; role: string } | null;
-  auth: { kind: string; scopes: string[]; keyId?: string };
+  auth: { kind: string; scopes: string[]; keyId?: string; userId?: string };
   session: { id: string; impersonatedBy: string | null } | null;
 }
 
@@ -189,12 +189,15 @@ describe('loadAuth', () => {
     const t = createTestEnv();
     await createTestSession(t.env);
     const spy = vi.spyOn(apikeys, 'verifyApiKey').mockImplementation(async (_env, token) =>
-      token === 'ts_good' ? ({ orgId: 'org_test', keyId: 'key_1', name: 'CI', scopes: ['links:read'], role: 'member' } as apikeys.VerifiedKey) : null,
+      token === 'ts_good'
+        ? ({ orgId: 'org_test', keyId: 'key_1', name: 'CI', scopes: ['links:read'], role: 'member', lastUsedAt: Date.now() } as apikeys.VerifiedKey)
+        : null,
     );
     try {
       const app = probe();
       const { result, queries } = await countQueries(t.env, () => who(app, t.env, { authorization: 'Bearer ts_good' }));
-      expect(queries).toHaveLength(1);
+      // The workspace, and one count against the key's own rate limit.
+      expect(queries).toHaveLength(2);
       expect(result.body.user).toBeNull();
       expect(result.body.org).toMatchObject({ id: 'org_test', role: 'member' });
       expect(result.body.auth).toEqual({ kind: 'apikey', scopes: ['links:read'], keyId: 'key_1' });
@@ -208,7 +211,7 @@ describe('loadAuth', () => {
     const t = createTestEnv();
     const s = await createTestSession(t.env);
     const spy = vi.spyOn(jwt, 'verifyJwt').mockImplementation(async (_env, token) =>
-      token === 'aaa.bbb.ccc' ? ({ sub: 'usr_1', orgId: 'org_test', role: 'viewer', scopes: ['forms:read'], exp: 0 } as jwt.JwtClaims) : null,
+      token === 'aaa.bbb.ccc' ? ({ sub: 'key_1', orgId: 'org_test', role: 'viewer', scopes: ['forms:read'], kind: 'key', exp: 0 } as jwt.JwtClaims) : null,
     );
     try {
       const app = probe();
@@ -224,6 +227,72 @@ describe('loadAuth', () => {
     } finally {
       spy.mockRestore();
     }
+  });
+});
+
+describe('loadAuth with real keys and tokens', () => {
+  it('lets a real key in, records its use, and stops it the moment it is revoked', async () => {
+    const t = createTestEnv();
+    const s = await createTestSession(t.env, { role: 'admin' });
+    const actor = { orgId: s.org.id, userId: s.user.id, role: 'admin' as const, label: s.user.email, via: 'session' as const };
+    const made = await apikeys.createApiKey(t.env, actor, { name: 'CI', scopes: ['*'] });
+    const app = probe();
+    const first = await app.request('/who', { headers: { authorization: `Bearer ${made.secret}`, 'cf-connecting-ip': '203.0.113.7' } }, t.env);
+    expect(((await first.json()) as Who).auth).toEqual({ kind: 'apikey', scopes: ['*'], keyId: made.key.id, userId: s.user.id });
+    const row = t.sqlite.prepare('SELECT last_used_at, last_used_ip FROM api_keys WHERE id = ?').get(made.key.id) as { last_used_at: number | null; last_used_ip: string | null };
+    expect(row.last_used_at).toBeGreaterThan(0);
+    expect(row.last_used_ip).toBe('203.0.113.7');
+
+    await apikeys.revokeApiKey(t.env, actor, made.key.id);
+    expect((await who(app, t.env, { authorization: `Bearer ${made.secret}` })).body.auth.kind).toBe('anon');
+  });
+
+  it('answers 429 once one key has made too many calls', async () => {
+    const t = createTestEnv();
+    const s = await createTestSession(t.env, { role: 'admin' });
+    const made = await apikeys.createApiKey(t.env, { orgId: s.org.id, userId: s.user.id, role: 'admin', via: 'session' }, { name: 'Busy', scopes: ['*'] });
+    const windowStart = Math.floor(Date.now() / 60_000) * 60_000;
+    t.sqlite.prepare('INSERT INTO rate_limits (key, window_start, count) VALUES (?, ?, ?)').run(`apikey:${made.key.id}`, windowStart, apikeys.API_KEY_RATE_LIMIT.limit);
+    const app = probe();
+    app.onError((err, c) => c.json({ code: (err as { code?: string }).code }, ((err as { status?: number }).status ?? 500) as 429));
+    const res = await app.request('/who', { headers: { authorization: `Bearer ${made.secret}` } }, t.env);
+    expect(res.status).toBe(429);
+    // A token made from that key counts against the same limit; one a person asked for does not.
+    const fromKey = await jwt.signJwt(t.env, { sub: made.key.id, orgId: s.org.id, role: 'admin', scopes: ['*'], kind: 'key' });
+    expect((await app.request('/who', { headers: { authorization: `Bearer ${fromKey.token}` } }, t.env)).status).toBe(429);
+    const fromPerson = await jwt.signJwt(t.env, { sub: s.user.id, orgId: s.org.id, role: 'admin', scopes: ['*'] });
+    expect((await app.request('/who', { headers: { authorization: `Bearer ${fromPerson.token}` } }, t.env)).status).toBe(200);
+  });
+
+  it('accepts a token made for this address only', async () => {
+    const t = createTestEnv();
+    const s = await createTestSession(t.env, { role: 'member' });
+    const { token } = await jwt.signJwt(t.env, { sub: s.user.id, orgId: s.org.id, role: 'member', scopes: ['links:read'] });
+    const app = probe();
+    const ok = await who(app, t.env, { authorization: `Bearer ${token}` });
+    expect(ok.body.auth).toEqual({ kind: 'jwt', scopes: ['links:read'], userId: s.user.id });
+    expect(ok.body.org).toMatchObject({ id: s.org.id, role: 'member' });
+
+    const elsewhere = createTestEnv({ APP_URL: 'http://other.example.com' });
+    await createTestSession(elsewhere.env, { role: 'member' });
+    expect((await who(probe(), elsewhere.env, { authorization: `Bearer ${token}` })).body.auth.kind).toBe('anon');
+  });
+
+  it('slows down an address that keeps sending keys and tokens that are not valid', async () => {
+    const t = createTestEnv();
+    const app = probe();
+    app.onError((err, c) => {
+      const e = err as { status?: number; headers?: Record<string, string> };
+      return c.json({}, (e.status ?? 500) as 429, e.headers ?? {});
+    });
+    const bad = { authorization: 'Bearer ts_live_not-a-real-key', 'cf-connecting-ip': '203.0.113.50' };
+    for (let i = 0; i < 30; i++) expect((await app.request('/who', { headers: bad }, t.env)).status).toBe(200);
+    const blocked = await app.request('/who', { headers: bad }, t.env);
+    expect(blocked.status).toBe(429);
+    expect(Number(blocked.headers.get('retry-after'))).toBeGreaterThan(0);
+    // Someone else, and a browser with a cookie, are not affected.
+    expect((await app.request('/who', { headers: { ...bad, 'cf-connecting-ip': '203.0.113.51' } }, t.env)).status).toBe(200);
+    expect((await app.request('/who', { headers: { 'cf-connecting-ip': '203.0.113.50' } }, t.env)).status).toBe(200);
   });
 });
 

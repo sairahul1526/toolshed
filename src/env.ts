@@ -64,6 +64,8 @@ export interface AuthInfo {
   scopes: string[];
   /** Set for API keys. */
   keyId?: string;
+  /** The member behind a personal key, or behind a token a signed-in person asked for. Not set for service keys. */
+  userId?: string;
 }
 
 export interface Vars {

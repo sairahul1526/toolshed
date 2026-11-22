@@ -283,6 +283,18 @@ describe('sign out and sign-up', () => {
     expect((await b.get('/sign-in')).status).toBe(200);
   });
 
+  it('also signs out from the address the dashboard form posts to', async () => {
+    const b = new Browser(app, env);
+    await signInByCode(b, env, EMAIL);
+    const cross = await app.request('/api/auth/sign-out', { method: 'POST', headers: { ...b.headers(), origin: 'https://evil.example' } }, env);
+    expect(cross.status).toBe(403);
+    expect(await sessions()).toBe(1);
+    const out = await b.post('/api/auth/sign-out');
+    expect(out.status).toBe(303);
+    expect(out.headers.get('location')).toBe('/sign-in');
+    expect(await sessions()).toBe(0);
+  });
+
   it('needs a same-site post to sign out', async () => {
     const b = new Browser(app, env);
     await signInByCode(b, env, EMAIL);
