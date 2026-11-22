@@ -1,0 +1,30 @@
+/* Public share pages only: a wider page, the header, and the chart styles the dashboard gets from toolshed.css. */
+body.pub:has(.an-pub) { justify-content: flex-start; }
+.an-pw { display: flex; flex-direction: column; gap: 16px; }
+.pub-wrap.wide { width: min(1040px, 100%); }
+.an-pub {
+  --chart-line: var(--fg); --chart-fill: color-mix(in srgb, var(--fg) 7%, transparent); --grid: color-mix(in srgb, var(--fg) 9%, transparent); --accent-ink: var(--at);
+  display: flex; flex-direction: column; gap: 4px;
+}
+.an-head { margin: 0 0 12px; }
+.an-head h1 { margin: 0; font-size: 24px; line-height: 1.2; font-weight: 600; letter-spacing: -0.02em; overflow-wrap: anywhere; }
+.an-head p { margin: 4px 0 0; color: var(--muted); display: flex; flex-wrap: wrap; gap: 4px 14px; overflow-wrap: anywhere; }
+.an-now::before { content: ""; display: inline-block; width: 8px; height: 8px; margin-right: 6px; border-radius: 50%; background: var(--at); }
+.an-framed .an-head h1 { font-size: 18px; }
+
+.chart-fig { margin: 0; padding: 4px 16px 12px; }
+.chart-box { display: grid; grid-template-columns: auto minmax(0, 1fr); grid-template-rows: 200px auto; column-gap: 10px; }
+.chart-y { display: flex; flex-direction: column; justify-content: space-between; align-items: flex-end; font-size: 11px; line-height: 1; color: var(--muted); grid-column: 1; grid-row: 1; }
+.chart-svg { grid-column: 2; grid-row: 1; width: 100%; height: 200px; display: block; overflow: visible; }
+.chart-x { grid-column: 2; grid-row: 2; display: flex; justify-content: space-between; gap: 8px; padding-top: 8px; font-size: 11px; color: var(--muted); }
+.chart-svg .grid { stroke: var(--grid); stroke-width: 1; vector-effect: non-scaling-stroke; }
+.chart-svg .line { fill: none; stroke-width: 2; stroke-linejoin: round; stroke-linecap: round; vector-effect: non-scaling-stroke; }
+.chart-svg .line.s0 { stroke: var(--chart-line); }
+.chart-svg .line.s1 { stroke: var(--accent-ink); }
+.chart-svg .area { fill: var(--chart-fill); }
+.chart-svg .bar { fill: var(--chart-line); }
+.legend { display: flex; gap: 16px; padding: 10px 0 0; color: var(--muted); font-size: 12.5px; }
+.legend i { display: inline-block; width: 8px; height: 8px; border-radius: 2px; margin-right: 6px; }
+.sw.s0 { background: var(--chart-line); }
+.sw.s1 { background: var(--accent-ink); }
+@media (max-width: 480px) { body.pub { padding: 20px 12px 40px; } .chart-fig { padding: 4px 10px 10px; } }
