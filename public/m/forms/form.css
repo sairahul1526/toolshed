@@ -1,0 +1,51 @@
+/* Toolshed Forms, public pages. Colours come from the public.css tokens so presets, dark mode and per-form themes all apply. */
+.fm-root { width: 100%; }
+.fm-root.is-embed { padding: 0; }
+.fm-card { position: relative; }
+.fm-cover { display: block; width: 100%; max-height: 180px; object-fit: cover; border-radius: 12px; margin-bottom: 16px; }
+.fm-logo { display: block; max-height: 44px; max-width: 180px; margin-bottom: 14px; }
+.fm-title { font-size: 1.5rem; line-height: 1.25; margin: 0 0 8px; }
+.fm-page-title { font-size: 1.125rem; margin: 0 0 12px; }
+.fm-intro p { margin: 0 0 16px; color: var(--muted); }
+.fm-banner { background: color-mix(in srgb, var(--err) 12%, transparent); color: var(--err); border: 1px solid color-mix(in srgb, var(--err) 40%, transparent); border-radius: 10px; padding: 10px 12px; margin: 0 0 16px; }
+.fm-partial { margin-bottom: 12px; }
+.fm-trap { position: absolute; left: -9999px; width: 1px; height: 1px; overflow: hidden; }
+.fm-page[hidden], .fm-field[hidden], [data-done][hidden], .fm-form-error[hidden], .pub-error[hidden] { display: none; }
+.fm-field { margin: 0 0 18px; }
+.fm-field > label, .fm-set > legend { display: block; font-weight: 600; margin-bottom: 6px; padding: 0; }
+.fm-field .opt { font-weight: 400; color: var(--muted); }
+.fm-set { border: 0; padding: 0; margin: 0; min-width: 0; }
+.fm-section { font-size: 1.0625rem; margin: 22px 0 8px; padding-top: 14px; border-top: 1px solid var(--line); }
+.fm-statement { margin: 0 0 18px; }
+.fm-statement p { margin: 0 0 4px; }
+.fm-choices { display: grid; gap: 8px; }
+.fm-choice { display: flex; gap: 10px; align-items: flex-start; padding: 10px 12px; border: 1px solid var(--line); border-radius: 10px; cursor: pointer; background: var(--card); }
+.fm-choice input { margin-top: 3px; accent-color: var(--ac); }
+.fm-choice:has(input:checked) { border-color: var(--ac); box-shadow: 0 0 0 1px var(--ac); }
+.fm-choice:has(input:focus-visible), .fm-pip:has(input:focus-visible) { outline: 2px solid var(--ac); outline-offset: 2px; }
+.fm-scale { display: flex; flex-wrap: wrap; gap: 6px; }
+.fm-pip { position: relative; }
+.fm-pip input { position: absolute; opacity: 0; inset: 0; width: 100%; height: 100%; margin: 0; cursor: pointer; }
+.fm-pip span { display: grid; place-items: center; min-width: 44px; height: 44px; padding: 0 8px; border: 1px solid var(--line); border-radius: 10px; background: var(--card); font-weight: 600; }
+.fm-pip input:checked + span { background: var(--ac); color: var(--on); border-color: var(--ac); }
+.fm-ends { display: flex; justify-content: space-between; color: var(--muted); font-size: .8125rem; margin-top: 6px; }
+.fm-field.has-error .pub-input, .fm-field.has-error .fm-choice, .fm-field.has-error .fm-pip span { border-color: var(--err); }
+.fm-files { list-style: none; margin: 8px 0 0; padding: 0; display: grid; gap: 6px; }
+.fm-files li { display: flex; justify-content: space-between; gap: 8px; font-size: .9375rem; }
+.fm-files .fm-busy { color: var(--muted); }
+.fm-link { background: none; border: 0; padding: 0; color: var(--ac); text-decoration: underline; cursor: pointer; font: inherit; }
+.fm-progress { display: flex; align-items: center; gap: 10px; margin: 0 0 16px; color: var(--muted); font-size: .875rem; }
+.fm-progress[hidden] { display: none; }
+.fm-bar { flex: 1; height: 6px; border-radius: 3px; background: var(--line); overflow: hidden; }
+.fm-bar i { display: block; height: 100%; width: 0; background: var(--ac); transition: width .2s ease; }
+.fm-actions { display: flex; gap: 10px; justify-content: space-between; margin-top: 8px; }
+.fm-actions [hidden] { display: none; }
+.fm-actions .pub-btn:last-child { margin-left: auto; }
+.fm-form-error { margin-top: 12px; }
+.fm-ending { text-align: left; }
+.fm.is-ready .fm-nojs { display: none; }
+@media (max-width: 480px) {
+  .fm-title { font-size: 1.3125rem; }
+  .fm-pip span { min-width: 40px; height: 44px; }
+}
+@media (prefers-reduced-motion: reduce) { .fm-bar i { transition: none; } }

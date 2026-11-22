@@ -13,8 +13,13 @@ import { matchesEvent } from './catalog';
 import { enqueueDelivery } from './delivery';
 import { buildBody } from './payload';
 
-/** Queue messages are limited to 128 KB, so a large `data` is dropped here. It would be cut at 256 KB later anyway. */
+/**
+ * Queue messages are limited to 128 KB, so a large `data` is dropped here. It would be cut at 256 KB later
+ * anyway. Counted in UTF-8 bytes, which is what the queue counts (a character can take up to 4), with
+ * 28 KB left for the rest of the job.
+ */
 const MAX_QUEUED_DATA_BYTES = 100 * 1024;
+const encoder = new TextEncoder();
 
 export interface FanoutJob {
   /** Also the `webhook-id` of every delivery, so a repeated job cannot make a second delivery. */
@@ -36,7 +41,7 @@ export async function queueWebhooks(env: Env, event: AppEvent): Promise<void> {
       orgId: event.orgId,
       type: `${event.module}.${event.name}`,
       subject: event.subject ?? null,
-      data: JSON.stringify(data).length > MAX_QUEUED_DATA_BYTES ? { truncated: true } : data,
+      data: encoder.encode(JSON.stringify(data)).byteLength > MAX_QUEUED_DATA_BYTES ? { truncated: true } : data,
       at: event.at ?? Date.now(),
     };
     await enqueue(env, 'core.webhook.fanout', job);

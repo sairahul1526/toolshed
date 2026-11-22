@@ -1,0 +1,28 @@
+import { defineErrors } from '../../core/errors';
+
+export const fbErrors = defineErrors('feedback', {
+  portal_missing: { status: 404, message: 'There is no feedback portal here.' },
+  slug_taken: { status: 409, message: 'That address is already used by another portal on this install. Pick another.' },
+  slug_invalid: { status: 422, message: 'Use 3 to 40 lowercase letters, numbers or dashes.' },
+  board_missing: { status: 404, message: 'We couldn’t find that board.' },
+  post_missing: { status: 404, message: 'We couldn’t find that post. It may have been merged or removed.' },
+  status_missing: { status: 404, message: 'We couldn’t find that status.' },
+  entry_missing: { status: 404, message: 'We couldn’t find that changelog entry.' },
+  person_missing: { status: 404, message: 'We couldn’t find that person.' },
+  voting_off: { status: 409, message: 'Voting is turned off here.' },
+  posting_off: { status: 409, message: 'New posts are turned off on this board.' },
+  vote_limit: { status: 409, message: 'You have used all your votes. Remove a vote from another post first.' },
+  sign_in_needed: { status: 401, message: 'Sign in with your email to do that.' },
+  code_invalid: { status: 422, message: 'That code isn’t right. Check it and try again.' },
+  code_expired: { status: 422, message: 'That code has expired. Ask for a new one.' },
+  code_attempts: { status: 429, message: 'Too many wrong codes. Ask for a new one.' },
+  email_invalid: { status: 422, message: 'Enter a valid email address.' },
+  blocked: { status: 403, message: 'You can’t take part in this portal.' },
+  spam_suspected: { status: 422, message: 'That looked automated. Wait a few seconds and send it again.' },
+  merge_invalid: { status: 422, message: 'Pick a different post to merge into.' },
+  image_invalid: { status: 422, message: 'Upload a PNG, JPEG, GIF or WebP image under 2 MB.' },
+  import_invalid: { status: 422, message: 'We couldn’t read that file.' },
+  private_board: { status: 403, message: 'This board is only open to people who have signed in.' },
+  status_in_use: { status: 409, message: 'Posts still use that status. Move them first.' },
+  portal_exists: { status: 409, message: 'This workspace already has a portal.' },
+});

@@ -122,7 +122,8 @@ describe('the 30 day clean-up', () => {
     const [old] = await makeDeliveries(t, {}, NOW - 31 * DAY);
     const [edge] = await makeDeliveries(t, {}, NOW - 29 * DAY);
     const [fresh] = await makeDeliveries(t, {}, NOW - DAY);
-    for (const id of [old, edge, fresh]) await deliverWebhook(t.env, id!, NOW - 40 * DAY);
+    // Each try is made when its delivery was made, as it would be for real.
+    for (const [id, age] of [[old, 31], [edge, 29], [fresh, 1]] as const) await deliverWebhook(t.env, id!, NOW - age * DAY);
     expect(rows(t, 'SELECT id FROM webhook_attempts')).toHaveLength(3);
 
     expect(await purgeOldDeliveries(t.env, NOW)).toBe(1);

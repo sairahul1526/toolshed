@@ -30,9 +30,9 @@ Choose Send test on an endpoint. Toolshed sends a sample event and shows you wha
 
 ### Pause, turn off and turn on
 
-- Pause an endpoint to stop sending for a while. Events that happen while it is paused are not sent later, and messages that were still waiting are marked failed.
+- Pause an endpoint to stop sending for a while. Events that happen while it is paused are never delivered later, not even when you turn the endpoint back on. A message that was waiting to be tried again is marked failed when its turn comes and the endpoint is still paused, and it is not retried after that. If you turn the endpoint on before its turn, it is sent as planned. You can send a failed message again from the delivery log once the endpoint is on.
 - Toolshed turns an endpoint off by itself if it cannot get through for 3 days in a row, or if the receiver answers that it is gone (`410 Gone`). You get a notification and the reason is shown on the endpoint.
-- To turn it back on, fix the receiver, then set the endpoint to active. That clears the failure count.
+- To turn it back on, fix the receiver, then set the endpoint to active. That clears the failure count. Changing the address clears it too.
 
 ### Change the secret
 
@@ -80,7 +80,7 @@ These headers are always set:
 | `webhook-timestamp` | When this try was sent, in whole seconds since 1970 |
 | `webhook-signature` | One or more signatures, separated by spaces. Each looks like `v1,<base64>` |
 
-You can add up to 10 headers of your own to an endpoint, for example an `Authorization` header your receiver expects. Their values are stored encrypted and are never shown again. These names are not allowed because Toolshed sets them: `host`, `content-length`, `content-type`, `content-encoding`, `transfer-encoding`, `connection`, `upgrade`, `te`, `trailer`, `keep-alive`, `expect`, `user-agent`, `cookie`, `set-cookie`, `via`, `forwarded`, `origin`, `referer`, and anything starting with `webhook-`, `cf-`, `sec-`, `proxy-`, `x-forwarded-` or `x-real-`.
+You can add up to 10 headers of your own to an endpoint, for example an `Authorization` header your receiver expects. Their values are stored encrypted and are never shown again. A value must be 1 to 1,024 characters on one line, using only Latin characters (up to `U+00FF`): emoji and other scripts cannot be sent in a header and are refused when you save. If the stored headers can no longer be read (the install's `AUTH_SECRET` changed), the try fails with `headers_unreadable` instead of going out without them. Save the headers again to fix it. These names are not allowed because Toolshed sets them: `host`, `content-length`, `content-type`, `content-encoding`, `transfer-encoding`, `connection`, `upgrade`, `te`, `trailer`, `keep-alive`, `expect`, `user-agent`, `cookie`, `set-cookie`, `via`, `forwarded`, `origin`, `referer`, and anything starting with `webhook-`, `cf-`, `sec-`, `proxy-`, `x-forwarded-` or `x-real-`.
 
 ### Check the signature
 
@@ -167,9 +167,9 @@ A `410 Gone` answer means "stop sending". Toolshed turns the endpoint off at onc
 
 ### When an endpoint is turned off
 
-Each failed try is checked against the endpoint's streak. If the endpoint has had no success for 72 hours, counting from its first failure in this streak, Toolshed sets it to `disabled`, writes the reason on it, notifies the workspace's admins and adds an entry to the audit log. One success ends the streak. A 410 turns it off straight away.
+Each failed try is checked against the endpoint's streak. If the endpoint has had no success for 72 hours, counting from its first failure in this streak, Toolshed sets it to `disabled`, writes the reason on it, notifies the workspace's admins and adds an entry to the audit log. One success ends the streak. A failure that comes more than 31 hours after the previous one (a little longer than the whole retry schedule) starts a new streak, so a single failure after a quiet week never turns an endpoint off. A 410 turns it off straight away.
 
-A disabled endpoint receives nothing, and what was still waiting for it is marked failed. Turning it back on is up to a person. Setting the status back to `active` clears the reason and the streak.
+A disabled endpoint receives nothing, and what was still waiting for it is marked failed. Turning it back on is up to a person. Setting the status back to `active` clears the reason and the streak. So does changing the address, and so does turning a paused endpoint back on.
 
 ### Send again
 
@@ -189,12 +189,18 @@ A finished delivery (success or failed) can be sent again from the log or the AP
 | Message size | 256 KB, then `data` is dropped |
 | Time to answer | 10 seconds |
 | Redirects | Not followed |
-| Address | `https://` only. Private, local and internal addresses are refused when you save and again on every send |
-| Delivery log | 30 days |
+| Address | `https://` only. Private, local and internal addresses, and the address of this Toolshed install itself, are refused when you save and again on every send |
+| Delivery log | 30 days, cleaned up every hour |
 | Making endpoints | 20 an hour for each workspace |
 | Test events | 20 every 10 minutes for each workspace |
 | Sending again | 60 every 10 minutes for each workspace |
 | New secrets | 10 an hour for each workspace |
+
+### Addresses Toolshed will not send to
+
+An address is refused when it is not `https://`, when it carries a user name or password, or when it is local or private (`localhost`, `10.x.x.x`, `192.168.x.x`, `169.254.x.x`, names ending in `.local` or `.internal`, and so on). The address of this install is refused too, which is the host of `APP_URL`, because an event that sends a webhook to its own install could raise another event, and so on without end.
+
+These checks read the text of the address. Toolshed does not look the name up in DNS, so a public name that points at a private address, or a second name that points at this install, is not caught. That makes no difference on Cloudflare, whose Workers cannot reach private networks. If you run Toolshed inside a private network, block those ranges at the network as well, for example with a firewall rule on the machine that runs it.
 
 ### Events
 
@@ -261,7 +267,7 @@ These codes are in addition to the ones in [errors.md](./errors.md).
 | `webhooks.endpoint_disabled` | 409 | We stopped sending to this endpoint because it kept failing. Turn it back on first, then try again. | Fix the receiver, set the endpoint to active, then try again. |
 | `webhooks.delivery_pending` | 409 | This delivery is still being tried. Wait until it succeeds or fails, then send it again. | Wait for the delivery to finish. |
 
-Errors recorded on a try (`error_code` in the log) are `http_<status>` for any non-2xx answer, `fetch_timeout`, `fetch_failed`, `fetch_too_large`, `url_not_allowed`, `redirect_not_followed`, `secret_unreadable`, and `endpoint_paused`, `endpoint_disabled` or `endpoint_deleted` for a delivery that was stopped before sending.
+Errors recorded on a try (`error_code` in the log) are `http_<status>` for any non-2xx answer, `fetch_timeout`, `fetch_failed`, `fetch_too_large`, `url_not_allowed`, `redirect_not_followed`, `secret_unreadable`, `headers_unreadable`, and `endpoint_paused`, `endpoint_disabled` or `endpoint_deleted` for a delivery that was stopped before sending. A test whose try was cut short, for example because the server restarted, is closed as `test_interrupted` after about 15 minutes.
 
 ### For module authors
 

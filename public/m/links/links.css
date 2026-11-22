@@ -1,0 +1,63 @@
+/* Links dashboard. Uses the tokens from /assets/toolshed.css, so dark mode and accents follow the workspace. */
+.lk-sections { display: flex; flex-direction: column; gap: 16px; margin-bottom: 16px; }
+.lk-form-page { display: flex; flex-direction: column; gap: 16px; }
+.lk-gap { margin-top: 16px; }
+.lk-pad { margin-top: 16px; }
+.lk-small { font-size: 13px; margin: 0; }
+.lk-spacer { flex: 1; }
+.lk-back { margin: -8px 0 16px; font-size: 14px; }
+
+.lk-quick { display: flex; gap: 8px; align-items: center; flex-wrap: wrap; }
+.lk-quick > .input-group, .lk-quick > .input, .lk-quick > div { flex: 1 1 220px; min-width: 0; }
+.lk-quick > .muted { white-space: nowrap; }
+
+.lk-ready { display: flex; gap: 24px; align-items: flex-start; justify-content: space-between; flex-wrap: wrap; }
+.lk-ready-main { flex: 1 1 280px; min-width: 0; display: flex; flex-direction: column; gap: 16px; }
+.lk-actions { display: flex; gap: 8px; flex-wrap: wrap; align-items: center; }
+.lk-qr { width: 160px; height: 160px; flex: none; border: 1px solid var(--border); border-radius: var(--radius); background: var(--surface-2); image-rendering: pixelated; }
+.lk-color { padding: 2px; height: 40px; width: 100%; min-width: 64px; cursor: pointer; }
+
+.lk-cell { display: flex; flex-direction: column; gap: 2px; min-width: 0; }
+.lk-name { font-weight: 600; color: var(--text); text-decoration: none; overflow-wrap: anywhere; }
+.lk-name:hover { text-decoration: underline; }
+.lk-short { font-size: 13px; }
+.lk-dest { font-size: 13px; max-width: 46ch; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.lk-tags { display: inline-flex; gap: 4px; flex-wrap: wrap; }
+.lk-row-actions { display: inline-flex; gap: 4px; align-items: center; justify-content: flex-end; flex-wrap: wrap; }
+
+.lk-bulk { display: flex; flex-direction: column; gap: 12px; }
+.lk-bulkbar { display: flex; gap: 8px; align-items: center; flex-wrap: wrap; padding: 8px 12px; border: 1px solid var(--border); border-radius: var(--radius); background: var(--surface); }
+.lk-all { display: inline-flex; gap: 8px; align-items: center; font-size: 14px; margin-right: 8px; }
+.lk-all input, input[data-select-row] { width: 18px; height: 18px; accent-color: var(--primary); }
+.lk-bulk-tag { display: inline-flex; gap: 4px; align-items: center; }
+.lk-bulk-tag .input { width: 140px; min-height: 32px; }
+.lk-more { display: flex; gap: 12px; align-items: center; margin-top: 12px; }
+
+.lk-month { display: flex; gap: 16px; align-items: center; flex-wrap: wrap; margin-top: 16px; }
+.lk-month-chart { width: 160px; height: 32px; }
+.lk-month-chart .spark { width: 100%; height: 100%; }
+
+.lk-range { display: inline-flex; gap: 4px; }
+.lk-range a[aria-current="true"] { background: var(--surface-3); border-color: var(--border-strong); }
+.lk-panels { margin: 16px 0; align-items: start; }
+
+.lk-rule { display: grid; grid-template-columns: 160px 1fr 1fr; gap: 12px; padding-bottom: 12px; border-bottom: 1px solid var(--border); }
+.lk-rule:last-of-type { border-bottom: 0; padding-bottom: 0; }
+
+.lk-blocks { list-style: none; margin: 0 0 16px; padding: 0; display: flex; flex-direction: column; gap: 12px; }
+.lk-block { border: 1px solid var(--border); border-radius: var(--radius); padding: 12px; background: var(--surface-2); }
+.lk-block-head { display: flex; justify-content: space-between; gap: 12px; margin-bottom: 8px; font-size: 14px; flex-wrap: wrap; }
+.lk-block-actions { display: flex; gap: 8px; align-items: center; flex-wrap: wrap; margin-top: 12px; }
+.lk-add { display: flex; flex-direction: column; gap: 12px; border-top: 1px solid var(--border); padding-top: 16px; }
+.lk-add h3 { margin: 0; font-size: 15px; }
+
+.lk-chips { list-style: none; margin: 16px 0 0; padding: 0; display: flex; gap: 8px; flex-wrap: wrap; }
+.lk-chips .chip { display: inline-flex; gap: 6px; align-items: center; padding: 4px 4px 4px 10px; border: 1px solid var(--border); border-radius: 999px; background: var(--surface-2); }
+.lk-folders { list-style: none; margin: 16px 0 0; padding: 0; display: flex; flex-direction: column; gap: 8px; }
+
+@media (max-width: 760px) {
+  .lk-rule { grid-template-columns: 1fr; }
+  .lk-qr { width: 128px; height: 128px; }
+  .lk-bulk-tag .input { width: 110px; }
+  .lk-dest { max-width: 100%; white-space: normal; overflow-wrap: anywhere; }
+}
