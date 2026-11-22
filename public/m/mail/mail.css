@@ -1,0 +1,52 @@
+/* Mail dashboard. Uses the tokens from /assets/toolshed.css, so dark mode and accents follow the workspace. */
+.ml-gap { margin-top: 16px; }
+.ml-small { font-size: 13px; margin: 0; }
+.ml-plain { margin: 0; padding-left: 18px; display: flex; flex-direction: column; gap: 6px; }
+.ml-actions { display: flex; gap: 8px; flex-wrap: wrap; align-items: center; }
+.ml-actions form { margin: 0; }
+.ml-stack { display: flex; flex-direction: column; gap: 12px; }
+.ml-form-col { display: flex; flex-direction: column; gap: 16px; max-width: 720px; }
+.ml-name { font-weight: 600; color: var(--text); text-decoration: none; overflow-wrap: anywhere; }
+.ml-name:hover { text-decoration: underline; }
+.ml-url { font-size: 13px; overflow-wrap: anywhere; }
+.chip { display: inline-block; padding: 2px 8px; margin: 0 4px 4px 0; border: 1px solid var(--border); border-radius: 999px; font-size: 12px; background: var(--surface-2); color: var(--text); text-decoration: none; }
+.chip.is-on { background: var(--accent-soft); border-color: var(--accent); }
+
+.ml-filter { display: flex; gap: 8px; flex-wrap: wrap; margin: 16px 0 12px; }
+.ml-filter .chip { padding: 6px 12px; font-size: 14px; }
+.ml-filterbar { display: flex; gap: 8px; flex-wrap: wrap; align-items: end; margin-bottom: 12px; }
+.ml-filterbar > * { min-width: 0; }
+
+.ml-cards { display: grid; grid-template-columns: repeat(auto-fill, minmax(300px, 1fr)); gap: 16px; align-items: start; }
+.ml-details { margin: 12px 0 0; }
+.ml-details summary { cursor: pointer; font-size: 14px; }
+
+.ml-steps { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 16px; }
+.ml-steps li { display: flex; gap: 12px; align-items: center; flex-wrap: wrap; }
+.ml-steps li > div { flex: 1 1 220px; min-width: 0; }
+.ml-steps p { margin: 2px 0 0; }
+.ml-step-n { flex: none; width: 28px; height: 28px; border-radius: 50%; display: grid; place-items: center; border: 1px solid var(--border-strong); font-size: 14px; font-weight: 600; }
+.ml-steps .is-done .ml-step-n { background: var(--ok-soft); border-color: var(--ok); color: var(--ok); }
+
+.ml-editor { display: grid; grid-template-columns: minmax(0, 1fr) 340px; gap: 16px; align-items: start; }
+.ml-form-col .ml-body, textarea.ml-body { font-family: var(--font-mono); font-size: 14px; line-height: 1.5; min-height: 280px; resize: vertical; }
+.ml-toolbar { display: flex; gap: 6px; flex-wrap: wrap; margin-bottom: 8px; }
+.ml-side { display: flex; flex-direction: column; gap: 16px; position: sticky; top: 16px; min-width: 0; }
+.ml-check { list-style: none; margin: 0 0 12px; padding: 0; display: flex; flex-direction: column; gap: 12px; }
+.ml-check li { display: flex; gap: 10px; align-items: flex-start; }
+.ml-check li > div { min-width: 0; }
+.ml-check p { margin: 2px 0 0; }
+
+.ml-rules { border: 0; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 12px; }
+.ml-rules legend { font-weight: 600; font-size: 14px; padding: 0 0 8px; }
+.ml-rule { display: grid; grid-template-columns: minmax(160px, 260px) 1fr; gap: 12px; }
+.ml-step .field { margin-bottom: 12px; }
+
+@media (max-width: 900px) {
+  .ml-editor { grid-template-columns: minmax(0, 1fr); }
+  .ml-side { position: static; }
+}
+@media (max-width: 560px) {
+  .ml-rule { grid-template-columns: minmax(0, 1fr); }
+  .ml-cards { grid-template-columns: minmax(0, 1fr); }
+}

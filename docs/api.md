@@ -83,6 +83,10 @@ Revoking cannot be undone. A token made from a revoked key keeps working until i
 
 A workspace can have 250 working keys and 50 service accounts.
 
+## Webhooks
+
+Toolshed can send a signed message to your own address whenever something happens, such as a form being submitted. Admins set the endpoints up with `/api/v1/webhooks` (a dashboard screen is on the way). A key needs `webhooks:read` to look and `webhooks:write` to change. Showing or replacing a signing secret needs a signed-in admin. Signatures, retries, the delivery log and every route are in [webhooks.md](./webhooks.md).
+
 ## Errors
 
 Every error has the same shape. `code` is stable, so match on it. `message` is for people. Quote `requestId` when you ask for help. `fields` is there when one part of your input was wrong.
@@ -100,9 +104,9 @@ Every error has the same shape. `code` is stable, so match on it. `message` is f
 |---|---|
 | 400 | `bad_request` |
 | 401 | `unauthorized` |
-| 403 | `forbidden`, `keys.session_required`, `keys.role_too_high`, `token.scope_too_wide`, `token.role_too_high`, `token.not_renewable` |
+| 403 | `forbidden`, `webhooks.session_required`, `keys.session_required`, `keys.role_too_high`, `token.scope_too_wide`, `token.role_too_high`, `token.not_renewable` |
 | 404 | `not_found`, `keys.service_account_not_found` |
-| 409 | `conflict`, `keys.revoked`, `keys.expired`, `keys.already_rotated`, `keys.too_many`, `keys.name_taken` |
+| 409 | `conflict`, `webhooks.too_many`, `webhooks.endpoint_disabled`, `webhooks.delivery_pending`, `keys.revoked`, `keys.expired`, `keys.already_rotated`, `keys.too_many`, `keys.name_taken` |
 | 422 | `validation_failed`, `keys.unknown_scope` |
 | 429 | `rate_limited` |
 
