@@ -1,12 +1,14 @@
 /**
  * `loadAuth` answers "who is asking?" for every request that may need to know. It fills `user`,
  * `org` and `auth` and lets the request through: the guards in core/guards.ts decide what an
- * anonymous caller may see. The one thing it refuses is a caller over a rate limit (429).
+ * anonymous caller may see. It refuses two things itself: a caller over a rate limit (429), and
+ * every caller while the install has no usable `AUTH_SECRET` (a setup error).
  */
 import type { Context, MiddlewareHandler } from 'hono';
 import { capRole, enforceApiKeyRateLimit, KEY_PREFIX, liveKeyRole, touchApiKey, verifyApiKey, weakerRole } from '../core/apikeys';
 import type { KeyRole } from '../core/apikeys';
 import { verifyJwt } from '../core/jwt';
+import { requireSecret } from '../core/secret';
 import type { ActiveOrg, AppEnv, Env, Role } from '../env';
 import { ROLES } from '../env';
 import { clientIp, enforceHit } from './http';
@@ -126,6 +128,8 @@ async function fromBearer(c: Context<AppEnv>, token: string): Promise<void> {
 }
 
 export const loadAuth: MiddlewareHandler<AppEnv> = async (c, next) => {
+  // Sessions, codes and flow cookies are all signed with the secret. Without a real one, nobody gets in.
+  requireSecret(c.env);
   // Mounted on overlapping paths; the first run has already answered.
   if (c.get('auth').kind === 'anon') {
     const header = c.req.header('authorization');
