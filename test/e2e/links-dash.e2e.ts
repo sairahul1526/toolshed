@@ -32,7 +32,7 @@ test('turns on, shows the first-run screen, and refuses a bad address by the fie
 
   // The browser would stop a bad address first; switch that off to see the server's own message.
   await page.goto('/app/links/new');
-  await page.locator('form.lk-form-page').evaluate('(f) => { f.noValidate = true; }');
+  await page.locator('form.lk-form-page').evaluate((f: { noValidate: boolean }) => { f.noValidate = true; });
   await page.getByLabel('Destination address').fill('not a web address');
   await page.getByRole('button', { name: 'Create link' }).click();
   await expect(page.getByRole('alert').filter({ hasText: 'Some fields need fixing' })).toBeVisible();
@@ -51,7 +51,7 @@ test('shortens an address from the box and shows the ready card with its QR code
   expect(shortUrl).toMatch(new RegExp(`^${baseURL}/[a-z0-9]{7}$`));
   const qr = page.getByRole('img', { name: /QR code for/ });
   await expect(qr).toBeVisible();
-  expect(await (qr.evaluate('(i) => i.naturalWidth') as Promise<number>)).toBeGreaterThan(0);
+  expect(await qr.evaluate((i: { naturalWidth: number }) => i.naturalWidth)).toBeGreaterThan(0);
   await page.getByRole('button', { name: 'Copy short link', exact: true }).click();
   await expect(page.getByText('Short link copied.')).toBeVisible();
   await shoot(page, 'links', 'ready');
@@ -151,7 +151,7 @@ test('edits a link, rejects a bad change, and previews and downloads the QR code
   await shoot(page, 'links', 'editor');
 
   await page.locator('#f-url').fill('nope');
-  await page.locator('form#link-form').evaluate('(f) => { f.noValidate = true; }');
+  await page.locator('form#link-form').evaluate((f: { noValidate: boolean }) => { f.noValidate = true; });
   await page.getByRole('button', { name: 'Save changes' }).click();
   await expect(page.getByRole('alert').filter({ hasText: 'Some fields need fixing' })).toBeVisible();
   await expect(page.locator('#f-url')).toHaveAttribute('aria-invalid', 'true');
