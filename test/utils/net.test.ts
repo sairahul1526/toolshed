@@ -30,7 +30,7 @@ describe('error codes', () => {
   it('are registered with plain codes and statuses', () => {
     const codes = new Map(listErrorCodes().map((c) => [c.code, c.status]));
     expect(codes.get('url_not_allowed')).toBe(400);
-    for (const code of ['fetch_failed', 'fetch_timeout', 'fetch_too_large', 'too_many_redirects']) expect(codes.has(code), code).toBe(true);
+    for (const code of ['fetch_failed', 'fetch_timeout', 'fetch_too_large', 'too_many_redirects', 'redirect_not_followed']) expect(codes.has(code), code).toBe(true);
   });
 });
 
@@ -72,6 +72,19 @@ describe('clientIp', () => {
 
   it('reads IPv6', () => {
     expect(clientIp(req({ 'cf-connecting-ip': '2001:db8::1' }))).toBe('2001:db8::1');
+    expect(clientIp(req({ 'cf-connecting-ip': '::ffff:203.0.113.7' }))).toBe('::ffff:203.0.113.7');
+  });
+
+  it('ignores a value that is not an IP address, so it never reaches a rate-limit key or a log', () => {
+    for (const bad of ['unknown', '203.0.113.256', '203.0.113', '203.0.113.7:8080', '203.0.113.7 extra', '[2001:db8::1]', 'fe80::1%eth0', ':::', '1:2:3:4:5:6:7:8:9', '<script>', 'a'.repeat(300)]) {
+      expect(clientIp(req({ 'cf-connecting-ip': bad })), bad).toBeNull();
+      expect(clientIp(req({ 'x-forwarded-for': bad })), bad).toBeNull();
+    }
+  });
+
+  it('falls back to a valid X-Forwarded-For entry when CF-Connecting-IP is not an address', () => {
+    expect(clientIp(req({ 'cf-connecting-ip': 'garbage', 'x-forwarded-for': '198.51.100.1' }))).toBe('198.51.100.1');
+    expect(clientIp(req({ 'cf-connecting-ip': 'garbage', 'x-forwarded-for': 'garbage, 198.51.100.1' }))).toBeNull();
   });
 });
 
@@ -331,6 +344,9 @@ describe('assertPublicUrl', () => {
     'http://223.255.255.255/',
     'http://[2606:4700:4700::1111]/',
     'http://[::ffff:8.8.8.8]/',
+    'http://[::ffff:0:8.8.8.8]/',
+    'http://[2001:db8::1]/',
+    'http://[2001:1::1]/',
     'http://[64:ff9b::808:808]/',
     'http://localhost.example.com/',
     'http://my.internal.example.com/',
@@ -439,6 +455,13 @@ describe('assertPublicUrl', () => {
     'http://[64:ff9b:1::1]/',
     'http://[2002:7f00:1::]/',
     'http://[2002:a00:1::1]/',
+    // IPv4-translated ::ffff:0:a.b.c.d, and Teredo 2001::/32
+    'http://[::ffff:0:127.0.0.1]/',
+    'http://[::ffff:0:7f00:1]/',
+    'http://[0:0:0:0:ffff:0:a00:1]/',
+    'http://[::ffff:0:169.254.169.254]/',
+    'http://[2001::1]/',
+    'http://[2001:0:4136:e378:8000:63bf:3fff:fdd2]/',
   ];
 
   for (const raw of allowed) {
@@ -583,23 +606,68 @@ describe('safeFetch', () => {
       expect((await safeFetch('https://example.com/')).status).toBe(204);
     });
 
-    it('drops cookies and authorization when the redirect leaves the host, and keeps them on the same host', async () => {
+    it('keeps every header on the same origin, and on leaving it keeps only the safe ones for good', async () => {
       const calls = stubFetch((_, n) => (n === 0 ? redirect('/same') : n === 1 ? redirect('https://other.example.org/x') : n === 2 ? redirect('https://example.com/back') : new Response('ok')));
-      await safeFetch('https://example.com/', { headers: { cookie: 'a=1', authorization: 'Bearer t', 'proxy-authorization': 'x', accept: 'text/html' } });
-      expect(headersOf(calls[1]!).get('cookie')).toBe('a=1');
-      expect(headersOf(calls[1]!).get('authorization')).toBe('Bearer t');
+      const sent = { cookie: 'a=1', authorization: 'Bearer t', 'proxy-authorization': 'x', 'x-api-key': 'k', 'x-webhook-signature': 's', accept: 'text/html', 'accept-language': 'en', 'user-agent': 'MyBot/1.0', 'content-type': 'text/plain' };
+      await safeFetch('https://example.com/', { headers: sent });
+      for (const [name, value] of Object.entries(sent)) expect(headersOf(calls[1]!).get(name), `same origin ${name}`).toBe(value);
       for (const i of [2, 3]) {
-        expect(headersOf(calls[i]!).get('cookie'), `hop ${i}`).toBeNull();
-        expect(headersOf(calls[i]!).get('authorization'), `hop ${i}`).toBeNull();
-        expect(headersOf(calls[i]!).get('proxy-authorization'), `hop ${i}`).toBeNull();
-        expect(headersOf(calls[i]!).get('accept'), `hop ${i}`).toBe('text/html');
+        for (const name of ['cookie', 'authorization', 'proxy-authorization', 'x-api-key', 'x-webhook-signature']) expect(headersOf(calls[i]!).get(name), `hop ${i} ${name}`).toBeNull();
+        for (const name of ['accept', 'accept-language', 'user-agent', 'content-type']) expect(headersOf(calls[i]!).get(name), `hop ${i} ${name}`).toBe(sent[name as keyof typeof sent]);
       }
     });
 
-    it('treats another port as another host', async () => {
-      const calls = stubFetch((_, n) => (n === 0 ? redirect('https://example.com:8443/') : new Response('ok')));
+    it('treats another port or scheme as another origin', async () => {
+      let calls = stubFetch((_, n) => (n === 0 ? redirect('https://example.com:8443/') : new Response('ok')));
       await safeFetch('https://example.com/', { headers: { authorization: 'Bearer t' } });
       expect(headersOf(calls[1]!).get('authorization')).toBeNull();
+      calls = stubFetch((_, n) => (n === 0 ? redirect('https://example.com/secure') : new Response('ok')));
+      await safeFetch('http://example.com/', { headers: { authorization: 'Bearer t', cookie: 'a=1' } });
+      expect(headersOf(calls[1]!).get('authorization')).toBeNull();
+      expect(headersOf(calls[1]!).get('cookie')).toBeNull();
+    });
+
+    it('never follows a redirect from https to http, even on the same host', async () => {
+      for (const to of ['http://example.com/plain', 'http://other.example.org/plain']) {
+        const calls = stubFetch((_, n) => (n === 0 ? redirect(to) : new Response('leaked')));
+        expect(await codeOf(() => safeFetch('https://example.com/', { headers: { authorization: 'Bearer t' } })), to).toBe('redirect_not_followed');
+        expect(calls, to).toHaveLength(1);
+      }
+    });
+
+    it('still follows http to https and http to http', async () => {
+      stubFetch((_, n) => (n === 0 ? redirect('https://example.com/secure') : new Response('ok')));
+      expect(await (await safeFetch('http://example.com/')).text()).toBe('ok');
+      stubFetch((_, n) => (n === 0 ? redirect('/next') : new Response('ok')));
+      expect(await (await safeFetch('http://example.com/')).text()).toBe('ok');
+    });
+
+    it('refuses to replay a request body to another origin on 307 and 308, and sends nothing', async () => {
+      for (const status of [307, 308]) {
+        const calls = stubFetch((_, n) => (n === 0 ? redirect('https://other.example.org/collect', status) : new Response('ok')));
+        expect(await codeOf(() => safeFetch('https://example.com/hook', { method: 'POST', body: '{"secret":1}', headers: { 'content-type': 'application/json' } })), String(status)).toBe('redirect_not_followed');
+        expect(calls, String(status)).toHaveLength(1);
+      }
+    });
+
+    it('refuses a 301 that would carry a PUT body to another origin, but a POST becomes a GET and goes on', async () => {
+      let calls = stubFetch((_, n) => (n === 0 ? redirect('https://other.example.org/x', 301) : new Response('ok')));
+      expect(await codeOf(() => safeFetch('https://example.com/', { method: 'PUT', body: 'x=1' }))).toBe('redirect_not_followed');
+      expect(calls).toHaveLength(1);
+      calls = stubFetch((_, n) => (n === 0 ? redirect('https://other.example.org/x', 302) : new Response('ok')));
+      await safeFetch('https://example.com/', { method: 'POST', body: 'x=1', headers: { 'x-api-key': 'k' } });
+      expect(calls[1]!.init.method).toBe('GET');
+      expect(calls[1]!.init.body).toBeUndefined();
+      expect(headersOf(calls[1]!).get('x-api-key')).toBeNull();
+    });
+
+    it('replays a 307 body on the same origin, and a bodyless 307 to another origin', async () => {
+      let calls = stubFetch((_, n) => (n === 0 ? redirect('/next', 307) : new Response('ok')));
+      await safeFetch('https://example.com/', { method: 'POST', body: 'x=1' });
+      expect(calls[1]!.init.body).toBe('x=1');
+      calls = stubFetch((_, n) => (n === 0 ? redirect('https://other.example.org/x', 307) : new Response('ok')));
+      expect((await safeFetch('https://example.com/', { headers: { 'x-api-key': 'k' } })).status).toBe(200);
+      expect(headersOf(calls[1]!).get('x-api-key')).toBeNull();
     });
 
     it('turns a redirected POST into a GET, but keeps the method on 307', async () => {
@@ -723,6 +791,24 @@ describe('safeFetch', () => {
     it('gives fetch_failed when a redirect Location cannot be read', async () => {
       stubFetch(() => redirect('http://[bad/'));
       expect(await codeOf(() => safeFetch('https://example.com/'))).toBe('fetch_failed');
+    });
+
+    it('gives fetch_failed, and sends nothing, for a header fetch cannot send', async () => {
+      const calls = stubFetch(() => new Response('ok'));
+      expect(await codeOf(() => safeFetch('https://example.com/', { headers: { 'bad header': 'x' } }))).toBe('fetch_failed');
+      expect(await codeOf(() => safeFetch('https://example.com/', { headers: { 'x-ok': 'line\nbreak' } }))).toBe('fetch_failed');
+      expect(calls).toHaveLength(0);
+    });
+
+    it('honours a caller signal that is already aborted', async () => {
+      const seen: boolean[] = [];
+      stubFetch(({ init }) => {
+        seen.push(init.signal?.aborted === true);
+        if (init.signal?.aborted) throw new DOMException('aborted', 'AbortError');
+        return new Response('ok');
+      });
+      expect(await codeOf(() => safeFetch('https://example.com/', { signal: AbortSignal.abort(), timeoutMs: 5000 }))).toBe('fetch_failed');
+      expect(seen).toEqual([true]);
     });
 
     it('stops waiting when the caller aborts', async () => {

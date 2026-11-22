@@ -34,6 +34,7 @@ table in step with `src/core/errors.ts` and `src/core/export.ts`.
 | `needs_setup` | 409 | This needs one more setup step before it can run. | The message names the missing step, for example connecting email. Finish that step, then try again. |
 | `not_found` | 404 | We couldn’t find that. It may have been moved or deleted. | Check the id. Items from other workspaces are reported as not found on purpose. |
 | `rate_limited` | 429 | Too many tries. Wait a moment, then try again. | Wait for the number of seconds in the `retry-after` header, then try again. Do not retry in a tight loop. |
+| `redirect_not_followed` | 502 | That address redirects somewhere we can’t follow safely, so we stopped. Use the final address directly, and make sure it starts with https://. | The address redirected from https to http, or tried to send a request with a body to a different site. Use the final address directly. |
 | `too_large` | 413 | That’s too large to accept. | Send less data, or split it into smaller requests. |
 | `too_many_redirects` | 502 | That address sends visitors around in circles. Check where it redirects to. | The address redirected more times than allowed. Use the final address directly. |
 | `unauthorized` | 401 | Sign in to continue. | Sign in, or send a valid API key. An expired or revoked key gives this code too. |
