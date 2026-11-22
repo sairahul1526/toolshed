@@ -20,12 +20,11 @@ interface PageOptions {
   script?: string;
 }
 
-/** The dashboard has no style or script hook, so each screen loads the module's files in its body. */
+/** The stylesheet goes in the head; a screen's script (a module, so it runs after the page is parsed) sits after the body. */
 export function page(c: Ctx, title: string, body: Child, opts: PageOptions = {}): Promise<Response> {
   const crumbs = opts.crumbs ?? (title === 'Images' ? undefined : [{ label: 'Images', href: HOME }, { label: title }]);
-  return renderPage(c, { title, crumbs, status: opts.status }, (
+  return renderPage(c, { title, crumbs, status: opts.status, styles: ['/m/images/images.css'] }, (
     <>
-      <link rel="stylesheet" href="/m/images/images.css" />
       {opts.script ? <script type="module" src={`/m/images/${opts.script}`}></script> : null}
       {body}
     </>

@@ -151,13 +151,14 @@ function newPage(c: Ctx, state: NewState = {}): Promise<Response> {
               />
             </Field>
             <div class="grid-2">
-              <Field id="new-width" label="Width" hint={`Only for a custom size. ${MIN_CANVAS} to ${MAX_CANVAS} px.`} error={f.width} optional>
+              <Field id="new-width" label="Width" error={f.width} optional>
                 <Input id="new-width" name="width" inputmode="numeric" value={v.width ?? ''} placeholder="1200" invalid={Boolean(f.width)} />
               </Field>
               <Field id="new-height" label="Height" error={f.height} optional>
                 <Input id="new-height" name="height" inputmode="numeric" value={v.height ?? ''} placeholder="630" invalid={Boolean(f.height)} />
               </Field>
             </div>
+            <p class="hint">{`Width and height are only for a custom size. ${MIN_CANVAS} to ${MAX_CANVAS} px.`}</p>
             <div class="img-row">
               <Button type="submit" variant="primary">Make template</Button>
             </div>
