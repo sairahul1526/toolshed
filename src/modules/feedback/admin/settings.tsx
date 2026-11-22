@@ -189,7 +189,7 @@ async function page(c: Context<AppEnv>, tab: Tab, o: Opts = {}) {
             ]}
             rows={sts.map((s, i) => ({
               name: (
-                <form method="post" action={`${S}/statuses/${s.id}`} class="row">
+                <form method="post" action={`${S}/statuses/${s.id}`} class="row fb-inline">
                   <Input id={`sn-${s.id}`} name="name" aria-label="Name" value={s.name} maxlength={30} required />
                   <Select id={`st-${s.id}`} name="tone" aria-label="Color" value={s.tone} options={['neutral', 'good', 'warn', 'bad', 'solid'].map((t) => ({ value: t, label: t }))} />
                   <Select id={`sk-${s.id}`} name="kind" aria-label="Meaning" value={s.kind} options={[{ value: 'open', label: 'Open' }, { value: 'active', label: 'Active' }, { value: 'done', label: 'Done' }, { value: 'closed', label: 'Closed' }]} />
@@ -245,7 +245,7 @@ async function page(c: Context<AppEnv>, tab: Tab, o: Opts = {}) {
             columns={[{ key: 'name', label: 'Tag' }, { key: 'act', label: 'Actions', srOnly: true }]}
             rows={tags.map((t) => ({
               name: (
-                <form method="post" action={`${S}/tags/${t.id}`} class="row">
+                <form method="post" action={`${S}/tags/${t.id}`} class="row fb-inline">
                   <Input id={`tn-${t.id}`} name="name" aria-label="Name" value={t.name} maxlength={30} required />
                   <Checkbox name="is_public" label="Public" checked={t.is_public === 1} />
                   <Button size="sm" type="submit">
@@ -429,7 +429,9 @@ settings.post('/settings/general', async (c) => {
     return done(c, `${S}/general`, 'Settings saved.');
   } catch (e) {
     const t = errorText(e);
-    return page(c, 'general', { error: t.message, fields: t.fields, values, status: 422 });
+    const code = e instanceof Error && 'code' in e ? String((e as { code: string }).code) : '';
+    const fields = /slug_(invalid|taken)$/.test(code) ? { ...t.fields, slug: t.message } : t.fields;
+    return page(c, 'general', { error: t.message, fields, values, status: 422 });
   }
 });
 

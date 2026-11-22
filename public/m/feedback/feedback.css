@@ -13,6 +13,7 @@ body.fb a:focus-visible, body.fb button:focus-visible, body.fb summary:focus-vis
 .fb-head-in { width: min(960px, 100%); margin: 0 auto; padding: 16px; display: flex; flex-wrap: wrap; align-items: center; gap: 8px 20px; }
 .fb-name { font-weight: 650; font-size: 18px; letter-spacing: -0.01em; text-decoration: none; color: var(--fg) !important; overflow-wrap: anywhere; }
 .fb-nav { display: flex; gap: 4px; flex-wrap: wrap; margin-left: auto; }
+@media (max-width: 560px) { .fb-nav { margin-left: -12px; } }
 .fb-nav a { padding: 8px 12px; border-radius: 8px; text-decoration: none; color: var(--muted); font-size: 15px; min-height: 40px; display: inline-flex; align-items: center; }
 .fb-nav a:hover { color: var(--fg); background: var(--card); }
 .fb-nav a[aria-current="page"] { color: var(--fg); background: color-mix(in srgb, var(--fg) 8%, var(--bg)); font-weight: 500; }

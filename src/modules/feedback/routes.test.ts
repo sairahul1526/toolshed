@@ -116,6 +116,9 @@ describe('dashboard', () => {
     const bad = await app.request('/app/feedback/settings/general', { form: { name: 'Acme', slug: 'acme', accent: 'blue', theme: 'paper', vote_limit: '3', default_sort: 'top' } });
     expect(bad.status).toBe(422);
     expect(await bad.text()).toContain('Use a color like');
+    const badSlug = await app.request('/app/feedback/settings/general', { form: { name: 'Acme', slug: 'Not A Slug!', theme: 'paper', vote_limit: '3', default_sort: 'top' } });
+    expect(badSlug.status).toBe(422);
+    expect(await badSlug.text()).toMatch(/id="g-slug"[^>]*aria-invalid="true"|aria-invalid="true"[^>]*id="g-slug"/);
     const ok = await app.request('/app/feedback/settings/general', { form: { name: 'Acme', slug: 'acme', accent: '#3f6212', theme: 'warm', vote_limit: '3', default_sort: 'top', roadmap_on: 'on', changelog_on: 'on' } });
     expect(ok.status).toBe(302);
   });

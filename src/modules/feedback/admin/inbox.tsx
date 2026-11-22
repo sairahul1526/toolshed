@@ -24,6 +24,8 @@ import { A, done, fail, flag, loadAdmin, str, tone } from './common';
 
 export const inbox = new Hono<AppEnv>();
 
+const SOURCE_LABEL: Record<string, string> = { portal: 'Portal', admin: 'Added by your team', api: 'API', import: 'Import', widget: 'Widget', sample: 'Sample data' };
+
 const VIEWS = [
   { id: 'all', label: 'All posts' },
   { id: 'review', label: 'Needs review' },
@@ -434,7 +436,7 @@ inbox.get('/posts/:id', async (c) => {
               items={[
                 { label: 'Votes', value: formatNumber(post.vote_count) },
                 { label: 'Category', value: post.category_name ?? 'None' },
-                { label: 'Source', value: post.source },
+                { label: 'Source', value: SOURCE_LABEL[post.source] ?? post.source },
                 { label: 'First reply', value: post.first_reply_at ? timeAgo(post.first_reply_at) : 'Not yet' },
               ]}
             />
