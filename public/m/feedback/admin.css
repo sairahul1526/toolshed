@@ -5,12 +5,22 @@
 .fb-admin-list { list-style: none; margin: 0 0 12px; padding: 0; display: flex; flex-direction: column; gap: 10px; }
 .fb-admin-list li { overflow-wrap: anywhere; }
 .fb-admin-list li.row { justify-content: space-between; align-items: center; }
+.fb-stack > .card-body { display: flex; flex-direction: column; gap: 16px; }
+.fb-sub { display: flex; flex-direction: column; gap: 12px; border-top: 1px solid var(--border); padding-top: 16px; }
+.fb-sub h3 { margin: 0; font-size: 14px; font-weight: 500; }
+.fb-sub .hint { margin: 2px 0 0; }
+.fb-sub .fb-admin-list { margin: 0; }
+.fb-inline { flex-wrap: nowrap; align-items: center; }
+.fb-inline > button, .fb-inline > label { flex: none; }
 .fb-inline > :not(button):not(label) { flex: 1 1 130px; min-width: 0; width: auto; }
-.fb-steps { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 16px; }
-.fb-steps li { display: flex; flex-direction: column; gap: 6px; }
+.fb-steps { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 24px; }
+.fb-steps li { display: flex; flex-direction: column; gap: 10px; }
 .fb-steps li > .pill { align-self: flex-start; }
 .fb-steps .hint, .hint { margin: 0; color: var(--muted, #6b6b6b); font-size: 13px; }
 .fb-tags { border: 0; padding: 0; margin: 0; display: flex; flex-direction: column; gap: 6px; max-height: 240px; overflow: auto; }
 .fb-tags legend { font-weight: 600; font-size: 13px; padding: 0 0 6px; }
 .wrap { overflow-wrap: anywhere; white-space: pre-wrap; }
+@media (max-width: 760px) { .fb-inline { flex-wrap: wrap; } }
 @media (max-width: 860px) { .fb-admin-grid { grid-template-columns: minmax(0, 1fr); } }
+.fb-stack input[type="file"] { width: 100%; padding: 8px 10px; border: 1px solid var(--border-strong); border-radius: var(--radius); background: var(--surface); font: inherit; }
+.fb-comment-actions{margin-top:10px}

@@ -248,7 +248,7 @@ async function feedsPage(c: import('hono').Context<AppEnv>, errors: Record<strin
               </div>
             ) : '',
           }))}
-          empty={<EmptyState icon="rss" title="No feeds yet" body="Add the address of a feed below." bare />} />
+          empty={<EmptyState icon="news" title="No feeds yet" body="Add the address of a feed below." bare />} />
       </Card>
       {write && lists.length ? (
         <Card title="Add a feed" class="ml-gap">

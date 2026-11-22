@@ -5,7 +5,7 @@ import type { Context } from 'hono';
 import { needRole } from '../../../core/guards';
 import type { AppEnv } from '../../../env';
 import {
-  Button, Callout, Card, Checkbox, ConfirmButton, CopyField, EmptyState, Field, Input, LinkButton, PageHeader, Pill, Select, Table, Tabs, Textarea, renderPage, formatDate, formatNumber, plural, timeAgo,
+  Button, Callout, Card, Checkbox, ConfirmButton, CopyField, EmptyState, Field, Input, LinkButton, PageHeader, Pill, Select, Table, Tabs, Textarea, formatDate, formatNumber, plural, timeAgo,
 } from '../../../ui';
 import { IMAGE_MAX, LABELS, createEntry, deleteEntry, entryLabels, getEntry, linkedPostIds, listEntries, listSubscribers, publishEntry, removeSubscriber, saveImage, subscriberCounts, updateEntry } from '../changelog';
 import { fbErrors } from '../errors';
@@ -14,7 +14,7 @@ import { listPosts } from '../posts';
 import { errorText } from '../pub/kit';
 import { codesAvailable } from '../people';
 import type { Entry } from '../types';
-import { A, dateTimeLocal, done, fail, flag, loadAdmin, publicUrl, str } from './common';
+import { A, adminPage, dateTimeLocal, done, fail, flag, loadAdmin, publicUrl, str } from './common';
 
 export const changelogAdmin = new Hono<AppEnv>();
 
@@ -35,9 +35,8 @@ changelogAdmin.get('/changelog', async (c) => {
   if (!portal) return c.redirect(A);
   const state = STATES.find((s) => s.id === c.req.query('state'))?.id ?? 'all';
   const page = await listEntries(ctx, { state, cursor: c.req.query('cursor'), limit: 25 });
-  return renderPage(c, { title: 'Changelog', crumbs: [{ label: 'Feedback', href: A }, { label: 'Changelog' }] }, (
+  return adminPage(c, { title: 'Changelog', crumbs: [{ label: 'Feedback', href: A }, { label: 'Changelog' }] }, (
     <>
-      <link rel="stylesheet" href="/m/feedback/admin.css" />
       <PageHeader
         title="Changelog"
         description="Tell customers what shipped. Posts you link here are marked complete when you publish."
@@ -103,13 +102,12 @@ async function editor(c: Context<AppEnv>, o: EditorOpts = {}) {
   const img = c.req.query('img');
   const action = e ? `${C}/${e.id}` : `${C}/new`;
   const published = e?.state === 'published';
-  return renderPage(c, { title: e ? e.title : 'New entry', status: o.status, crumbs: [{ label: 'Feedback', href: A }, { label: 'Changelog', href: C }, { label: e ? 'Edit entry' : 'New entry' }] }, (
+  return adminPage(c, { title: e ? e.title : 'New entry', status: o.status, crumbs: [{ label: 'Feedback', href: A }, { label: 'Changelog', href: C }, { label: e ? 'Edit entry' : 'New entry' }] }, (
     <>
-      <link rel="stylesheet" href="/m/feedback/admin.css" />
       <PageHeader title={e ? 'Edit entry' : 'New entry'} soft={e ? statePill(e) : undefined} description="Markdown works. Links and images are allowed. Raw HTML is not." />
       {o.error ? <Callout tone="bad" title="That did not save">{o.error}</Callout> : null}
       <div class="fb-admin-grid">
-        <Card>
+        <Card class="fb-stack">
           <form method="post" action={action} class="stack" data-busy-form>
             <Field id="e-title" label="Title" error={f.title}>
               <Input id="e-title" name="title" required maxlength={120} value={v.title ?? e?.title ?? ''} invalid={Boolean(f.title)} />
@@ -155,10 +153,10 @@ async function editor(c: Context<AppEnv>, o: EditorOpts = {}) {
           </form>
         </Card>
         <div class="stack">
-          <Card title="Preview">
+          <Card class="fb-stack" title="Preview">
             {body ? <div class="prose">{raw(renderVisitorMarkdown(body))}</div> : <p class="hint">Save to see the preview here.</p>}
           </Card>
-          <Card title="Upload an image" description={`PNG, JPEG, GIF or WebP, up to ${Math.round(IMAGE_MAX / 1048576)} MB. Stored in your workspace, never on a third party.`}>
+          <Card class="fb-stack" title="Upload an image" description={`PNG, JPEG, GIF or WebP, up to ${Math.round(IMAGE_MAX / 1048576)} MB. Stored in your workspace, never on a third party.`}>
             {img ? <CopyField label="Paste this into the body" value={`![](${img})`} secret={false} /> : null}
             <form method="post" action={`${C}/images`} enctype="multipart/form-data" class="stack" data-busy-form>
               <input type="hidden" name="back" value={e ? e.id : 'new'} />
@@ -171,7 +169,7 @@ async function editor(c: Context<AppEnv>, o: EditorOpts = {}) {
             </form>
           </Card>
           {e ? (
-            <Card title="Actions">
+            <Card class="fb-stack" title="Actions">
               <div class="row">
                 {e.state !== 'published' ? (
                   <form method="post" action={`${C}/${e.id}/publish`}>
@@ -308,9 +306,8 @@ changelogAdmin.get('/subscribers', async (c) => {
   const offset = Math.max(0, Number(c.req.query('offset')) || 0);
   const [counts, rows, mail] = await Promise.all([subscriberCounts(ctx), listSubscribers(ctx, { status, limit: 51, offset }), codesAvailable(c.env)]);
   const shown = rows.slice(0, 50);
-  return renderPage(c, { title: 'Subscribers', crumbs: [{ label: 'Feedback', href: A }, { label: 'Changelog', href: C }, { label: 'Subscribers' }] }, (
+  return adminPage(c, { title: 'Subscribers', crumbs: [{ label: 'Feedback', href: A }, { label: 'Changelog', href: C }, { label: 'Subscribers' }] }, (
     <>
-      <link rel="stylesheet" href="/m/feedback/admin.css" />
       <PageHeader title="Subscribers" description="People who asked for changelog emails. Each one confirmed their address and can leave with one click." />
       {!mail ? <Callout tone="warn" title="Email is not set up">Nobody can subscribe by email until sending is configured. The RSS feed still works.</Callout> : null}
       <Tabs

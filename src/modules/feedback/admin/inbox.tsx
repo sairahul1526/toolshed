@@ -6,7 +6,7 @@ import { needRole } from '../../../core/guards';
 import type { AppEnv } from '../../../env';
 import {
   Button, Callout, Card, CopyField, DangerZone, EmptyState, Field, FilterBar, Input, KeyValueList, LinkButton, PageHeader, Pill, Select, Table, Tabs, Textarea, Checkbox, SearchInput,
-  ConfirmButton, renderPage, formatNumber, plural, timeAgo,
+  ConfirmButton, formatNumber, plural, timeAgo,
 } from '../../../ui';
 import { actorOf } from '../api';
 import { fbErrors } from '../errors';
@@ -20,7 +20,7 @@ import {
 import { errorText } from '../pub/kit';
 import { clearSample, seedSample } from '../sample';
 import type { Portal } from '../types';
-import { A, done, fail, flag, loadAdmin, str, tone } from './common';
+import { A, adminPage, done, fail, flag, loadAdmin, str, tone } from './common';
 
 export const inbox = new Hono<AppEnv>();
 
@@ -41,7 +41,7 @@ function Steps({ portal, c, hasSample, total }: { portal: Portal | null; c: { re
   const connected = Boolean(portal?.widget_seen_at);
   const origin = new URL(c.req.url).origin;
   return (
-    <Card title="Get started" description="Three steps. You can do them in any order and come back later.">
+    <Card class="fb-stack" title="Get started" description="Three steps. You can do them in any order and come back later.">
       <ol class="fb-steps">
         <li>
           <strong>Name your portal</strong> {portal ? <Pill tone="good">Done</Pill> : null}
@@ -84,9 +84,11 @@ function Steps({ portal, c, hasSample, total }: { portal: Portal | null; c: { re
               </form>
             </div>
           ) : (
-            <form method="post" action={`${A}/sample`}>
+            <form method="post" action={`${A}/sample`} class="stack">
               <p class="hint">Want to look around first? Fill the portal with believable sample posts, and clear them when you are done.</p>
-              <Button type="submit">Create it with sample data</Button>
+              <div>
+                <Button type="submit">Create it with sample data</Button>
+              </div>
             </form>
           )}
         </li>
@@ -137,7 +139,7 @@ inbox.get('/', async (c) => {
   const { ctx, portal } = a;
   const q = c.req.query();
   if (!portal) {
-    return renderPage(c, { title: 'Feedback' }, (
+    return adminPage(c, { title: 'Feedback' }, (
       <>
         <PageHeader title="Feedback" description="Let customers post ideas and vote, then close the loop when you ship." />
         <Steps portal={null} c={c} hasSample={false} total={0} />
@@ -269,9 +271,8 @@ inbox.get('/', async (c) => {
       </>
     );
   }
-  return renderPage(c, { title: 'Feedback' }, (
+  return adminPage(c, { title: 'Feedback' }, (
     <>
-      <link rel="stylesheet" href="/m/feedback/admin.css" />
       <PageHeader
         title="Feedback"
         soft={plural(counts.total, 'post')}
@@ -304,12 +305,11 @@ async function newPostPage(c: import('hono').Context<AppEnv>, opts: { error?: st
   const [boards, cats] = await Promise.all([listBoards(a.ctx), listCategories(a.ctx)]);
   const v = opts.values ?? {};
   const f = opts.fields ?? {};
-  return renderPage(c, { title: 'Post for a customer', crumbs: [{ label: 'Feedback', href: A }, { label: 'Post for a customer' }], status: opts.status }, (
+  return adminPage(c, { title: 'Post for a customer', crumbs: [{ label: 'Feedback', href: A }, { label: 'Post for a customer' }], status: opts.status }, (
     <>
-      <link rel="stylesheet" href="/m/feedback/admin.css" />
       <PageHeader title="Post for a customer" description="Record an idea you heard on a call or in an email. It is published right away under their name." />
       {opts.error ? <Callout tone="bad" title="That did not save">{opts.error}</Callout> : null}
-      <Card>
+      <Card class="fb-stack">
         <form method="post" action={`${A}/posts/new`} class="stack" data-busy-form>
           <Field id="np-board" label="Board">
             <Select id="np-board" name="board" value={v.board ?? boards[0]?.slug} options={boards.map((b) => ({ value: b.slug, label: b.name }))} />
@@ -394,9 +394,8 @@ inbox.get('/posts/:id', async (c) => {
   const mine = new Set((tags.get(post.id) ?? []).map((t) => t.id));
   const here = `${A}/posts/${post.id}`;
   const closed = statuses.find((s) => s.id === post.status_id)?.kind === 'closed';
-  return renderPage(c, { title: post.title, crumbs: [{ label: 'Feedback', href: A }, { label: post.title }] }, (
+  return adminPage(c, { title: post.title, crumbs: [{ label: 'Feedback', href: A }, { label: post.title }] }, (
     <>
-      <link rel="stylesheet" href="/m/feedback/admin.css" />
       <PageHeader
         title={post.title}
         soft={post.board_name}
@@ -430,7 +429,7 @@ inbox.get('/posts/:id', async (c) => {
       {post.review === 'merged' ? <Callout tone="info" title="This post was merged">Its votes and comments moved to another post.</Callout> : null}
       <div class="fb-admin-grid">
         <div class="stack">
-          <Card title="Idea">
+          <Card class="fb-stack" title="Idea">
             {post.body ? <div class="prose">{raw(renderVisitorMarkdown(post.body))}</div> : <p class="hint">No details were added.</p>}
             <KeyValueList
               items={[
@@ -441,7 +440,7 @@ inbox.get('/posts/:id', async (c) => {
               ]}
             />
           </Card>
-          <Card title="Conversation" description="Replies from you are public and emailed to voters unless you turn that off.">
+          <Card class="fb-stack" title="Conversation" description="Replies from you are public and emailed to voters unless you turn that off.">
             {comments.length === 0 ? <p class="hint">No comments yet.</p> : null}
             <ul class="fb-admin-list">
               {comments.map((m) => (
@@ -451,7 +450,7 @@ inbox.get('/posts/:id', async (c) => {
                     {m.review === 'pending' ? ' , held' : ''}
                   </div>
                   <div class="prose">{raw(renderVisitorMarkdown(m.body))}</div>
-                  <form method="post" class="row">
+                  <form method="post" class="row fb-comment-actions">
                     {m.review === 'pending' ? (
                       <>
                         <Button size="sm" variant="primary" type="submit" formAction={`${A}/comments/${m.id}/approve?back=${post.id}`}>
@@ -481,7 +480,7 @@ inbox.get('/posts/:id', async (c) => {
               </div>
             </form>
           </Card>
-          <Card title="Internal notes" description="Only your team sees these.">
+          <Card class="fb-stack" title="Internal notes" description="Only your team sees these.">
             {notes.length === 0 ? <p class="hint">No notes yet.</p> : null}
             <ul class="fb-admin-list">
               {notes.map((n) => (
@@ -504,7 +503,7 @@ inbox.get('/posts/:id', async (c) => {
           </Card>
         </div>
         <div class="stack">
-          <Card title="Status">
+          <Card class="fb-stack" title="Status">
             <form method="post" action={`${here}/status`} class="stack" data-busy-form>
               <Field id="st" label="Status">
                 <Select id="st" name="status" value={post.status_id ?? ''} options={statuses.map((s) => ({ value: s.id, label: s.name }))} />
@@ -520,7 +519,7 @@ inbox.get('/posts/:id', async (c) => {
               </div>
             </form>
           </Card>
-          <Card title="Details">
+          <Card class="fb-stack" title="Details">
             <form method="post" action={`${here}/details`} class="stack">
               <Field id="d-title" label="Title">
                 <Input id="d-title" name="title" value={post.title} maxlength={140} required />
@@ -551,7 +550,7 @@ inbox.get('/posts/:id', async (c) => {
           </Card>
           {post.review === 'published' ? (
             <>
-              <Card title="Merge into another post" description="Use this for duplicates. You see a preview first.">
+              <Card class="fb-stack" title="Merge into another post" description="Use this for duplicates. You see a preview first.">
                 <form method="get" action={`${here}/merge`} class="stack">
                   <Field id="m-q" label="Find the post to keep">
                     <Input id="m-q" name="q" placeholder="Search by title" required />
@@ -561,7 +560,7 @@ inbox.get('/posts/:id', async (c) => {
                   </div>
                 </form>
               </Card>
-              <Card title={`Voters (${voters.length}${post.vote_count > voters.length ? '+' : ''})`}>
+              <Card class="fb-stack" title={`Voters (${voters.length}${post.vote_count > voters.length ? '+' : ''})`}>
                 <ul class="fb-admin-list">
                   {voters.map((v) => (
                     <li>
@@ -718,7 +717,7 @@ inbox.get('/posts/:id/merge', async (c) => {
   if (!into) {
     const q = (c.req.query('q') ?? '').slice(0, 80);
     const found = (await listPosts(ctx, { q, limit: 12 })).items.filter((p) => p.id !== id);
-    return renderPage(c, { title: 'Merge', crumbs: [{ label: 'Feedback', href: A }, { label: source.title, href: here }, { label: 'Merge' }] }, (
+    return adminPage(c, { title: 'Merge', crumbs: [{ label: 'Feedback', href: A }, { label: source.title, href: here }, { label: 'Merge' }] }, (
       <>
         <PageHeader title="Merge into another post" soft={source.title} description="Pick the post to keep. Nothing changes until you confirm." />
         <Card flush>
@@ -734,10 +733,10 @@ inbox.get('/posts/:id/merge', async (c) => {
   }
   try {
     const pv = await mergePreview(ctx, id, into);
-    return renderPage(c, { title: 'Confirm merge', crumbs: [{ label: 'Feedback', href: A }, { label: source.title, href: here }, { label: 'Confirm merge' }] }, (
+    return adminPage(c, { title: 'Confirm merge', crumbs: [{ label: 'Feedback', href: A }, { label: source.title, href: here }, { label: 'Confirm merge' }] }, (
       <>
         <PageHeader title="Confirm merge" description="Review what moves. People who voted on the merged post are not asked again." />
-        <Card>
+        <Card class="fb-stack">
           <KeyValueList
             items={[
               { label: 'Merging', value: pv.source.title },
@@ -805,9 +804,8 @@ inbox.get('/roadmap', async (c) => {
   const lanes = (await listStatuses(a.ctx)).filter((s) => s.in_roadmap === 1);
   const filled = await Promise.all(lanes.map(async (s) => ({ s, page: await listPosts(a.ctx, { statusId: s.id, sort: 'top', limit: 20 }) })));
   const any = filled.some((l) => l.page.items.length);
-  return renderPage(c, { title: 'Roadmap', crumbs: [{ label: 'Feedback', href: A }, { label: 'Roadmap' }] }, (
+  return adminPage(c, { title: 'Roadmap', crumbs: [{ label: 'Feedback', href: A }, { label: 'Roadmap' }] }, (
     <>
-      <link rel="stylesheet" href="/m/feedback/admin.css" />
       <PageHeader
         title="Roadmap"
         description={a.portal.roadmap_on ? 'Built from your statuses. A status shows here when "Show in roadmap" is on.' : 'The public roadmap is off. Turn it on in settings.'}
@@ -826,7 +824,7 @@ inbox.get('/roadmap', async (c) => {
       ) : (
         <div class="fb-admin-lanes">
           {filled.map(({ s, page }) => (
-            <Card title={`${s.name} (${page.items.length}${page.nextCursor ? '+' : ''})`}>
+            <Card class="fb-stack" title={`${s.name} (${page.items.length}${page.nextCursor ? '+' : ''})`}>
               {page.items.length === 0 ? <p class="hint">Nothing here.</p> : null}
               <ul class="fb-admin-list">
                 {page.items.map((p) => (
