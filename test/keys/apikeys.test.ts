@@ -111,10 +111,13 @@ describe('createApiKey', () => {
     expect((await make(admin, { scopes: ['links:read', '*'] })).key.scopes).toEqual(['*']);
     expect((await failure(() => make(admin, { scopes: [] }))).fields).toHaveProperty('scopes');
     expect((await failure(() => make(admin, { scopes: ['unknown:*'] }))).code).toBe('keys.unknown_scope');
+    expect((await make(admin, { scopes: ['webhooks:read', 'webhooks:*'] })).key.scopes).toContain('webhooks:read');
   });
 
-  it('lists the scopes modules declare', () => {
+  it('lists the scopes core and modules declare', () => {
     expect(listScopes()).toEqual([
+      { module: 'webhooks', scope: 'webhooks:read', label: 'See webhook endpoints and deliveries' },
+      { module: 'webhooks', scope: 'webhooks:write', label: 'Add, change and delete webhook endpoints, send test events' },
       { module: 'forms', scope: 'forms:read', label: 'See forms and answers' },
       { module: 'links', scope: 'links:read', label: 'See links' },
       { module: 'links', scope: 'links:write', label: 'Create, edit and delete links' },

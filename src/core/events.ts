@@ -12,6 +12,7 @@ import { cleanupJobs, enqueue, registerCoreJob, registerCoreSchedule } from './j
 import type { AppEvent } from './module';
 import { cleanupRateLimits } from './ratelimit';
 import { allModules, moduleContext, moduleState } from './registry';
+import { queueWebhooks } from './webhooks/fanout';
 
 const RECENT_KEEP_DAYS = 30;
 /** Daily totals are small (one row per event per day), so they are kept for over a year of charts. */
@@ -46,6 +47,7 @@ export async function emit(env: Env, event: AppEvent): Promise<void> {
   if (hasSubscribers(`${event.module}.${event.name}`)) {
     await enqueue(env, 'core.event', { ...event, at, count });
   }
+  await queueWebhooks(env, { ...event, at });
 }
 
 /** Deliver one event to every subscribed module the workspace has turned on. */

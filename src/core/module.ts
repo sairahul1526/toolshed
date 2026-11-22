@@ -142,7 +142,7 @@ export const RESERVED_IDS = [
   'overview', 'welcome', 'modules', 'members', 'appearance', 'api-keys', 'settings', 'account',
   'users', 'audit-log', 'updates', 'email', 'core', 'auth', 'app', 'api', 'assets', 'dev', 'setup',
   'sign-in', 'sign-up', 'invite', 'healthz', 'm',
-  'token', 'keys', 'export', 'me', 'workspace', 'events', 'audit', 'notifications', 'search', 'jobs', 'errors',
+  'token', 'keys', 'export', 'me', 'workspace', 'events', 'audit', 'notifications', 'search', 'jobs', 'errors', 'webhooks',
 ];
 
 export function defineModule(def: ModuleDef): ModuleDef {
