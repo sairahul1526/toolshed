@@ -23,7 +23,7 @@ export {
   updateServiceAccount,
 } from './keys/service-accounts';
 export type { ServiceAccount } from './keys/service-accounts';
-export { capRole, KEY_ROLES, keyErrors } from './keys/shared';
+export { capRole, KEY_ROLES, keyErrors, weakerRole } from './keys/shared';
 export type { KeyActor, KeyRole } from './keys/shared';
-export { API_KEY_RATE_LIMIT, enforceApiKeyRateLimit, LAST_USED_INTERVAL_MS, touchApiKey, verifyApiKey } from './keys/verify';
+export { API_KEY_RATE_LIMIT, enforceApiKeyRateLimit, LAST_USED_INTERVAL_MS, liveKeyRole, touchApiKey, verifyApiKey } from './keys/verify';
 export type { VerifiedKey } from './keys/verify';

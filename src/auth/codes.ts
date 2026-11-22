@@ -116,7 +116,8 @@ export async function pausedFor(env: Env, purpose: CodePurpose, email: string, n
 /**
  * Check a typed code against the code this browser asked for (`id` comes from its signed cookie).
  * `attempts` only ever counts wrong guesses: every check takes one before comparing, so parallel
- * guesses cannot share a try, and a correct code gives its try back as it is used up.
+ * guesses cannot share a try, and a correct code gives its try back as it is used up. The pause
+ * for the address is part of taking the try, so it holds for guesses made at the same moment.
  */
 export async function redeemCode(env: Env, input: { id: string; purpose: CodePurpose; code: string; now?: number }): Promise<CodeResult> {
   const now = input.now ?? Date.now();
@@ -132,14 +133,23 @@ export async function redeemCode(env: Env, input: { id: string; purpose: CodePur
   const left = CODE_MAX_ATTEMPTS - row.attempts;
   if (!new RegExp(`^\\d{${CODE_LENGTH}}$`).test(code)) return refuse('wrong', left);
 
-  const taken = await env.DB.prepare('UPDATE auth_codes SET attempts = attempts + 1 WHERE id = ?1 AND attempts < ?2 AND used_at IS NULL')
-    .bind(row.id, CODE_MAX_ATTEMPTS)
-    .run();
-  if (taken.meta.changes !== 1) return refuse('limited', 0, await pausedFor(env, row.purpose, row.email, now));
+  // One statement takes the try and checks both budgets, this code's and the address's across
+  // every code sent to it. Checking the address in a separate read first would let guesses sent
+  // at the same moment against several codes all pass it before any of them was counted.
+  const taken = await env.DB.prepare(
+    `UPDATE auth_codes SET attempts = attempts + 1
+      WHERE id = ?1 AND attempts < ?2 AND used_at IS NULL
+        AND (SELECT COALESCE(SUM(attempts), 0) FROM auth_codes WHERE purpose = ?3 AND email = ?4 AND created_at > ?5) < ?6
+      RETURNING attempts`,
+  )
+    .bind(row.id, CODE_MAX_ATTEMPTS, row.purpose, row.email, now - LIMITS.wrongPerEmail.windowSec * 1000, LIMITS.wrongPerEmail.limit)
+    .first<{ attempts: number }>();
+  if (!taken) return refuse('limited', 0, await pausedFor(env, row.purpose, row.email, now));
 
   if (!(await safeEqual(await codeHash(env, row.id, code), row.code_hash))) {
-    const triesLeft = left - 1;
-    return triesLeft > 0 ? refuse('wrong', triesLeft) : refuse('limited', 0, await pausedFor(env, row.purpose, row.email, now));
+    const pausedNow = await pausedFor(env, row.purpose, row.email, now);
+    const triesLeft = CODE_MAX_ATTEMPTS - taken.attempts;
+    return pausedNow > 0 || triesLeft <= 0 ? refuse('limited', 0, pausedNow) : refuse('wrong', triesLeft);
   }
 
   const used = await env.DB.prepare('UPDATE auth_codes SET used_at = ?1, attempts = attempts - 1 WHERE id = ?2 AND used_at IS NULL').bind(now, row.id).run();

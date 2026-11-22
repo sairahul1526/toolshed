@@ -19,9 +19,8 @@
  */
 import type { Env } from '../../env';
 import { audit } from '../audit';
-import { errors } from '../errors';
 import { b64uDecode, b64uEncode, fromUtf8, randomBytes, sha256, utf8 } from '../keys/encoding';
-import { MIN_SECRET_LENGTH, secretStatus } from '../secret';
+import { requireSecret } from '../secret';
 
 export const JWT_ALG = 'ES256';
 /** The longest any token may live (embed tokens). Access tokens live 15 minutes. */
@@ -207,9 +206,7 @@ export async function getJwks(env: Env, now = Date.now()): Promise<Jwks> {
 }
 
 async function wrappingKey(env: Env, salt: Uint8Array<ArrayBuffer>): Promise<CryptoKey> {
-  if (secretStatus(env.AUTH_SECRET) !== 'ok') {
-    throw errors.needs_setup(`Set AUTH_SECRET to a random value of at least ${MIN_SECRET_LENGTH} characters, then try again.`);
-  }
+  requireSecret(env);
   const material = await crypto.subtle.importKey('raw', utf8(env.AUTH_SECRET), 'HKDF', false, ['deriveKey']);
   return crypto.subtle.deriveKey(
     { name: 'HKDF', hash: 'SHA-256', salt, info: utf8('toolshed:jwt-signing-key:v1') },

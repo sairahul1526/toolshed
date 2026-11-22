@@ -13,6 +13,26 @@ export function clientIp(c: Context<AppEnv>): string {
   return c.req.header('cf-connecting-ip') ?? 'local';
 }
 
+/**
+ * What a per-address limit counts. An IPv6 customer is usually handed a whole /64 and can use a
+ * new address from it for every request, so those are counted by their network. Anything else
+ * (IPv4, IPv4 written inside IPv6, text that is not an address) is counted as it stands.
+ */
+export function addressBlock(ip: string): string {
+  if (!ip.includes(':') || ip.includes('.')) return ip;
+  const [head = '', tail, more] = ip.toLowerCase().split('::');
+  const left = head ? head.split(':') : [];
+  const right = tail ? tail.split(':') : [];
+  const gap = tail === undefined ? 0 : 8 - left.length - right.length;
+  if (more !== undefined || gap < 0) return ip;
+  const groups = [...left, ...Array<string>(gap).fill('0'), ...right];
+  if (groups.length !== 8 || groups.some((group) => !/^[0-9a-f]{1,4}$/.test(group))) return ip;
+  return `${groups
+    .slice(0, 4)
+    .map((group) => parseInt(group, 16).toString(16))
+    .join(':')}::/64`;
+}
+
 /** Copy the cookies Better Auth set on its own response onto ours. */
 export function forwardCookies(c: Context<AppEnv>, cookies: string[]): void {
   for (const cookie of cookies) c.header('set-cookie', cookie, { append: true });
@@ -25,7 +45,9 @@ export function forwardCookies(c: Context<AppEnv>, cookies: string[]): void {
 export async function hit(env: Env, name: keyof typeof LIMITS, who: string, now?: number): Promise<number> {
   const base: RateLimitRule = LIMITS[name];
   const rule = env.ENVIRONMENT === 'dev' ? { limit: base.limit * 20, windowSec: base.windowSec } : base;
-  const res = await rateLimit(env, `auth.${name}:${who}`, rule, now);
+  // The limits named "...PerIp" are given an address; the rest are given an account or a person.
+  const key = name.endsWith('PerIp') ? addressBlock(who) : who;
+  const res = await rateLimit(env, `auth.${name}:${key}`, rule, now);
   return res.ok ? 0 : Math.max(1, res.retryAfter);
 }
 

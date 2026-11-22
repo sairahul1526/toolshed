@@ -61,6 +61,7 @@ function actorOf(c: Context<AppEnv>): KeyActor {
     label: user ? user.name || user.email : null,
     ip: c.req.header('cf-connecting-ip') ?? null,
     via: auth.kind,
+    impersonatedBy: auth.impersonatedBy ?? null,
   };
 }
 

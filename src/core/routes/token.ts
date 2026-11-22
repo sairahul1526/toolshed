@@ -12,6 +12,7 @@ import { roleAtLeast } from '../../env';
 import { capRole, checkScopes, MAX_SCOPES, scopesBeyond } from '../apikeys';
 import type { KeyRole } from '../apikeys';
 import { defineErrors, errors, parse } from '../errors';
+import { refuseWhileImpersonating } from '../guards';
 import { getJwks, signJwt, TOKEN_TTL_SECONDS } from '../jwt';
 import { roleSchema } from '../keys/shared';
 import { enforceRateLimit } from '../ratelimit';
@@ -43,6 +44,8 @@ api.post('/', async (c) => {
   if (!org || auth.kind === 'anon') throw errors.unauthorized();
   // A token that could renew itself would never run out. Only the longer-lived credential can ask.
   if (auth.kind === 'jwt') throw tokenErrors.not_renewable();
+  // A token lasts 15 minutes whatever happens to the session it came from.
+  refuseWhileImpersonating(auth.impersonatedBy);
   const sub = auth.kind === 'apikey' ? auth.keyId : user?.id;
   if (!sub) throw errors.unauthorized();
   await enforceRateLimit(c.env, `token:${sub}`, TOKEN_RATE_LIMIT, 'Too many tokens asked for. A token lasts 15 minutes, so reuse it, then try again.');

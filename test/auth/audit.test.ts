@@ -42,7 +42,8 @@ interface Line {
   meta: string | null;
   ip: string | null;
 }
-const trail = async () => (await env.DB.prepare('SELECT action, org_id, actor_id, actor_label, target_id, summary, meta, ip FROM audit_log ORDER BY created_at, id').all<Line>()).results;
+// In the order written: two lines in the same millisecond have ids that sort at random.
+const trail = async () => (await env.DB.prepare('SELECT action, org_id, actor_id, actor_label, target_id, summary, meta, ip FROM audit_log ORDER BY rowid').all<Line>()).results;
 
 beforeEach(async () => {
   env = createTestEnv().env;

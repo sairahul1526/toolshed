@@ -27,6 +27,9 @@ export interface Env {
   /** The address emails come from until the owner picks one on the Email screen, for example hello@example.com. */
   EMAIL_FROM?: string;
 
+  /** PBKDF2 rounds for new password hashes, 10000 to 100000. See docs/passwords.md. */
+  TOOLSHED_PASSWORD_ITERATIONS?: string;
+
   /** Optional bindings. Features that need them show "Needs setup" until they exist. */
   EMAIL?: SendEmail;
   EVENTS?: AnalyticsEngineDataset;
@@ -68,6 +71,12 @@ export interface AuthInfo {
   keyId?: string;
   /** The member behind a personal key, or behind a token a signed-in person asked for. Not set for service keys. */
   userId?: string;
+  /**
+   * Set on a "sign in as" session: the id of the install owner who is acting as this person.
+   * Audit lines carry it, and nothing that would outlive the session (keys, tokens, webhook
+   * secrets, exports) can be made while it is set.
+   */
+  impersonatedBy?: string;
 }
 
 export interface Vars {

@@ -13,6 +13,7 @@ import { fingerprint } from '../crypto';
 import { authErrors } from '../errors';
 import { forwardCookies, hit } from '../http';
 import { auditBy, freshFrom, type SignedIn } from './actor';
+import { FORGET_TRUSTED_DEVICES } from './sessions';
 
 export interface TwoStepSetup {
   /** The key to type in by hand when the camera will not read the QR code. */
@@ -89,6 +90,8 @@ export async function turnOffTwoStep(c: Context<AppEnv>, input: PasswordCheck = 
   const reply = await callAuth(() => auth.api.disableTwoFactor({ body, headers: c.req.raw.headers, asResponse: true }));
   if (!reply.ok) fail(reply);
   forwardCookies(c, reply.cookies);
+  // Better Auth forgets only the browser that asked. The rest would skip the check if it is turned on again.
+  await c.env.DB.prepare(FORGET_TRUSTED_DEVICES).bind(actor.id).run();
   await auditBy(c.env, actor, { orgId: null, action: 'two_step.turned_off', targetType: 'user', targetId: actor.id, summary: 'Turned off two-step sign-in' });
 }
 
@@ -99,6 +102,8 @@ export async function regenerateRecoveryCodes(c: Context<AppEnv>, input: Passwor
   const auth = await getAuth(c.env, c.req.url);
   const reply = await callAuth<{ backupCodes?: string[] }>(() => auth.api.generateBackupCodes({ body, headers: c.req.raw.headers, asResponse: true }));
   if (!reply.ok || !reply.data?.backupCodes) fail(reply);
+  // New codes are asked for when the old ones may have been seen. Trusted browsers go the same way.
+  await c.env.DB.prepare(FORGET_TRUSTED_DEVICES).bind(actor.id).run();
   await auditBy(c.env, actor, {
     orgId: null,
     action: 'two_step.codes_regenerated',

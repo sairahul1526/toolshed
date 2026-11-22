@@ -7,7 +7,7 @@ import type { Env } from '../../env';
 import { roleAtLeast } from '../../env';
 import { newId, orgDb } from '../db';
 import { parse } from '../errors';
-import { asKeyRole, auditKeys, capRole, isUniqueError, keyErrors, nameSchema, requireAdmin, requireSession, roleName, roleSchema } from './shared';
+import { asKeyRole, auditKeys, capRole, isUniqueError, keyErrors, nameSchema, requireAdmin, requireOwnSession, requireSession, roleName, roleSchema } from './shared';
 import type { KeyActor, KeyRole } from './shared';
 
 export const MAX_SERVICE_ACCOUNTS = 50;
@@ -70,7 +70,7 @@ function checkCeiling(actor: KeyActor, role: KeyRole): void {
 const createSchema = z.object({ name: nameSchema, role: roleSchema });
 
 export async function createServiceAccount(env: Env, actor: KeyActor, input: { name: string; role: KeyRole }, now = Date.now()): Promise<ServiceAccount> {
-  requireSession(actor);
+  requireOwnSession(actor);
   requireAdmin(actor, ADMIN_ONLY);
   const data = parse(createSchema, input);
   checkCeiling(actor, data.role);

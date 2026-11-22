@@ -16,6 +16,7 @@ import { organization } from 'better-auth/plugins/organization';
 import { twoFactor } from 'better-auth/plugins/two-factor';
 import { username } from 'better-auth/plugins/username';
 import { newId } from '../core/db';
+import { requireSecret } from '../core/secret';
 import type { Env } from '../env';
 import { IMPERSONATION_TTL_SEC, MIN_PASSWORD_LENGTH, RECOVERY_CODE_COUNT, SESSION_REFRESH_SEC, SESSION_TTL_SEC, TRUST_DEVICE_SEC } from './config';
 import { betterAuthPasswordHasher, iterationsFromEnv, MAX_PASSWORD_LENGTH } from './hasher';
@@ -78,7 +79,7 @@ export function secureCookies(origin: string): boolean {
 
 /** The hashing cost an operator chose with `TOOLSHED_PASSWORD_ITERATIONS`, or the default. */
 export function passwordIterations(env: Env): number {
-  return iterationsFromEnv((env as Env & { TOOLSHED_PASSWORD_ITERATIONS?: string }).TOOLSHED_PASSWORD_ITERATIONS);
+  return iterationsFromEnv(env.TOOLSHED_PASSWORD_ITERATIONS);
 }
 
 function build(env: Env, origin: string) {
@@ -150,7 +151,9 @@ export type Auth = ReturnType<typeof build>;
  */
 const cache = new WeakMap<object, Map<string, Guarded<Auth>>>();
 
-export function getAuth(env: Env, requestUrl?: string): Promise<Auth> {
+export async function getAuth(env: Env, requestUrl?: string): Promise<Auth> {
+  // Better Auth would sign cookies with whatever it is given, a short secret included.
+  requireSecret(env);
   const origin = baseUrl(env, requestUrl);
   let byOrigin = cache.get(env.DB);
   if (!byOrigin) cache.set(env.DB, (byOrigin = new Map()));

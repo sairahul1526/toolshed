@@ -28,6 +28,7 @@ export function sessionActor(c: Context<AppEnv>): KeyActor {
     label: user.name || user.email,
     ip: c.req.header('cf-connecting-ip') ?? null,
     via: 'session',
+    impersonatedBy: c.get('auth').impersonatedBy ?? null,
   };
 }
 

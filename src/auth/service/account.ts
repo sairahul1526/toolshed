@@ -14,6 +14,7 @@ import { MAX_PASSWORD_LENGTH } from '../hasher';
 import { clearSessionCookies } from '../signin';
 import { eraseUser, soleOwnerOf, type BlockingWorkspace } from '../user-store';
 import { actorFrom, auditBy, freshFrom, selfFrom } from './actor';
+import { END_IMPERSONATIONS, FORGET_TRUSTED_DEVICES } from './sessions';
 
 export interface AccountSummary {
   id: string;
@@ -94,7 +95,11 @@ export async function setPassword(c: Context<AppEnv>, input: { password: string 
   if (existing) await ctx.internalAdapter.updatePassword(actor.id, hash);
   else await ctx.internalAdapter.linkAccount({ userId: actor.id, providerId: 'credential', accountId: actor.id, password: hash });
 
-  await c.env.DB.prepare('DELETE FROM "session" WHERE "userId" = ?1 AND "id" <> ?2').bind(actor.id, actor.sessionId).run();
+  await c.env.DB.batch([
+    c.env.DB.prepare('DELETE FROM "session" WHERE "userId" = ?1 AND "id" <> ?2').bind(actor.id, actor.sessionId),
+    c.env.DB.prepare(END_IMPERSONATIONS).bind(actor.id),
+    c.env.DB.prepare(FORGET_TRUSTED_DEVICES).bind(actor.id),
+  ]);
   await auditBy(c.env, actor, {
     orgId: null,
     action: existing ? 'password.changed' : 'password.added',
@@ -125,9 +130,13 @@ const usernameSchema = z
   .toLowerCase()
   .regex(/^[a-z0-9_.]{3,30}$/, 'Use 3 to 30 letters, numbers, dots or underscores.');
 
-/** Set, change or clear (null) the optional username. It needs a password on the account (`auth.username_needs_password`), and goes when the password does. */
+/**
+ * Set, change or clear (null) the optional username. It needs a password on the account
+ * (`auth.username_needs_password`), and goes when the password does. A username is a name the
+ * account signs in with, so like the password it needs a recent sign-in.
+ */
 export async function setUsername(c: Context<AppEnv>, input: { username: string | null }): Promise<{ username: string | null }> {
-  const actor = await selfFrom(c);
+  const actor = await freshFrom(c);
   const username = input.username === null || input.username === '' ? null : parse(z.object({ username: usernameSchema }), input).username;
   if (username) {
     const taken = await c.env.DB.prepare('SELECT 1 AS yes FROM "user" WHERE "username" = ?1 AND "id" <> ?2').bind(username, actor.id).first<{ yes: number }>();

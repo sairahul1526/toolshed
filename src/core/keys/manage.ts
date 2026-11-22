@@ -20,7 +20,7 @@ import { insertKeyStatement, KEY_SELECT, keyStatus, rowRole, toApiKey } from './
 import type { ApiKey, KeyRow } from './rows';
 import { checkScopes, MAX_SCOPES } from './scopes';
 import { findServiceAccount } from './service-accounts';
-import { asKeyRole, auditKeys, capRole, isAdmin, isUniqueError, keyErrors, nameSchema, requireAdmin, requireSession, roleName, roleSchema, weakerRole } from './shared';
+import { asKeyRole, auditKeys, capRole, isAdmin, isUniqueError, keyErrors, nameSchema, requireAdmin, requireOwnSession, requireSession, roleName, roleSchema, weakerRole } from './shared';
 import type { KeyActor, KeyRole } from './shared';
 
 /** Keys that still work, per workspace. Keeps lists one page and one query. */
@@ -95,7 +95,7 @@ async function visibleKey(env: Env, actor: KeyActor, id: string): Promise<KeyRow
 }
 
 export async function createApiKey(env: Env, actor: KeyActor, input: CreateKeyInput, now = Date.now()): Promise<CreatedKey> {
-  requireSession(actor);
+  requireOwnSession(actor);
   const data = parse(createSchema, input);
   const scopes = checkScopes(data.scopes);
 
@@ -243,7 +243,7 @@ export interface RotatedKey extends CreatedKey {
  * The new key lives as long as the old one was made to (a 90 day key gets a fresh 90 days).
  */
 export async function rotateApiKey(env: Env, actor: KeyActor, id: string, opts: { graceSeconds?: number } = {}, now = Date.now()): Promise<RotatedKey> {
-  requireSession(actor);
+  requireOwnSession(actor);
   const graceMs = (parse(rotateSchema, opts).graceSeconds ?? 0) * 1000;
   const old = await visibleKey(env, actor, id);
   if (old.kind === 'service') requireAdmin(actor, 'Only workspace admins can rotate a service account’s keys. Ask an admin for access.');

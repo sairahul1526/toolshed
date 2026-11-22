@@ -11,7 +11,7 @@ import { getSetting, INSTANCE } from '../../core/settings';
 import type { AppEnv, Env, Role } from '../../env';
 import { authErrors } from '../errors';
 import { eraseWorkspace, findWorkspace, isUniqueClash, saveWorkspaceName, slugSchema, workspaceNameSchema } from '../workspace-store';
-import { actorFrom, auditBy, isInstanceOwner, workspaceActor } from './actor';
+import { actorFrom, auditBy, freshFrom, isInstanceOwner, workspaceActor } from './actor';
 import { isRole } from './roles';
 
 export { slugSchema, workspaceNameSchema };
@@ -154,8 +154,9 @@ export async function renameWorkspace(c: Context<AppEnv>, input: { name: string;
  */
 export async function deleteWorkspace(c: Context<AppEnv>, input: { confirm: string }): Promise<void> {
   const actor = await workspaceActor(c, 'owner');
-  // A "sign in as" session is for looking and fixing, not for deleting someone's workspace.
-  if (actor.impersonatedBy) throw authErrors.impersonating();
+  // A "sign in as" session is for looking and fixing, not for deleting someone's workspace. And it
+  // cannot be undone, so a browser left open is not enough: the owner signed in a short while ago.
+  await freshFrom(c);
   const typed = typeof input.confirm === 'string' ? input.confirm.trim().toLowerCase() : '';
   if (typed !== actor.orgSlug) throw errors.validation_failed(undefined, { confirm: `Type ${actor.orgSlug} to confirm.` });
   // The role comes from the database for this request; read it once more right before the point of no return.

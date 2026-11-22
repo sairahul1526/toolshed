@@ -11,6 +11,8 @@ import {
   listAllWorkspaces,
   listUsers,
   renameAnyWorkspace,
+  revokeOtherSessions,
+  revokeSession,
   setPassword,
   startImpersonation,
   stopImpersonation,
@@ -309,6 +311,53 @@ describe('signing in as someone', () => {
     expect(await asOlive.signedIn()).toBe(false);
     expect(await count('SELECT COUNT(*) AS n FROM "session" WHERE "impersonatedBy" IS NOT NULL')).toBe(0);
     expect(await audits('impersonation.stopped')).toBe(1);
+  });
+
+  it('ends as soon as the owner is suspended or no longer owns the install', async () => {
+    await must(env, asOlive, (c) => startImpersonation(c, mel.user.id));
+    expect((await who(asOlive)).email).toBe('mel@example.com');
+
+    await env.DB.prepare('UPDATE "user" SET "banned" = 1 WHERE "id" = ?1').bind(olive.user.id).run();
+    expect(await codeOf(env, asOlive, (c) => getAccount(c))).toBe('unauthorized');
+    await env.DB.prepare('UPDATE "user" SET "banned" = 0 WHERE "id" = ?1').bind(olive.user.id).run();
+    expect((await who(asOlive)).email).toBe('mel@example.com');
+
+    await env.DB.prepare(`UPDATE "user" SET "role" = 'user' WHERE "id" = ?1`).bind(olive.user.id).run();
+    expect(await codeOf(env, asOlive, (c) => getAccount(c))).toBe('unauthorized');
+    // Mel's own devices are not touched.
+    expect((await who(asMel)).email).toBe('mel@example.com');
+  });
+
+  it('ends when the session names an owner who is gone', async () => {
+    await env.DB.prepare('UPDATE "session" SET "impersonatedBy" = ?1 WHERE "id" = ?2').bind('usr_gone', mel.sessionId).run();
+    expect(await codeOf(env, asMel, (c) => getAccount(c))).toBe('unauthorized');
+  });
+
+  it('ends when the owner signs their devices out from somewhere else', async () => {
+    const elsewhere = async (): Promise<Browser> => adopt(new Browser(app, env), (await createTestSession(env, { email: 'olive@example.com' })).cookie);
+    const running = () => count('SELECT COUNT(*) AS n FROM "session" WHERE "impersonatedBy" = ?1', olive.user.id);
+
+    await must(env, asOlive, (c) => startImpersonation(c, mel.user.id));
+    expect(await running()).toBe(1);
+    // A device id that is not theirs ends nothing.
+    expect(await codeOf(env, await elsewhere(), (c) => revokeSession(c, mel.sessionId))).toBe('auth.session_not_found');
+    expect(await running()).toBe(1);
+    await must(env, await elsewhere(), (c) => revokeSession(c, olive.sessionId));
+    expect(await running()).toBe(0);
+    expect(await codeOf(env, asOlive, (c) => getAccount(c))).toBe('unauthorized');
+
+    const again = adopt(new Browser(app, env), (await createTestSession(env, { email: 'olive@example.com' })).cookie);
+    await must(env, again, (c) => startImpersonation(c, mel.user.id));
+    expect(await running()).toBe(1);
+    await must(env, await elsewhere(), (c) => revokeOtherSessions(c));
+    expect(await running()).toBe(0);
+
+    const third = adopt(new Browser(app, env), (await createTestSession(env, { email: 'olive@example.com' })).cookie);
+    await must(env, third, (c) => startImpersonation(c, mel.user.id));
+    expect(await running()).toBe(1);
+    await must(env, await elsewhere(), (c) => setPassword(c, { password: 'correct horse battery' }));
+    expect(await running()).toBe(0);
+    expect(await sessionsOf(mel.user.id)).toBe(1);
   });
 
   it('cannot be forged by handing the browser a made-up owner cookie', async () => {

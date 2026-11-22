@@ -20,6 +20,7 @@ import { background } from '../signin';
 import { emailSchema, findUserByEmail } from '../users';
 import { isUniqueClash } from '../workspace-store';
 import { actorFrom, auditBy, freshFrom, selfFrom } from './actor';
+import { END_IMPERSONATIONS, FORGET_TRUSTED_DEVICES } from './sessions';
 
 export interface PendingEmailChange {
   /** The address waiting to be confirmed. */
@@ -68,7 +69,7 @@ export async function startEmailChange(c: Context<AppEnv>, input: { email: strin
     await background(
       c,
       renderEmail(c.env, { template: 'email-change', data: { code: issued.code, minutes: CODE_TTL_MS / 60_000 } }).then((mail) =>
-        sendEmail(c.env, { to: email, template: 'email-change', tag: 'auth', ...mail }),
+        sendEmail(c.env, { to: email, template: 'email-change', tag: 'auth', lane: 'sign-in', ...mail }),
       ),
     );
   }
@@ -110,7 +111,11 @@ export async function confirmEmailChange(c: Context<AppEnv>, input: { code: stri
     throw err;
   }
 
-  await c.env.DB.prepare('DELETE FROM "session" WHERE "userId" = ?1 AND "id" <> ?2').bind(actor.id, actor.sessionId).run();
+  await c.env.DB.batch([
+    c.env.DB.prepare('DELETE FROM "session" WHERE "userId" = ?1 AND "id" <> ?2').bind(actor.id, actor.sessionId),
+    c.env.DB.prepare(END_IMPERSONATIONS).bind(actor.id),
+    c.env.DB.prepare(FORGET_TRUSTED_DEVICES).bind(actor.id),
+  ]);
   await auditBy(c.env, actor, {
     orgId: null,
     action: 'user.email_changed',
@@ -127,7 +132,7 @@ export async function confirmEmailChange(c: Context<AppEnv>, input: { code: stri
         title: 'Your email address was changed',
         body: `Your account now signs in with ${result.email}. This address no longer works for it. If you did not make this change, tell the person who runs this Toolshed.`,
       },
-    }).then((mail) => sendEmail(c.env, { to: actor.email, template: 'notification', tag: 'auth', ...mail })),
+    }).then((mail) => sendEmail(c.env, { to: actor.email, template: 'notification', tag: 'auth', lane: 'sign-in', ...mail })),
   );
   return { email: result.email };
 }

@@ -15,7 +15,7 @@ stored, and the choices made to keep accounts safe.
 
 | Name | Needed | What it does |
 |---|---|---|
-| `AUTH_SECRET` | Yes | Signs session cookies and keys every stored code. At least 32 random characters (`openssl rand -base64 32`). Changing it signs everyone out and voids open codes and two-step secrets. |
+| `AUTH_SECRET` | Yes | Signs session cookies and keys every stored code. At least 32 random characters (`openssl rand -base64 32`). Changing it signs everyone out and voids open codes and two-step secrets. While it is missing or shorter than 32 characters, the sign-in pages, the dashboard and the API answer with a setup message and nobody is signed in. |
 | `OWNER_EMAIL` | Yes | The only address that can claim a new install at `/setup`. |
 | `EMAIL_FROM` | For email | The address emails come from until the owner picks one on the Email screen. See [email.md](email.md). |
 | `APP_URL` | Optional | The install's address, for example `https://tools.example.com`. Without it Toolshed uses the address of each request. Set it when the Worker answers on more than one address, so links, cookies and passkeys all belong to one. |
@@ -67,7 +67,7 @@ The page looks the same whether or not the address has an account. An unknown ad
 
 Optional. Set one on the Account screen. It needs at least 10 characters. A person with a password can also
 pick a username and sign in with either. A wrong password and an unknown account give the same message.
-Setting or changing a password signs out that person's other devices.
+Setting or changing a password signs out that person's other devices and forgets their trusted devices.
 
 Removing the password is always possible, because the emailed code still works.
 
@@ -87,6 +87,9 @@ by emailed code, link or password also asks for a code from the app.
 
 - 10 recovery codes are shown once when two-step is turned on. Each works once. They can be replaced.
 - "Trust this device for 30 days" skips the app code on that browser for 30 days.
+- Every trusted device is forgotten, and asked for the app code again, when the person signs out their
+  other devices, sets or changes a password, changes their email address, turns two-step off, or makes new
+  recovery codes.
 - Too many wrong app codes pause the check for a while.
 
 ## Workspaces and roles
@@ -108,14 +111,21 @@ Rules that hold for every role:
 - Nobody changes their own role.
 - A workspace always keeps at least one owner. The last owner cannot leave, be removed or be lowered.
 - Every check runs on the server, for the dashboard and the API alike.
-- When a person is removed, their API keys for that workspace stop working. When a person's role is lowered,
-  their keys drop to the new role.
+- API keys and tokens are checked against the member list on every request. When a person is removed,
+  their keys and tokens for that workspace stop working at once. When a person's role is lowered, their keys
+  and tokens drop to the new role.
+- A token made from an API key stops as soon as the key is revoked, replaced or runs out.
+- Keys that belong to a service account stand for the workspace, not a person, so they keep working when
+  the person who made them leaves.
+- The dashboard is for people. An API key or a token is refused on every `/app` page, whatever its role
+  and permissions, and works only on `/api/v1`.
 
 By default only the install owner can create more workspaces. The install setting
 `auth.members_can_create_workspaces` lets everyone create them. One person can own at most 25.
 
-Deleting a workspace deletes everything in it and cannot be undone. It asks for the workspace's short name,
-typed out.
+Deleting a workspace deletes everything in it and cannot be undone: the tools' data, members and invites,
+API keys, service accounts, notifications, exports and stored files. It needs a sign-in from the last 30
+minutes and the workspace's short name, typed out.
 
 ### Invites
 
@@ -136,9 +146,17 @@ The install owner sees a Users screen that covers every workspace:
   the workspace's short name typed out. A person who is the only owner of a workspace cannot be deleted
   until that workspace has another owner or is deleted.
 - Sign in as a person to see what they see. This lasts one hour and is written to the activity log with
-  the owner's name, as is everything done during it. While signed in as someone, the owner cannot change how
-  that account signs in (password, passkeys, two-step, email), delete their workspace or use the Users
-  screen.
+  the owner's name. What is done during it is logged under the person's name with a mark saying who was
+  really acting. While signed in as someone, the owner cannot:
+  - change how that account signs in (password, username, passkeys, two-step, email);
+  - make or replace an API key or a service account, or ask for a token;
+  - add a webhook endpoint, or read or replace a webhook's signing secret;
+  - start an export;
+  - leave or delete their workspace, or use the Users screen.
+
+  Nothing made during the hour can outlive it. The session also ends early when the owner is suspended,
+  stops being an install owner, or signs out any of their own devices. Two email actions, sending a test
+  email and letting a suppressed address receive email again, are logged without the mark.
 
 An install owner cannot be suspended, deleted or signed in as. API keys never reach the Users screen.
 
@@ -147,10 +165,10 @@ An install owner cannot be suspended, deleted or signed in as. API keys never re
 - A session lasts 30 days from its last use. "Sign in as" sessions last one hour and are never extended.
 - The Account screen lists a person's devices with browser, system, IP address and last use. They can sign
   out one device or all the others.
-- Changing the email address, password, passkeys or two-step settings needs a sign-in from the last 30
-  minutes. Toolshed asks the person to sign in again when it is older.
-- Changing the email address needs a code sent to the new address, signs out other devices, and tells the
-  old address.
+- Changing the email address, password, username, passkeys or two-step settings needs a sign-in from the
+  last 30 minutes. Toolshed asks the person to sign in again when it is older.
+- Changing the email address needs a code sent to the new address, signs out other devices, forgets trusted
+  devices, and tells the old address.
 - Deleting your own account needs your email typed out. It is refused while you are the only owner of a
   workspace, or of the install. Give the workspace another owner or delete it first.
 
@@ -167,7 +185,7 @@ Everything lives in the install's own D1 database.
 | `twoFactor` | Authenticator secrets and recovery codes, encrypted with a key from `AUTH_SECRET`. |
 | `organization`, `member`, `invitation` | Workspaces, who is in them with which role, and open invites. |
 | `auth_codes` | Emailed codes and links, as keyed hashes only, with the IP address and browser that asked. |
-| `verification` | Short-lived rows for a sign-in that is half way through. |
+| `verification` | Short-lived rows for a sign-in that is half way through, and one row per trusted device. |
 
 Codes and link tokens are never stored as sent. A copy of the database cannot be turned back into a working
 code or link without `AUTH_SECRET`.
@@ -183,7 +201,7 @@ setting or email address are written to the activity log.
 |---|---|
 | Codes sent to one address | 5 per 15 minutes |
 | Codes asked for from one IP address, across all addresses | 60 per hour |
-| Wrong codes for one address | 5 per 15 minutes, then code sign-in for that address pauses |
+| Wrong codes for one address | 5 per 15 minutes across all its open codes, then code sign-in for that address pauses |
 | Code, password and two-step checks from one IP address | 120 per 15 minutes |
 | Wrong passwords for one account | 10 per 15 minutes |
 | Passkey sign-ins from one IP address | 60 per 15 minutes |
@@ -198,7 +216,17 @@ While code sign-in is paused for an address, the link in the email and a passkey
 typing wrong codes can slow the real person down, but cannot lock them out. The same holds for passwords:
 when password sign-in pauses, an emailed code still works.
 
-The counts live in D1, so they hold across every copy of the Worker.
+The counts live in D1, so they hold across every copy of the Worker. A wrong code is counted in the same
+step that uses up a try, so guesses sent at the same moment cannot get past the limit.
+
+Limits per IP address count an IPv6 caller by its /64 network, because one connection can use any address
+in it.
+
+When an IP address goes over its limit on password sign-in, the activity log gets one line for that address
+per 15 minutes, whatever names it typed. An account paused by its own limit gets one line per 15 minutes too.
+
+Sign-in emails (codes, links, the claim code, email change) do not count against the hourly email caps in
+[email.md](email.md) and are never held back by them. The limits in this table are what bounds them.
 
 ## Safety choices
 
@@ -215,7 +243,10 @@ The counts live in D1, so they hold across every copy of the Worker.
   one in advance.
 - **Forms only work from the install's own pages.** Every request that changes something must come from the
   install's own address.
-- **No open redirects.** After sign-in, people are only ever sent to a path inside the install.
+- **No framing.** The sign-in, setup, invite and welcome pages and the dashboard tell the browser never to
+  show them inside another site's page.
+- **No open redirects.** After sign-in, people are only ever sent to a path inside the install. The path is
+  checked after `.` and `..` are resolved, the way a browser would read it.
 - **IP addresses** come from Cloudflare's own `CF-Connecting-IP` header. `X-Forwarded-For` is ignored.
 - **No requests to other sites** from any sign-in page.
 

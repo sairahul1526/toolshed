@@ -33,6 +33,13 @@ beforeEach(async () => {
 describe('changing the email an account signs in with', () => {
   it('changes nothing until the new address proves itself with the code', async () => {
     const phone = await createTestSession(env, { email: OLD });
+    // Two browsers told to skip the two-step check: one of Ada's, one of somebody else's.
+    const trust = (id: string, userId: string) =>
+      env.DB.prepare(`INSERT INTO "verification" ("id", "identifier", "value", "expiresAt", "createdAt", "updatedAt") VALUES (?1, ?2, ?3, ?4, ?5, ?5)`)
+        .bind(id, `trust-device-${id}`, userId, new Date(Date.now() + 86_400_000).toISOString(), new Date().toISOString())
+        .run();
+    await trust('ver_ada', ada.user.id);
+    await trust('ver_other', 'usr_someone_else');
     const pending = await must(env, b, (c) => startEmailChange(c, { email: ' Ada@New.Example.com ' }));
     expect(pending.email).toBe(NEW);
     expect(await must(env, b, (c) => pendingEmailChange(c))).toEqual(pending);
@@ -51,6 +58,8 @@ describe('changing the email an account signs in with', () => {
     // This device stays signed in, the others do not, and the old address hears about it.
     expect(await b.signedIn()).toBe(true);
     expect(await count('SELECT COUNT(*) AS n FROM "session" WHERE "id" = ?1', phone.sessionId)).toBe(0);
+    // Ada's other browsers are asked for the two-step code again. Nobody else's are touched.
+    expect((await env.DB.prepare(`SELECT "id" FROM "verification" WHERE "identifier" LIKE 'trust-device-%'`).all<{ id: string }>()).results).toEqual([{ id: 'ver_other' }]);
     const notice = await lastEmail(env, OLD);
     expect(notice?.subject).toContain('email address was changed');
     expect(notice?.text).toContain(NEW);
@@ -135,7 +144,8 @@ describe('changing the email an account signs in with', () => {
 
     await must(env, b, (c) => startEmailChange(c, { email: NEW }));
     const code = await lastCode(env, NEW);
-    await env.DB.prepare('UPDATE "session" SET "impersonatedBy" = ?1').bind('usr_owner').run();
+    const owner = await createTestSession(env, { email: 'install-owner@example.com', instanceOwner: true, orgId: 'org_install' });
+    await env.DB.prepare('UPDATE "session" SET "impersonatedBy" = ?1').bind(owner.user.id).run();
     expect(await codeOf(env, b, (c) => startEmailChange(c, { email: 'x@new.example.com' }))).toBe('auth.impersonating');
     expect(await codeOf(env, b, (c) => confirmEmailChange(c, { code }))).toBe('auth.impersonating');
     expect(await codeOf(env, b, (c) => cancelEmailChange(c))).toBe('auth.impersonating');

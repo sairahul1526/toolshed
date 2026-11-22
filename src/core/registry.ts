@@ -181,20 +181,59 @@ export async function exportModules(env: Env, org: { id: string; name: string; s
   return out;
 }
 
-/** Delete everything modules and core services stored for a workspace. Call when a workspace is deleted. */
-export async function purgeOrgData(env: Env, orgId: string): Promise<void> {
+/**
+ * Core tables with a workspace's rows, in the order they are emptied. `module_state` has to go
+ * before `audit_log`: the audit log only lets go of a workspace's lines once that workspace has
+ * no module state left (see `audit_guard` in the migrations).
+ */
+const CORE_ORG_TABLES = [
+  'module_state',
+  'audit_log',
+  'email_log',
+  'event_counts',
+  'events_recent',
+  'webhook_attempts',
+  'webhook_deliveries',
+  'webhook_endpoints',
+  // Keys and service accounts are credentials: left behind, they would name a workspace that is gone.
+  'api_keys',
+  'service_accounts',
+  'notification_reads',
+  'notification_marks',
+  'notifications',
+  'exports',
+] as const;
+
+/** Where a workspace's export files live. The same layout as `exportKey` in export.ts, which imports this file. */
+const exportPrefix = (orgId: string): string => `exports/${orgId}/`;
+
+/**
+ * The statements that delete everything modules and core services stored for a workspace. They
+ * are handed out, not run, so deleting a workspace can put them in one batch with the removal of
+ * its members: nobody can write into a workspace that is half gone.
+ */
+export function purgeOrgStatements(env: Env, orgId: string): D1PreparedStatement[] {
+  if (!orgId) throw new Error('purgeOrgStatements needs a workspace id');
   const tables = registered.flatMap((m) => m.tables ?? []);
-  const core = [
-    'module_state',
-    'audit_log',
-    'email_log',
-    'event_counts',
-    'events_recent',
-    'webhook_attempts',
-    'webhook_deliveries',
-    'webhook_endpoints',
-  ];
-  const stmts = [...tables, ...core].map((t) => env.DB.prepare(`DELETE FROM ${t} WHERE org_id = ?1`).bind(orgId));
+  const stmts = [...tables, ...CORE_ORG_TABLES].map((t) => env.DB.prepare(`DELETE FROM ${t} WHERE org_id = ?1`).bind(orgId));
   stmts.push(env.DB.prepare('DELETE FROM settings WHERE scope = ?1').bind(orgId));
-  await env.DB.batch(stmts);
+  return stmts;
+}
+
+/** Delete the files a workspace has outside the database: its exports. Safe to run again. */
+export async function purgeOrgFiles(env: Env, orgId: string): Promise<void> {
+  if (!orgId) throw new Error('purgeOrgFiles needs a workspace id');
+  const prefix = exportPrefix(orgId);
+  let cursor: string | undefined;
+  do {
+    const page = await env.FILES.list({ prefix, ...(cursor ? { cursor } : {}) });
+    if (page.objects.length > 0) await env.FILES.delete(page.objects.map((o) => o.key));
+    cursor = page.truncated ? page.cursor : undefined;
+  } while (cursor);
+}
+
+/** Delete everything modules and core services stored for a workspace: files first, then rows. */
+export async function purgeOrgData(env: Env, orgId: string): Promise<void> {
+  await purgeOrgFiles(env, orgId);
+  await env.DB.batch(purgeOrgStatements(env, orgId));
 }
