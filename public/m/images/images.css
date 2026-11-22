@@ -1,0 +1,124 @@
+/* Images: what the dashboard screens need on top of the kit. Colours and sizes come from the kit's tokens, so light and dark follow it. */
+
+/* --- Shared pieces --- */
+.img-row { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; margin: 0; }
+.img-two { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 16px; align-items: start; }
+.img-small { font-size: 12.5px; }
+.img-cell { display: flex; flex-direction: column; gap: 2px; min-width: 0; }
+.img-cell .trunc { max-width: min(420px, 60vw); }
+.img-name { font-weight: 500; color: var(--text); overflow-wrap: anywhere; }
+a.img-name { text-decoration: none; }
+a.img-name:hover { text-decoration: underline; text-underline-offset: 3px; }
+.img-actions { display: inline-flex; gap: 6px; justify-content: flex-end; }
+.img-more { margin: 16px 0 0; text-align: center; }
+.img-status { margin: 0; font-size: 13px; min-height: 1.4em; }
+.img-fieldset { border: 0; margin: 0; padding: 0; min-width: 0; display: flex; flex-direction: column; gap: 16px; }
+.img-fieldset.img-group { border: 1px solid var(--border); border-radius: var(--radius); padding: 12px 14px 14px; }
+.img-fieldset.img-group > legend { padding: 0 6px; font-size: 13px; font-weight: 500; }
+.img-problems { margin: 0; padding-left: 18px; display: flex; flex-direction: column; gap: 4px; font-size: 13px; }
+.img-details > summary { cursor: pointer; font-size: 13px; font-weight: 500; padding: 4px 0; }
+.img-details[open] > summary { margin-bottom: 12px; }
+.img-color { width: 56px; height: 36px; padding: 3px; cursor: pointer; }
+.img-fontmark { display: inline-flex; align-items: center; justify-content: center; width: 64px; height: 40px; border: 1px solid var(--border); border-radius: var(--radius-sm); background: var(--surface-2); color: var(--muted); font-weight: 600; font-size: 15px; }
+
+/* --- Pictures --- */
+.img-preview { display: block; width: 100%; height: auto; max-height: 70vh; object-fit: contain; border: 1px solid var(--border); border-radius: var(--radius); background: var(--surface-2); }
+.img-thumb { display: block; width: 100%; height: auto; aspect-ratio: 1200 / 630; object-fit: contain; border: 1px solid var(--border); border-radius: var(--radius-sm); background: var(--surface-2); }
+.img-thumb.small { width: 96px; height: 54px; aspect-ratio: auto; }
+.img-thumb-link { display: inline-block; border-radius: var(--radius-sm); }
+
+/* --- Starter cards --- */
+.img-starters { list-style: none; margin: 0; padding: 0; display: grid; grid-template-columns: repeat(auto-fill, minmax(220px, 1fr)); gap: 16px; }
+.img-starter { display: flex; flex-direction: column; gap: 10px; min-width: 0; }
+.img-starter-text { display: flex; flex-direction: column; gap: 2px; flex: 1; font-size: 13px; }
+.img-starter-text b { font-size: 14px; font-weight: 500; }
+
+/* --- Use and share --- */
+.img-share { display: grid; grid-template-columns: minmax(260px, 340px) minmax(0, 1fr); gap: 16px; align-items: start; }
+.img-share-out { display: flex; flex-direction: column; gap: 16px; min-width: 0; }
+.img-share-out .card-body { display: flex; flex-direction: column; gap: 12px; }
+.img-share-out .card-body > p { margin: 0; }
+.img-share-out .input-group .btn { flex: none; border-radius: 0; }
+.img-wait { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; font-size: 13px; color: var(--muted); }
+/* The kit's dot is pinned to a corner of an icon button; here it sits in the line of text. */
+.img-wait .dot { position: static; flex: none; width: 8px; height: 8px; box-shadow: none; background: var(--warn); animation: img-pulse 1.6s ease-in-out infinite; }
+.img-wait .dot.ok { background: var(--ok); animation: none; }
+@keyframes img-pulse { 50% { opacity: .35; } }
+@media (prefers-reduced-motion: reduce) { .img-wait .dot { animation: none; } }
+
+/* --- Design page --- */
+.img-publish { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 10px 16px; margin: 0 0 12px; padding: 10px 14px; border: 1px solid var(--border); border-radius: var(--radius); background: var(--surface); }
+.img-publish .img-status { flex: 1 1 240px; }
+.img-publish form { margin: 0; }
+.img-editor:empty { display: none; }
+.img-editor { display: flex; flex-direction: column; gap: 12px; }
+.img-ed-bar { display: flex; flex-wrap: wrap; align-items: center; gap: 6px; padding: 8px; border: 1px solid var(--border); border-radius: var(--radius); background: var(--surface); }
+.img-ed-gap { flex: 1; }
+.img-ed-main { display: grid; grid-template-columns: 250px minmax(0, 1fr) 290px; gap: 12px; align-items: start; }
+.img-ed-side { display: flex; flex-direction: column; gap: 12px; min-width: 0; }
+.img-ed-center { display: flex; flex-direction: column; gap: 8px; min-width: 0; position: sticky; top: 12px; }
+.img-ed-center > .hint { margin: 0; }
+.img-ed-panel { display: flex; flex-direction: column; gap: 12px; min-width: 0; padding: 14px; border: 1px solid var(--border); border-radius: var(--radius); background: var(--surface); }
+.img-ed-panel .hint, .img-ed-panel .err-text { margin: 0; }
+.img-ed-panel .err-text .btn { margin-left: 4px; }
+.img-ed-h { margin: 4px 0 0; font-size: 12px; font-weight: 600; letter-spacing: .04em; text-transform: uppercase; color: var(--muted); }
+.img-ed-h:first-child { margin-top: 0; }
+.img-ed-field { min-width: 0; }
+.img-ed-field > .hint { margin-top: 6px; }
+.img-ed-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 10px; align-items: start; }
+.img-ed-stack { display: flex; flex-direction: column; gap: 6px; }
+.img-ed-paint { display: flex; gap: 6px; }
+.img-ed-paint .input { min-width: 0; }
+.img-ed-swatch { flex: none; width: 36px; height: 36px; padding: 2px; border: 1px solid var(--border-strong); border-radius: var(--radius-sm); background: var(--surface); cursor: pointer; }
+.img-ed-panel [aria-invalid="true"] { border-color: var(--down); }
+.img-ed-fieldset { margin: 0; min-width: 0; padding: 10px 12px 12px; border: 1px solid var(--border); border-radius: var(--radius); display: flex; flex-direction: column; gap: 10px; }
+.img-ed-fieldset > legend { padding: 0 6px; font-size: 13px; }
+.img-ed-add { display: flex; flex-direction: column; gap: 8px; align-items: flex-start; margin: 0; }
+.img-ed-add .img-ed-field { align-self: stretch; }
+
+/* Layer list: the top layer comes first, as it is drawn last. */
+.img-ed-layers { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 4px; }
+.img-ed-layer { display: flex; flex-direction: column; gap: 4px; padding: 4px; border: 1px solid transparent; border-radius: var(--radius-sm); }
+.img-ed-layer.on { border-color: var(--accent-ink); background: var(--accent-soft); }
+.img-ed-layer.off .img-ed-layer-name { color: var(--faint); text-decoration: line-through; }
+.img-ed-layer-name { display: flex; align-items: center; gap: 8px; width: 100%; min-height: 32px; padding: 4px 6px; border: 0; border-radius: var(--radius-sm); background: none; color: var(--text); font: inherit; font-size: 13px; text-align: left; cursor: pointer; }
+.img-ed-layer-name:hover { background: var(--surface-2); }
+.img-ed-layer-name:focus-visible, .img-ed-canvas:focus-visible, .img-ed-swatch:focus-visible { outline: 2px solid var(--accent-ink); outline-offset: 2px; }
+.img-ed-layer-name .trunc { max-width: 100%; flex: 1; min-width: 0; }
+.img-ed-kind { flex: none; font-size: 11px; color: var(--muted); border: 1px solid var(--border); border-radius: 999px; padding: 0 7px; line-height: 18px; background: var(--surface); }
+.img-ed-acts { display: flex; gap: 4px; padding-left: 6px; }
+.img-ed-layer:not(.on) .img-ed-acts { display: none; }
+.img-ed-layer:not(.on):focus-within .img-ed-acts, .img-ed-layer:not(.on):hover .img-ed-acts { display: flex; }
+.img-ed-canvas-pick { border: 1px solid var(--border); }
+.img-ed-canvas-pick.on { border-color: var(--accent-ink); background: var(--accent-soft); }
+
+/* The stage: the drawn design, and a see-through layer on top that takes the pointer. */
+.img-ed-canvas { position: relative; width: 100%; margin: 0 auto; border: 1px solid var(--border-strong); border-radius: var(--radius-sm); background: var(--surface-2); overflow: hidden; user-select: none; -webkit-user-select: none; touch-action: none; }
+.img-ed-image { display: block; width: 100%; height: 100%; }
+.img-ed-overlay { position: absolute; inset: 0; width: 100%; height: 100%; overflow: visible; }
+.img-ed-hit { fill: transparent; cursor: move; }
+.img-ed-outline { fill: none; stroke: #2563eb; stroke-width: 1.5px; vector-effect: non-scaling-stroke; pointer-events: none; }
+.img-ed-handle { fill: #fff; stroke: #2563eb; stroke-width: 1.5px; vector-effect: non-scaling-stroke; cursor: nwse-resize; }
+.img-ed-handle[data-handle="1,0"], .img-ed-handle[data-handle="0,1"] { cursor: nesw-resize; }
+.img-ed-handle[data-handle="0.5,0"], .img-ed-handle[data-handle="0.5,1"] { cursor: ns-resize; }
+.img-ed-handle[data-handle="0,0.5"], .img-ed-handle[data-handle="1,0.5"] { cursor: ew-resize; }
+
+/* Beside the dashboard's own menu there is no room for three columns: the design stays in view on the left and the panels scroll past it. */
+@media (max-width: 1400px) {
+  .img-ed-main { grid-template-columns: minmax(0, 1fr) 300px; grid-template-areas: "stage layers" "stage props" "stage fields"; grid-template-rows: auto auto 1fr; }
+  .img-ed-side { display: contents; }
+  .img-ed-center { grid-area: stage; }
+  .img-ed-side > :first-child { grid-area: layers; }
+  .img-ed-side > :last-child { grid-area: fields; }
+  .img-ed-props { grid-area: props; }
+}
+@media (max-width: 760px) {
+  .img-two, .img-share { grid-template-columns: minmax(0, 1fr); }
+  .img-ed-main { grid-template-columns: minmax(0, 1fr); grid-template-areas: "stage" "layers" "props" "fields"; grid-template-rows: none; }
+  .img-ed-center { position: static; }
+  .img-actions { flex-wrap: wrap; }
+  .img-share-out .input-group { flex-wrap: wrap; }
+  .img-share-out .input-group .btn { flex: 1 1 100%; }
+  .img-thumb.small { width: 72px; height: 40px; }
+  .img-publish { align-items: stretch; }
+}

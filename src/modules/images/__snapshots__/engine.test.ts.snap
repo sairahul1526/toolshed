@@ -1,0 +1,117 @@
+// Vitest Snapshot v1, https://vitest.dev/guide/snapshot.html
+
+exports[`starter templates > 'blog' draws the same picture as before 1`] = `
+{
+  "bytes": 17628,
+  "drawing": "<svg xmlns="http://www.w3.org/2000/svg" width="1200" height="630" viewBox="0 0 1200 630"><rect width="1200" height="630" fill="#0f172a"/><rect x="80" y="84" width="72" height="10" rx="5" fill="#22d3ee"/><g fill="#94a3b8"><g transform="translate(176 100.91) scale(0.01465)"><use href="#g0_151"/><use href="#g0_238" x="1211"/><use href="#g0_130" x="2376"/><use href="#g0_187" x="3552"/><use href="#g0_207" x="5396"/><use href="#g0_183" x="6674"/><use href="#g0_151" x="7210"/><use href="#g0_363" x="8421"/><use href="#g0_146" x="9074"/><use href="#g0_195" x="10267"/><use href="#g0_187" x="11514"/></g></g><g fill="#ffffff"><g transform="translate(80 294.36) scale(0.04102)"><use href="#g1_38"/><use href="#g1_195" x="1533"/><use href="#g1_233" x="2801"/><use href="#g1_233" x="5016"/><use href="#g1_151" x="6783"/><use href="#g1_146" x="8461"/><use href="#g1_220" x="9680"/><use href="#g1_217" x="10981"/><use href="#g1_195" x="12211"/><use href="#g1_220" x="13479"/><use href="#g1_210" x="14780"/><use href="#g1_167" x="16088"/><use href="#g1_187" x="16668"/><use href="#g1_130" x="18567"/><use href="#g1_161" x="19772"/><use href="#g1_151" x="21081"/></g><g transform="translate(80 386.76) scale(0.04102)"><use href="#g1_143"/><use href="#g1_167" x="1306"/><use href="#g1_183" x="1886"/><use href="#g1_183" x="2466"/><use href="#g1_217" x="3494"/><use href="#g1_195" x="4276"/><use href="#g1_248" x="5992"/><use href="#g1_151" x="7182"/><use href="#g1_210" x="8412"/><use href="#g1_195" x="9272"/></g></g><line x1="80" y1="500" x2="1120" y2="500" stroke="#1e293b" stroke-width="2" stroke-linecap="round"/><g fill="#cbd5e1"><g transform="translate(80 554.91) scale(0.01465)"><use href="#g2_2"/><use href="#g2_149" x="1413"/><use href="#g2_130" x="2667"/><use href="#g2_84" x="4393"/><use href="#g2_130" x="5701"/><use href="#g2_210" x="6851"/><use href="#g2_180" x="7622"/><use href="#g2_368" x="9322"/><use href="#g2_264" x="10488"/><use href="#g2_187" x="12334"/><use href="#g2_167" x="14128"/><use href="#g2_190" x="14624"/><use href="#g2_210" x="16410"/><use href="#g2_151" x="17181"/><use href="#g2_130" x="18375"/><use href="#g2_149" x="19525"/></g></g></svg>",
+  "outlines": "7e037cf38af498c8",
+  "sizes": {
+    "author": 30,
+    "site": 30,
+    "title": 84,
+  },
+}
+`;
+
+exports[`starter templates > 'changelog' draws the same picture as before 1`] = `
+{
+  "bytes": 13823,
+  "drawing": "<svg xmlns="http://www.w3.org/2000/svg" width="1200" height="630" viewBox="0 0 1200 630"><rect width="1200" height="630" fill="#09090b"/><rect x="80" y="90" width="220" height="64" rx="14" fill="#18181b" stroke="#a3e635" stroke-width="2"/><g fill="#a3e635"><g transform="translate(136 132.8) scale(0.03)"><use href="#g0_114"/><use href="#g0_125" x="600"/><use href="#g0_140" x="1200"/><use href="#g0_127" x="1800"/><use href="#g0_140" x="2400"/><use href="#g0_123" x="3000"/></g></g><g fill="#fafafa"><g transform="translate(80 271.27) scale(0.03809)"><use href="#g1_21"/><use href="#g1_130" x="1480"/><use href="#g1_210" x="2685"/><use href="#g1_180" x="3545"/><use href="#g1_187" x="5207"/><use href="#g1_195" x="7106"/><use href="#g1_149" x="8374"/><use href="#g1_151" x="9680"/><use href="#g1_362" x="10910"/><use href="#g1_160" x="12080"/><use href="#g1_130" x="12919"/><use href="#g1_213" x="14124"/><use href="#g1_217" x="15298"/><use href="#g1_151" x="16080"/><use href="#g1_210" x="17310"/><use href="#g1_213" x="18618"/><use href="#g1_151" x="19792"/><use href="#g1_130" x="21022"/><use href="#g1_210" x="22227"/><use href="#g1_146" x="23087"/><use href="#g1_164" x="24306"/></g><g transform="translate(80 357.07) scale(0.03809)"><use href="#g1_130"/><use href="#g1_190" x="1205"/><use href="#g1_149" x="2506"/><use href="#g1_18" x="4260"/><use href="#g1_90" x="5783"/><use href="#g1_109" x="7135"/><use href="#g1_151" x="9159"/><use href="#g1_238" x="10389"/><use href="#g1_207" x="11606"/><use href="#g1_195" x="12912"/><use href="#g1_210" x="14180"/><use href="#g1_217" x="15040"/></g></g><g fill="#a1a1aa"><g transform="translate(80 534.96) scale(0.026)"><use href="#g0_124"/><use href="#g0_125" x="600"/><use href="#g0_28" x="1800"/><use href="#g0_109" x="2400"/><use href="#g0_92" x="3000"/><use href="#g0_72" x="3600"/><use href="#g0_125" x="4800"/><use href="#g0_123" x="5400"/><use href="#g0_125" x="6000"/><use href="#g0_129" x="6600"/></g></g></svg>",
+  "outlines": "1d81fe9d137628ef",
+  "sizes": {
+    "date": 26,
+    "title": 78,
+    "version": 30,
+  },
+}
+`;
+
+exports[`starter templates > 'launch' draws the same picture as before 1`] = `
+{
+  "bytes": 18734,
+  "drawing": "<svg xmlns="http://www.w3.org/2000/svg" width="1200" height="630" viewBox="0 0 1200 630"><rect width="1200" height="630" fill="url(#d0)"/><rect x="500" y="96" width="200" height="56" rx="28" fill="#ffffff" fill-opacity="0.2"/><g fill="#ffffff"><g transform="translate(566.92 133.46) scale(0.0127)"><use href="#g0_61"/><use href="#g0_23" x="1718.84"/><use href="#g0_112" x="3122.68"/></g></g><g fill="#ffffff"><g transform="translate(224.06 290.9) scale(0.03906)"><use href="#g1_93"/><use href="#g1_151" x="1386"/><use href="#g1_187" x="2616"/><use href="#g1_207" x="4515"/><use href="#g1_183" x="5821"/><use href="#g1_130" x="6401"/><use href="#g1_217" x="7606"/><use href="#g1_151" x="8388"/><use href="#g1_213" x="9618"/><use href="#g1_240" x="11240"/><use href="#g1_195" x="12506"/><use href="#g1_220" x="13774"/><use href="#g1_146" x="15523"/><use href="#g1_130" x="16742"/><use href="#g1_190" x="17947"/></g><g transform="translate(229.24 377.3) scale(0.03906)"><use href="#g1_146"/><use href="#g1_164" x="1219"/><use href="#g1_130" x="2520"/><use href="#g1_190" x="3725"/><use href="#g1_161" x="5026"/><use href="#g1_151" x="6335"/><use href="#g1_160" x="8013"/><use href="#g1_210" x="8852"/><use href="#g1_195" x="9712"/><use href="#g1_187" x="10980"/><use href="#g1_130" x="13327"/><use href="#g1_95" x="14980"/><use href="#g1_87" x="16469"/><use href="#g1_55" x="17825"/></g></g><g fill="#ffffff" fill-opacity="0.85"><g transform="translate(334.62 472.44) scale(0.01563)"><use href="#g2_66"/><use href="#g2_190" x="1566"/><use href="#g2_151" x="2776"/><use href="#g2_183" x="4546"/><use href="#g2_167" x="5042"/><use href="#g2_190" x="5538"/><use href="#g2_180" x="6748"/><use href="#g2_167" x="8448"/><use href="#g2_190" x="8944"/><use href="#g2_362" x="10154"/><use href="#g2_195" x="11320"/><use href="#g2_190" x="12548"/><use href="#g2_151" x="13758"/><use href="#g2_160" x="15528"/><use href="#g2_167" x="16286"/><use href="#g2_190" x="16782"/><use href="#g2_167" x="17992"/><use href="#g2_213" x="18488"/><use href="#g2_164" x="19569"/><use href="#g2_151" x="20780"/><use href="#g2_149" x="21974"/><use href="#g2_167" x="23804"/><use href="#g2_187" x="24300"/><use href="#g2_130" x="26094"/><use href="#g2_161" x="27244"/><use href="#g2_151" x="28500"/><use href="#g2_195" x="30270"/><use href="#g2_220" x="31498"/><use href="#g2_217" x="32709"/><use href="#g2_363" x="33379"/></g></g></svg>",
+  "outlines": "e13f906ddb71bb3a",
+  "sizes": {
+    "label": 26,
+    "subtitle": 32,
+    "title": 80,
+  },
+}
+`;
+
+exports[`starter templates > 'linkedin' draws the same picture as before 1`] = `
+{
+  "bytes": 17213,
+  "drawing": "<svg xmlns="http://www.w3.org/2000/svg" width="1200" height="627" viewBox="0 0 1200 627"><rect width="1200" height="627" fill="#ffffff"/><rect x="0" y="0" width="28" height="627" fill="#1d4ed8"/><g fill="#1d4ed8"><g transform="translate(100 116.99) scale(0.01367)"><use href="#g0_18"/><use href="#g0_2" x="1713.8"/><use href="#g0_90" x="3408.6"/><use href="#g0_23" x="4945.4"/><use href="#g0_90" x="7111"/><use href="#g0_93" x="8647.8"/><use href="#g0_95" x="10204.6"/><use href="#g0_21" x="11916.4"/><use href="#g0_119" x="13600.2"/></g></g><g fill="#0f172a"><g transform="translate(100 216.51) scale(0.03516)"><use href="#g1_112"/><use href="#g1_164" x="2168"/><use href="#g1_130" x="3469"/><use href="#g1_217" x="4674"/><use href="#g1_259" x="5904"/><use href="#g1_362" x="6808"/><use href="#g1_258" x="7530"/><use href="#g1_258" x="8947"/><use href="#g1_258" x="10364"/><use href="#g1_213" x="12229"/><use href="#g1_220" x="13403"/><use href="#g1_207" x="14704"/><use href="#g1_207" x="16010"/><use href="#g1_195" x="17316"/><use href="#g1_210" x="18584"/><use href="#g1_217" x="19444"/><use href="#g1_217" x="20674"/><use href="#g1_167" x="21456"/><use href="#g1_146" x="22036"/><use href="#g1_180" x="23255"/><use href="#g1_151" x="24469"/><use href="#g1_217" x="25699"/><use href="#g1_213" x="26481"/></g><g transform="translate(100 297.15) scale(0.03516)"><use href="#g1_217"/><use href="#g1_130" x="782"/><use href="#g1_220" x="1987"/><use href="#g1_161" x="3288"/><use href="#g1_164" x="4597"/><use href="#g1_217" x="5898"/><use href="#g1_220" x="7128"/><use href="#g1_213" x="8429"/><use href="#g1_130" x="10051"/><use href="#g1_143" x="11256"/><use href="#g1_195" x="12562"/><use href="#g1_220" x="13830"/><use href="#g1_217" x="15131"/><use href="#g1_195" x="16361"/><use href="#g1_190" x="17629"/><use href="#g1_143" x="18930"/><use href="#g1_195" x="20236"/><use href="#g1_130" x="21504"/><use href="#g1_210" x="22709"/><use href="#g1_149" x="23569"/><use href="#g1_167" x="24875"/><use href="#g1_190" x="25455"/><use href="#g1_161" x="26756"/></g></g><rect x="100" y="506" width="44" height="44" rx="10" fill="#1d4ed8"/><g fill="#334155"><g transform="translate(164 538.91) scale(0.01465)"><use href="#g0_23"/><use href="#g0_238" x="1240"/><use href="#g0_130" x="2405"/><use href="#g0_187" x="3581"/><use href="#g0_207" x="5425"/><use href="#g0_183" x="6703"/><use href="#g0_151" x="7239"/><use href="#g0_18" x="8966"/><use href="#g0_195" x="10475"/></g></g></svg>",
+  "outlines": "1e34e2e927fa8231",
+  "sizes": {
+    "company": 30,
+    "kicker": 28,
+    "title": 72,
+  },
+}
+`;
+
+exports[`starter templates > 'product' draws the same picture as before 1`] = `
+{
+  "bytes": 17392,
+  "drawing": "<svg xmlns="http://www.w3.org/2000/svg" width="1200" height="630" viewBox="0 0 1200 630"><rect width="1200" height="630" fill="#fafaf9"/><g><rect x="60" y="60" width="510" height="510" rx="24" fill="#d4d4d8"/><path d="M60 60L570 570M570 60L60 570" stroke="#a1a1aa" stroke-width="2"/></g><g fill="#1c1917"><g transform="translate(630 163.65) scale(0.058)"><use href="#g0_21"/><use href="#g0_82" x="689"/><use href="#g0_74" x="1050"/><use href="#g0_93" x="1635"/><use href="#g0_72" x="1990"/><use href="#g0_95" x="2950"/><use href="#g0_97" x="3677"/><use href="#g0_111" x="4337"/><use href="#g0_74" x="4719"/><use href="#g0_69" x="5304"/><use href="#g0_97" x="5978"/><use href="#g0_97" x="6638"/><use href="#g0_92" x="7298"/><use href="#g0_157" x="7962"/></g><g transform="translate(630 230.35) scale(0.058)"><use href="#g0_109"/><use href="#g0_74" x="466"/><use href="#g0_111" x="1051"/><use href="#g0_97" x="1699"/><use href="#g0_79" x="2359"/><use href="#g0_111" x="3068"/><use href="#g0_81" x="3450"/><use href="#g0_108" x="4164"/><use href="#g0_74" x="4662"/><use href="#g0_74" x="5247"/></g></g><g fill="#b45309"><g transform="translate(630 460.56) scale(0.04102)"><use href="#g1_253"/><use href="#g1_259" x="1352"/><use href="#g1_266" x="2256"/></g></g><g fill="#78716c"><g transform="translate(630 531.06) scale(0.0127)"><use href="#g2_34"/><use href="#g2_210" x="1209"/><use href="#g2_151" x="1980"/><use href="#g2_151" x="3174"/><use href="#g2_213" x="4944"/><use href="#g2_164" x="6025"/><use href="#g2_167" x="7236"/><use href="#g2_207" x="7732"/><use href="#g2_207" x="8986"/><use href="#g2_167" x="10240"/><use href="#g2_190" x="10736"/><use href="#g2_161" x="11946"/><use href="#g2_195" x="13778"/><use href="#g2_230" x="15006"/><use href="#g2_151" x="16157"/><use href="#g2_210" x="17351"/><use href="#g2_253" x="18698"/><use href="#g2_262" x="20012"/><use href="#g2_258" x="21335"/></g></g></svg>",
+  "outlines": "5243f7f5d549c983",
+  "sizes": {
+    "name": 58,
+    "note": 26,
+    "price": 84,
+  },
+}
+`;
+
+exports[`starter templates > 'quote' draws the same picture as before 1`] = `
+{
+  "bytes": 13391,
+  "drawing": "<svg xmlns="http://www.w3.org/2000/svg" width="1080" height="1080" viewBox="0 0 1080 1080"><rect width="1080" height="1080" fill="#111827"/><ellipse cx="1020" cy="80" rx="260" ry="260" fill="#f59e0b" opacity="0.18"/><g fill="#f59e0b"><g transform="translate(100 348) scale(0.24)"><use href="#g0_185"/></g></g><g fill="#f9fafb"><g transform="translate(100 529.1) scale(0.076)"><use href="#g1_48"/><use href="#g1_82" x="645"/><use href="#g1_94" x="986"/><use href="#g1_105" x="2059"/><use href="#g1_93" x="2738"/><use href="#g1_74" x="3063"/><use href="#g1_111" x="3923"/><use href="#g1_81" x="4301"/><use href="#g1_82" x="4989"/><use href="#g1_95" x="5330"/><use href="#g1_80" x="6019"/><use href="#g1_109" x="6618"/><use href="#g1_109" x="7359"/><use href="#g1_81" x="7813"/><use href="#g1_97" x="8501"/><use href="#g1_112" x="9155"/><use href="#g1_93" x="9825"/><use href="#g1_72" x="10150"/></g><g transform="translate(100 624.1) scale(0.076)"><use href="#g1_69"/><use href="#g1_74" x="654"/><use href="#g1_109" x="1514"/><use href="#g1_82" x="1968"/><use href="#g1_94" x="2309"/><use href="#g1_105" x="3382"/><use href="#g1_93" x="4061"/><use href="#g1_74" x="4386"/><use href="#g1_156" x="4959"/></g></g><rect x="100" y="868" width="80" height="6" rx="3" fill="#f59e0b"/><g fill="#d1d5db"><g transform="translate(100 941.1) scale(0.01758)"><use href="#g2_2"/><use href="#g2_183" x="1490"/><use href="#g2_130" x="2026"/><use href="#g2_190" x="3202"/><use href="#g2_52" x="4971"/><use href="#g2_130" x="6411"/><use href="#g2_240" x="7587"/></g></g></svg>",
+  "outlines": "ca7534bcc3733798",
+  "sizes": {
+    "mark": 240,
+    "name": 36,
+    "quote": 76,
+  },
+}
+`;
+
+exports[`starter templates > 'story' draws the same picture as before 1`] = `
+{
+  "bytes": 19386,
+  "drawing": "<svg xmlns="http://www.w3.org/2000/svg" width="1080" height="1920" viewBox="0 0 1080 1920"><rect width="1080" height="1920" fill="url(#d0)"/><g fill="#99f6e4"><g transform="translate(100 462.41) scale(0.02148)"><use href="#g0_34"/><use href="#g0_87" x="1408.8"/><use href="#g0_41" x="2949.6"/><use href="#g0_21" x="3721.4"/><use href="#g0_2" x="5405.2"/><use href="#g0_119" x="7100"/><use href="#g0_259" x="9486.6"/><use href="#g0_260" x="10557.4"/><use href="#g0_51" x="12759"/><use href="#g0_95" x="14150.8"/><use href="#g0_61" x="15862.6"/><use href="#g0_23" x="17622.4"/></g></g><g fill="#ffffff"><g transform="translate(100 651.07) scale(0.07324)"><use href="#g1_21"/><use href="#g1_195" x="1480"/><use href="#g1_195" x="2748"/><use href="#g1_210" x="4016"/><use href="#g1_213" x="4876"/><use href="#g1_195" x="6498"/><use href="#g1_207" x="7766"/><use href="#g1_151" x="9072"/><use href="#g1_190" x="10302"/></g><g transform="translate(100 804.07) scale(0.07324)"><use href="#g1_130"/><use href="#g1_217" x="1205"/><use href="#g1_213" x="2435"/><use href="#g1_151" x="3609"/><use href="#g1_230" x="4839"/><use href="#g1_151" x="6099"/><use href="#g1_190" x="7329"/></g></g><g fill="#ccfbf1"><g transform="translate(100 1228.66) scale(0.02344)"><use href="#g2_55"/><use href="#g2_167" x="1158"/><use href="#g2_230" x="1654"/><use href="#g2_151" x="2805"/><use href="#g2_187" x="4575"/><use href="#g2_220" x="6369"/><use href="#g2_213" x="7580"/><use href="#g2_167" x="8661"/><use href="#g2_146" x="9157"/><use href="#g2_362" x="10327"/><use href="#g2_161" x="11493"/><use href="#g2_195" x="12749"/><use href="#g2_195" x="13977"/><use href="#g2_149" x="15205"/><use href="#g2_146" x="17035"/><use href="#g2_195" x="18205"/><use href="#g2_160" x="19433"/><use href="#g2_160" x="20191"/><use href="#g2_151" x="20949"/><use href="#g2_151" x="22143"/><use href="#g2_130" x="23913"/><use href="#g2_190" x="25063"/><use href="#g2_149" x="26273"/><use href="#g2_210" x="28103"/><use href="#g2_195" x="28874"/><use href="#g2_195" x="30102"/><use href="#g2_187" x="31330"/><use href="#g2_160" x="33700"/><use href="#g2_195" x="34458"/><use href="#g2_210" x="35686"/></g><g transform="translate(100 1291.06) scale(0.02344)"><use href="#g2_151"/><use href="#g2_230" x="1194"/><use href="#g2_151" x="2345"/><use href="#g2_210" x="3539"/><use href="#g2_240" x="4310"/><use href="#g2_195" x="5461"/><use href="#g2_190" x="6689"/><use href="#g2_151" x="7899"/><use href="#g2_363" x="9093"/></g></g><rect x="100" y="1500" width="520" height="120" rx="60" fill="#ffffff"/><g fill="#134e4a"><g transform="translate(211.98 1576.01) scale(0.02148)"><use href="#g1_90"/><use href="#g1_130" x="1352"/><use href="#g1_230" x="2557"/><use href="#g1_151" x="3817"/><use href="#g1_217" x="5495"/><use href="#g1_164" x="6277"/><use href="#g1_151" x="7578"/><use href="#g1_149" x="9256"/><use href="#g1_130" x="10562"/><use href="#g1_217" x="11767"/><use href="#g1_151" x="12549"/></g></g></svg>",
+  "outlines": "97394886f3bbc72a",
+  "sizes": {
+    "button": 44,
+    "date": 44,
+    "detail": 48,
+    "title": 150,
+  },
+}
+`;
+
+exports[`starter templates > 'video' draws the same picture as before 1`] = `
+{
+  "bytes": 5415,
+  "drawing": "<svg xmlns="http://www.w3.org/2000/svg" width="1280" height="720" viewBox="0 0 1280 720"><rect width="1280" height="720" fill="#facc15"/><rect x="860" y="0" width="420" height="720" fill="#111827"/><ellipse cx="1070" cy="360" rx="140" ry="140" fill="#facc15"/><g fill="#111827"><g transform="translate(977.86 386.19) scale(0.03516)"><use href="#g0_23"/><use href="#g0_84" x="1249"/><use href="#g0_259" x="3032"/><use href="#g0_260" x="3936"/></g></g><g fill="#111827"><g transform="translate(70 276.19) scale(0.06641)"><use href="#g0_41"/><use href="#g0_87" x="1033"/><use href="#g0_23" x="2389"/><use href="#g0_16" x="3638"/><use href="#g0_95" x="4999"/><use href="#g0_41" x="6488"/><use href="#g0_55" x="7073"/><use href="#g0_93" x="8231"/></g><g transform="translate(70 409.47) scale(0.06641)"><use href="#g0_41"/><use href="#g0_93" x="585"/><use href="#g0_41" x="2419"/><use href="#g0_61" x="3004"/><use href="#g0_2" x="5020"/></g><g transform="translate(70 542.75) scale(0.06641)"><use href="#g0_112"/><use href="#g0_23" x="2168"/><use href="#g0_23" x="3417"/><use href="#g0_52" x="4666"/><use href="#g0_23" x="6178"/><use href="#g0_61" x="7427"/><use href="#g0_21" x="8995"/></g></g></svg>",
+  "outlines": "ac9bb8d2a5eb62aa",
+  "sizes": {
+    "badge": 72,
+    "title": 136,
+  },
+}
+`;
+
+exports[`starter templates > 'x-card' draws the same picture as before 1`] = `
+{
+  "bytes": 16491,
+  "drawing": "<svg xmlns="http://www.w3.org/2000/svg" width="1200" height="675" viewBox="0 0 1200 675"><rect width="1200" height="675" fill="#f8fafc"/><rect x="40" y="40" width="1120" height="595" rx="28" fill="#ffffff" stroke="#e2e8f0" stroke-width="2"/><g fill="#0f172a"><g transform="translate(120 283) scale(0.068)"><use href="#g0_48"/><use href="#g0_81" x="663"/><use href="#g0_82" x="1377"/><use href="#g0_105" x="1738"/><use href="#g0_111" x="2701"/><use href="#g0_81" x="3083"/><use href="#g0_74" x="3797"/><use href="#g0_109" x="4648"/><use href="#g0_94" x="5114"/><use href="#g0_61" x="6220"/><use href="#g0_93" x="6794"/><use href="#g0_93" x="7149"/><use href="#g0_111" x="7770"/><use href="#g0_81" x="8152"/><use href="#g0_82" x="8866"/><use href="#g0_95" x="9227"/><use href="#g0_80" x="9954"/><use href="#g0_111" x="10830"/><use href="#g0_97" x="11212"/><use href="#g0_72" x="11872"/><use href="#g0_61" x="12566"/><use href="#g0_120" x="13140"/><use href="#g0_156" x="13786"/></g><g transform="translate(120 364.6) scale(0.068)"><use href="#g0_21"/><use href="#g0_82" x="689"/><use href="#g0_119" x="1050"/><use href="#g0_82" x="1964"/><use href="#g0_111" x="2325"/><use href="#g0_111" x="2973"/><use href="#g0_97" x="3355"/><use href="#g0_94" x="4015"/><use href="#g0_97" x="5121"/><use href="#g0_108" x="5781"/><use href="#g0_108" x="6279"/><use href="#g0_97" x="6777"/><use href="#g0_118" x="7437"/><use href="#g0_156" x="8328"/></g></g><ellipse cx="131" cy="552" rx="11" ry="11" fill="#0ea5e9"/><g fill="#475569"><g transform="translate(158 562.08) scale(0.028)"><use href="#g1_265"/><use href="#g1_72" x="600"/><use href="#g1_116" x="1200"/><use href="#g1_59" x="1800"/><use href="#g1_91" x="2400"/><use href="#g1_102" x="3000"/><use href="#g1_90" x="3600"/><use href="#g1_72" x="4200"/></g></g></svg>",
+  "outlines": "31cceda1dd9f1639",
+  "sizes": {
+    "handle": 28,
+    "quote": 68,
+  },
+}
+`;
