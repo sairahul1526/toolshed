@@ -2,7 +2,7 @@
 
 **The free, open-source toolkit for launching a product: links, waitlist, forms, feedback, status page and analytics in one dashboard, deployed to your own Cloudflare account for $0–5 a month.**
 
-> **Status: pre-alpha.** We are building the base platform (Week 0): sign-in, workspaces, roles, API keys, the module registry and the dashboard shell. The first product modules are in the repo: [links](docs/modules/links.md), [forms](docs/modules/forms.md), [waitlist](docs/modules/waitlist.md), [monitoring](docs/modules/monitor.md), [feedback](docs/modules/feedback.md), [mail](docs/modules/mail.md) and [analytics](docs/modules/analytics.md). Nothing here is deployable yet. Watch the repo, or read the [roadmap](#roadmap) to see what's coming.
+> **Status: pre-alpha.** We are building the base platform (Week 0): sign-in, workspaces, roles, API keys, the module registry and the dashboard shell. The first product modules are in the repo: [links](docs/modules/links.md), [forms](docs/modules/forms.md), [waitlist](docs/modules/waitlist.md), [monitoring](docs/modules/monitor.md), [feedback](docs/modules/feedback.md), [mail](docs/modules/mail.md), [analytics](docs/modules/analytics.md) and [images](docs/modules/images.md). Nothing here is deployable yet. Watch the repo, or read the [roadmap](#roadmap) to see what's coming.
 
 Toolshed is a single Cloudflare Worker. One sign-in, one dashboard, many modules you switch on or off. It uses only Cloudflare: no Stripe, Twilio, Firebase, or OAuth apps to set up. You'll click **Deploy to Cloudflare** (or run `npm create toolshed@latest`) and get the whole thing in your own account.
 

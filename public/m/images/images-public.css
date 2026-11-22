@@ -1,0 +1,9 @@
+/* Images: the public generator page, on top of the shared public styles. */
+.img-make form { display: flex; flex-direction: column; gap: 16px; margin: 0; }
+.img-make-stage { border: 1px solid var(--line); border-radius: 10px; overflow: hidden; background: color-mix(in srgb, var(--fg) 5%, var(--bg)); }
+.img-make-preview { display: block; width: 100%; height: auto; max-height: 60vh; object-fit: contain; }
+.img-make-color { width: 64px; height: 44px; padding: 3px; border: 1px solid var(--line); border-radius: 10px; background: var(--card); cursor: pointer; }
+.img-make-color:focus-visible { outline: 2px solid var(--at); outline-offset: 1px; }
+.img-make-actions { display: flex; flex-wrap: wrap; gap: 10px; }
+.img-make-actions .pub-btn { flex: 1 1 160px; }
+[data-make-status]:empty { display: none; }
