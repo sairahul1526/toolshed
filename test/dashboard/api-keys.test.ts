@@ -59,8 +59,9 @@ describe('who can open the screen', () => {
   });
 
   it('refuses an API key or a token, even one that acts as an admin with every scope', async () => {
-    await createTestSession(t.env, { orgId: ORG });
-    const { secret } = await make({ name: 'Powerful key', scopes: ['*'], role: 'admin' });
+    // The key belongs to a real person: a key whose owner has no account is refused before it gets this far.
+    const { user } = await createTestSession(t.env, { role: 'admin', orgId: ORG });
+    const { secret } = await make({ name: 'Powerful key', scopes: ['*'], role: 'admin' }, actor('admin', user.id, ORG));
     const bearer = { authorization: `Bearer ${secret}` };
     const read = await app.request('/app/api-keys', { headers: bearer }, t.env);
     expect(read.status).toBe(403);
