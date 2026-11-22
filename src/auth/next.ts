@@ -17,6 +17,9 @@ export function safeNext(value: unknown, fallback = '/app'): string {
   }
   if (url.origin !== 'http://self.invalid') return fallback;
   const path = url.pathname;
+  // The parser resolves `.` and `..` (also written `%2e`), so `/.//host` and `/a/..//host` come
+  // out as `//host`: another site again. Judge the path that will be sent, not the one typed.
+  if (path.startsWith('//') || path.includes('\\')) return fallback;
   if (BLOCKED.some((b) => path === b || path.startsWith(b.endsWith('/') ? b : `${b}/`))) return fallback;
-  return url.pathname + url.search;
+  return path + url.search;
 }

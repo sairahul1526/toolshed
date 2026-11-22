@@ -40,6 +40,24 @@ describe('safeNext', () => {
   });
 });
 
+describe('safeNext, once the path is tidied', () => {
+  it('refuses a path that only becomes another site after dots are resolved', () => {
+    for (const bad of ['/.//evil.example', '/a/..//x', '/%2e%2e//x', '/%2E/%2e%2E//evil.example', '/\\evil.example', '/./\\evil.example', '/app/../..//evil.example']) {
+      expect(safeNext(bad), bad).toBe('/app');
+    }
+  });
+
+  it('still allows doubled slashes further in, which stay on this site', () => {
+    expect(safeNext('/app//links')).toBe('/app//links');
+    expect(safeNext('/app/./links/../forms')).toBe('/app/forms');
+  });
+
+  it('blocks the sign-in pages however they are spelled', () => {
+    expect(safeNext('/app/../sign-in')).toBe('/app');
+    expect(safeNext('/./setup/claim')).toBe('/app');
+  });
+});
+
 describe('sign-in by emailed code', () => {
   it('signs in with the right code and lands on the page asked for', async () => {
     const b = new Browser(app, env);
