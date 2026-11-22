@@ -8,6 +8,8 @@ export default defineConfig({
   testDir: "test/e2e",
   testMatch: "**/*.e2e.ts",
   testIgnore: "**/hash-demo.e2e.ts",
+  // Claims the fresh install once and saves the owner's sign-in for tests that start signed in.
+  globalSetup: "./test/e2e/helpers/global-setup.ts",
   fullyParallel: false,
   workers: 1,
   reporter: process.env.CI ? "github" : "list",
