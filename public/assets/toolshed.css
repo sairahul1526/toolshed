@@ -637,7 +637,7 @@ a.btn.primary { color: var(--primary-text); }
 .switch-lg::after { width: 16px; height: 16px; }
 .switch-lg:checked::after { transform: translateX(16px); }
 .toolbar { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
-.toolbar .search-in { flex: 1; min-width: 200px; max-width: 320px; }
+.toolbar .search-in { flex: 1; min-width: min(280px, 100%); max-width: 320px; }
 @media (max-width: 760px) { .toolbar .search-in { max-width: none; } }
 /* page batch 2 fixes */
 [hidden] { display: none !important; }
