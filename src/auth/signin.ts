@@ -17,6 +17,7 @@ import { issueCode } from './codes';
 import { CODE_TTL_MS, LIMITS } from './config';
 import { fingerprint } from './crypto';
 import { clientIp, forwardCookies, hit, setFlow } from './http';
+import { ownerSessionToken, recordImpersonationEnd } from './impersonation';
 import { hasOpenInvite } from './invites';
 import { sessionCookieName, sessionFromRequest } from './session';
 import { findUserByEmail, type UserRow } from './users';
@@ -195,22 +196,37 @@ export async function recordFailedBurst(c: Context<AppEnv>, email: string, what:
   });
 }
 
-/** End this browser's session and clear every cookie the sign-in flow may have left. */
+/**
+ * End this browser's session and clear every cookie the sign-in flow may have left. Signing out
+ * while signed in as someone else ends that session and the owner's own, so nothing stays open.
+ */
 export async function signOut(c: Context<AppEnv>): Promise<void> {
   const current = await sessionFromRequest(c);
   if (current) {
     await c.env.DB.prepare('DELETE FROM "session" WHERE "id" = ?1').bind(current.session.id).run();
-    await audit(c.env, {
-      orgId: null,
-      actorId: current.user.id,
-      actorLabel: current.user.email,
-      action: 'user.signed_out',
-      targetType: 'user',
-      targetId: current.user.id,
-      summary: 'Signed out',
-      ip: clientIp(c),
-    });
+    const ownerId = current.session.impersonatedBy;
+    if (ownerId) {
+      const token = await ownerSessionToken(c);
+      if (token) await c.env.DB.prepare('DELETE FROM "session" WHERE "token" = ?1 AND "userId" = ?2').bind(token, ownerId).run();
+      await recordImpersonationEnd(c.env, ownerId, current.user, clientIp(c));
+    } else {
+      await audit(c.env, {
+        orgId: null,
+        actorId: current.user.id,
+        actorLabel: current.user.email,
+        action: 'user.signed_out',
+        targetType: 'user',
+        targetId: current.user.id,
+        summary: 'Signed out',
+        ip: clientIp(c),
+      });
+    }
   }
+  clearSessionCookies(c);
+}
+
+/** Remove the session cookie and the cookies Better Auth keeps beside it. */
+export function clearSessionCookies(c: Context<AppEnv>): void {
   const origin = baseUrl(c.env, c.req.url);
   const secure = secureCookies(origin);
   deleteCookie(c, sessionCookieName(origin), { path: '/', secure });

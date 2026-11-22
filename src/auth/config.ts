@@ -46,6 +46,12 @@ export const LIMITS = {
   claim: { limit: 5, windowSec: 15 * 60 },
   /** Invites one person can send. */
   invitePerUser: { limit: 50, windowSec: 60 * 60 },
+  /** Email changes one person can start. */
+  emailChangePerUser: { limit: 5, windowSec: 60 * 60 },
+  /** Confirmation codes sent to one new address. Its own count, so it cannot use up that address's sign-in codes. */
+  emailChangePerAddress: { limit: 3, windowSec: 15 * 60 },
+  /** "Sign in as" sessions the owner can start. */
+  impersonatePerOwner: { limit: 30, windowSec: 60 * 60 },
   /** Passkey sign-in attempts from one IP. */
   passkeyPerIp: { limit: 60, windowSec: 15 * 60 },
   /** API keys and tokens from one IP that turned out not to be valid. */

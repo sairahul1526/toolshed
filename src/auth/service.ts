@@ -10,3 +10,7 @@ export * from './service/workspaces';
 export * from './service/roles';
 export * from './service/members';
 export * from './service/invites';
+export * from './service/email-change';
+export * from './service/sessions';
+export * from './service/passkeys';
+export * from './service/admin';

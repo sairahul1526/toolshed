@@ -51,3 +51,14 @@ export async function codeOf(env: Env, who: Browser | Record<string, string>, fn
   if (outcome.ok) throw new Error('Expected an error, but the call succeeded.');
   return outcome.code;
 }
+
+/** What a request with these headers (a cookie, an API key, a token) is seen as. */
+export async function seenAs(env: Env, headers: Record<string, string>): Promise<{ kind: string; role: string | null; userId: string | null }> {
+  const outcome = await run(env, { 'cf-connecting-ip': '203.0.113.9', ...headers }, async (c) => ({
+    kind: c.get('auth').kind as string,
+    role: c.get('org')?.role ?? null,
+    userId: c.get('user')?.id ?? c.get('auth').userId ?? null,
+  }));
+  if (!outcome.ok) throw new Error(`Unexpected ${outcome.code}`);
+  return outcome.value;
+}
