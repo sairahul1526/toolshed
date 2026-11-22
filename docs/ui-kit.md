@@ -21,7 +21,7 @@ Run `npm run dev` and open `/dev/ui` to see every component. Add `?theme=dark`, 
 
 | Helper | Use |
 | --- | --- |
-| `renderPage(c, { title, crumbs?, status?, description? }, body)` | A dashboard screen inside the shell. Builds the nav from the signed-in user, role and enabled modules, shows and clears any flash message, sets `cache-control: no-store`. |
+| `renderPage(c, { title, crumbs?, status?, description?, styles? }, body)` | A dashboard screen inside the shell. `styles` lists extra stylesheets for the head, such as a module's own file. Builds the nav from the signed-in user, role and enabled modules, shows and clears any flash message, sets `cache-control: no-store`. |
 | `renderAuthPage(c, { title, brand?, footer?, wide?, status? }, body)` | Sign-in, invite and setup pages. Centered card, no nav. |
 | `PublicPage` | Pages the public sees (forms, short-link previews). Uses `public.css`, no dashboard styles or scripts. |
 | `ErrorPage` | 404 and other errors outside the API. |

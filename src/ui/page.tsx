@@ -24,6 +24,8 @@ export interface PageOptions {
   crumbs?: Crumb[];
   status?: ContentfulStatusCode;
   description?: string;
+  /** Extra stylesheets for this page, for example a module's `/m/<id>/<id>.css`. Loaded in the head, after toolshed.css. */
+  styles?: string[];
 }
 
 /** A dashboard page inside the shell. The caller has already passed `requireUser` and `requireOrg`. */
@@ -32,7 +34,7 @@ export async function renderPage(c: Context<AppEnv>, options: PageOptions, body:
   const flash = takeFlash(c);
   c.header('cache-control', 'no-store');
   return c.html(
-    <AppShell shell={shell} path={new URL(c.req.url).pathname} title={options.title} description={options.description} crumbs={options.crumbs ?? [{ label: options.title }]} flash={flash}>
+    <AppShell shell={shell} path={new URL(c.req.url).pathname} title={options.title} description={options.description} crumbs={options.crumbs ?? [{ label: options.title }]} flash={flash} styles={options.styles}>
       {body}
     </AppShell>,
     options.status,
