@@ -64,9 +64,8 @@ editRoutes.get('/:id/edit', async (c: C) => {
   const data = { form: { id: form.id, name: form.name, slug: form.slug, rev: form.rev, status: form.status }, definition: def, types: TYPES };
   return renderPage(
     c,
-    { title: `Edit ${form.name}`, crumbs: [{ label: 'Forms', href: BASE }, { label: form.name }, { label: 'Edit' }] },
+    { title: `Edit ${form.name}`, crumbs: [{ label: 'Forms', href: BASE }, { label: form.name }, { label: 'Edit' }], styles: ['/m/forms/builder.css'] },
     <>
-      <link rel="stylesheet" href="/m/forms/builder.css" />
       <EditorBar
         back={{ href: `${BASE}/${form.id}/responses`, label: 'Responses' }}
         title={form.name}

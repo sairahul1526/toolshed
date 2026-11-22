@@ -5,7 +5,7 @@ import { AppError } from '../../core/errors';
 import { emailReady } from '../../core/email';
 import type { AppEnv } from '../../env';
 import { Button, Callout, Card, Checkbox, Field, Input, PageHeader, Select, Textarea, renderPage, setFlash } from '../../ui';
-import { BASE, CSS, FormTabs, act, body, crumbs, str, type C } from './dash-common';
+import { BASE, CSS, STYLES, FormTabs, act, body, crumbs, str, type C } from './dash-common';
 import { ctxOf } from './http';
 import { allFields, type FormSettings } from './schema';
 import { getDraft, getForm, renameForm, updateSettings, type Form } from './service';
@@ -30,7 +30,7 @@ async function page(c: C, form: Form, errors: Errors = {}, status: 200 | 422 = 2
   const e = (k: string) => errors[k];
   return renderPage(
     c,
-    { title: `Settings for ${form.name}`, crumbs: crumbs(form, 'Settings'), status },
+    { title: `Settings for ${form.name}`, crumbs: crumbs(form, 'Settings'), status, styles: STYLES },
     <>
       {CSS}
       <PageHeader title={form.name} description="How the form behaves, who can open it and what it looks like." />
@@ -61,8 +61,8 @@ async function page(c: C, form: Form, errors: Errors = {}, status: 200 | 422 = 2
           </div>
         </Card>
         <Card title="Email" description="Tell your team about each response, and thank the person who sent it. Each address gets at most a few autoresponders an hour.">
-          {!mailOk ? <Callout tone="warn" title="Email is not set up yet" actions={<a class="btn sm" href="/app/email">Set up email</a>}>You can switch these on now. Nothing is sent until the workspace can send email.</Callout> : null}
           <div class="fm-stack">
+            {!mailOk ? <Callout tone="warn" title="Email is not set up yet" actions={<a class="btn sm" href="/app/email">Set up email</a>}>You can switch these on now. Nothing is sent until the workspace can send email.</Callout> : null}
             <Checkbox id="s-notify" name="notifyEnabled" value="1" checked={v ? 'notifyEnabled' in v : s.notify.enabled} label="Email my team about each response" />
             <Field id="s-emails" label="Team addresses" optional hint="One per line, up to 10." error={e('notify.emails')}><Textarea id="s-emails" name="notifyEmails" rows={3}>{val('notifyEmails', s.notify.emails.join('\n'))}</Textarea></Field>
             <Checkbox id="s-auto" name="autoEnabled" value="1" checked={v ? 'autoEnabled' in v : s.autoresponder.enabled} label="Send the respondent a thank you email" description={emailFields.length ? undefined : 'Add an email question to the form first.'} />

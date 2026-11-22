@@ -38,7 +38,10 @@
 .fb-none { padding: 14px; }
 .fb-check { display: flex; gap: 8px; align-items: center; font-size: 14px; }
 .fb-row { display: flex; gap: 8px; flex-wrap: wrap; align-items: flex-end; }
-.fb-row > .field { flex: 1; min-width: 90px; }
+.fb-field { display: flex; flex-direction: column; align-items: stretch; gap: 6px; min-width: 0; }
+.fb-field > label { font-size: 13px; font-weight: 500; }
+.fb-field > .hint { margin: 0; }
+.fb-row > .fb-field { flex: 1; min-width: 90px; }
 .fb-rules, .fb-opts, .fb-jump, .fb-calc { display: grid; gap: 8px; padding: 10px; border: 1px solid var(--border); border-radius: 8px; background: var(--surface-2); }
 .fb-rules-title { margin: 0; font-size: 13px; font-weight: 600; }
 .fb-rule { display: grid; gap: 6px; padding-bottom: 8px; border-bottom: 1px dashed var(--border); }

@@ -4,7 +4,7 @@ import { orgDb } from '../../core/db';
 import { AppError } from '../../core/errors';
 import type { AppEnv } from '../../env';
 import { Button, Callout, Card, ConfirmButton, Dialog, EmptyState, FilterBar, PageHeader, Pagination, Pill, SearchInput, Select, Table, Tabs, formatNumber, renderPage, setFlash, timeAgo } from '../../ui';
-import { BASE, CSS, act, body, statusPill, str, type C } from './dash-common';
+import { BASE, CSS, STYLES, act, body, statusPill, str, type C } from './dash-common';
 import { actorOf, ctxOf, intParam } from './http';
 import { addSampleForms, clearSampleForms } from './sample';
 import { countForms, createForm, deleteForm, duplicateForm, listForms, restoreForm, trashForm } from './service';
@@ -47,7 +47,7 @@ listRoutes.get('/', async (c: C) => {
   if (active === 0 && inTrash === 0) {
     return renderPage(
       c,
-      { title: 'Forms', description: 'Start from a template or build your own.' },
+      { title: 'Forms', description: 'Start from a template or build your own.', styles: STYLES },
       <>
         {CSS}
         <PageHeader title="Forms" description="Collect responses, files and scores. Pick a starting point. You can change everything afterwards." />
@@ -107,7 +107,7 @@ listRoutes.get('/', async (c: C) => {
 
   return renderPage(
     c,
-    { title: 'Forms' },
+    { title: 'Forms', styles: STYLES },
     <>
       {CSS}
       <PageHeader

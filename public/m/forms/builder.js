@@ -350,7 +350,7 @@
   // ---- inspector controls -------------------------------------------------------------------
   function field(label, control, hint) {
     var id = control.id || (control.id = nid());
-    var wrap = el('div', { class: 'field' }, el('label', { for: id, text: label }), control);
+    var wrap = el('div', { class: 'fb-field' }, el('label', { for: id, text: label }), control);
     if (hint) wrap.appendChild(el('p', { class: 'hint', text: hint }));
     return wrap;
   }

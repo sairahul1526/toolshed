@@ -5,7 +5,7 @@ import { emailReady } from '../../core/email';
 import { baseUrl } from '../../core/net';
 import type { AppEnv } from '../../env';
 import { Button, Callout, Card, CodeBlock, CopyField, PageHeader, renderPage } from '../../ui';
-import { BASE, CSS, FormTabs, act, crumbs, statusPill, type C } from './dash-common';
+import { BASE, CSS, STYLES, FormTabs, act, crumbs, statusPill, type C } from './dash-common';
 import { actorOf, ctxOf } from './http';
 import { availability, closeForm, getForm, publish, reopenForm } from './service';
 
@@ -22,7 +22,7 @@ shareRoutes.get('/:id/share', async (c: C) => {
   const needsMail = form.settings.notify.enabled || form.settings.autoresponder.enabled;
   return renderPage(
     c,
-    { title: `Share ${form.name}`, crumbs: crumbs(form, 'Share') },
+    { title: `Share ${form.name}`, crumbs: crumbs(form, 'Share'), styles: STYLES },
     <>
       {CSS}
       <PageHeader title={form.name} soft={undefined} description="Publish the form, then share the link or put it on your site." />

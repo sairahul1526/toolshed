@@ -4,7 +4,7 @@ import { orgDb } from '../../core/db';
 import { AppError } from '../../core/errors';
 import type { AppEnv } from '../../env';
 import { Button, Callout, Card, ConfirmButton, EmptyState, FilterBar, KeyValueList, PageHeader, Pagination, Pill, SearchInput, Table, Tabs, Textarea, formatDateTime, formatNumber, renderPage, timeAgo } from '../../ui';
-import { BASE, CSS, FormTabs, act, body, crumbs, list, safeBack, str, type C } from './dash-common';
+import { BASE, CSS, STYLES, FormTabs, act, body, crumbs, list, safeBack, str, type C } from './dash-common';
 import { actorOf, ctxOf, intParam } from './http';
 import { displayValue } from './logic';
 import { DISPLAY_TYPES, allFields, type Definition, type Field } from './schema';
@@ -59,10 +59,13 @@ responseRoutes.get('/:id/responses', async (c: C) => {
   const rows = items.map((s) => ({
     pick: <input class="fm-check" type="checkbox" name="ids" value={s.id} aria-label={`Select the response from ${label(s)}`} />,
     when: (
-      <a href={`${BASE}/${form.id}/responses/${s.id}`}>
-        {s.read ? '' : <Pill tone="solid">New</Pill>} {s.starred ? '* ' : ''}
-        {timeAgo(s.createdAt)}
-      </a>
+      <span class="fm-when">
+        {s.read ? null : <Pill tone="solid">New</Pill>}
+        <a href={`${BASE}/${form.id}/responses/${s.id}`}>
+          {s.starred ? '* ' : ''}
+          {timeAgo(s.createdAt)}
+        </a>
+      </span>
     ),
     ...Object.fromEntries(cols.map((f) => [`c_${f.id}`, <span class="fm-clip">{displayValue(f, s.answers[f.id] as never) || '-'}</span>])),
     score: s.score === null ? '' : String(s.score),
@@ -72,7 +75,7 @@ responseRoutes.get('/:id/responses', async (c: C) => {
 
   return renderPage(
     c,
-    { title: `Responses to ${form.name}`, crumbs: crumbs(form, 'Responses') },
+    { title: `Responses to ${form.name}`, crumbs: crumbs(form, 'Responses'), styles: STYLES },
     <>
       {CSS}
       <PageHeader title={form.name} description={`${formatNumber(form.responseCount)} ${form.responseCount === 1 ? 'response' : 'responses'}`} />
@@ -91,9 +94,9 @@ responseRoutes.get('/:id/responses', async (c: C) => {
         {status !== 'complete' ? <input type="hidden" name="status" value={status} /> : null}
         <SearchInput name="q" label="Search responses" placeholder="Search answers and emails" value={keep.q ?? ''} />
         <label class="sr-only" for="fm-from">From date</label>
-        <input id="fm-from" class="input" type="date" name="from" value={keep.from ?? ''} />
+        <input id="fm-from" class="input fm-date" type="date" name="from" value={keep.from ?? ''} />
         <label class="sr-only" for="fm-to">To date</label>
-        <input id="fm-to" class="input" type="date" name="to" value={keep.to ?? ''} />
+        <input id="fm-to" class="input fm-date" type="date" name="to" value={keep.to ?? ''} />
         <details class="fm-cols">
           <summary class="btn sm">Columns</summary>
           <div class="fm-colbox">
@@ -186,7 +189,7 @@ responseRoutes.get('/:id/responses/:sid', async (c: C) => {
   const shown = questions(def).filter((f) => s.answers[f.id] !== undefined);
   return renderPage(
     c,
-    { title: 'Response', crumbs: [...crumbs(form, 'Responses'), { label: 'Response' }] },
+    { title: 'Response', crumbs: [...crumbs(form, 'Responses'), { label: 'Response' }], styles: STYLES },
     <>
       {CSS}
       <PageHeader

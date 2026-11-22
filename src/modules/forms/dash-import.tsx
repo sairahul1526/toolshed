@@ -4,7 +4,7 @@ import { orgDb } from '../../core/db';
 import { AppError } from '../../core/errors';
 import type { AppEnv } from '../../env';
 import { Button, Callout, Card, EmptyState, Field, Input, PageHeader, Select, Table, Textarea, formatNumber, renderPage, setFlash } from '../../ui';
-import { BASE, CSS, FormTabs, body, crumbs, str, type C } from './dash-common';
+import { BASE, CSS, STYLES, FormTabs, body, crumbs, str, type C } from './dash-common';
 import { actorOf, ctxOf } from './http';
 import { RECEIVED, importResponses, previewImport } from './importcsv';
 import { allFields, DISPLAY_TYPES } from './schema';
@@ -24,7 +24,7 @@ importRoutes.get('/privacy', async (c: C) => {
   const found = email ? await exportByEmail(db, email) : [];
   return renderPage(
     c,
-    { title: 'Respondent privacy', crumbs: [{ label: 'Forms', href: BASE }, { label: 'Privacy' }] },
+    { title: 'Respondent privacy', crumbs: [{ label: 'Forms', href: BASE }, { label: 'Privacy' }], styles: STYLES },
     <>
       {CSS}
       <PageHeader title="Respondent privacy" description="Find everything one person sent through any form in this workspace, download it, or delete it." />
@@ -79,7 +79,7 @@ async function page(c: C, opts: { csv?: string; error?: string; status?: 200 | 4
   const qs = allFields(def).filter((f) => !DISPLAY_TYPES.includes(f.type) && f.type !== 'file_upload');
   return renderPage(
     c,
-    { title: `Import and export for ${form.name}`, crumbs: crumbs(form, 'Import and export'), status: opts.status },
+    { title: `Import and export for ${form.name}`, crumbs: crumbs(form, 'Import and export'), status: opts.status, styles: STYLES },
     <>
       {CSS}
       <PageHeader title={form.name} description="Move responses in and out as spreadsheets." />

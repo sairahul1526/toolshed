@@ -3,7 +3,7 @@ import { Hono } from 'hono';
 import { orgDb } from '../../core/db';
 import type { AppEnv } from '../../env';
 import { BarChart, Callout, Card, EmptyState, FilterBar, PageHeader, Select, Stat, formatNumber, renderPage } from '../../ui';
-import { BASE, CSS, FormTabs, crumbs, str, type C } from './dash-common';
+import { BASE, CSS, STYLES, FormTabs, crumbs, str, type C } from './dash-common';
 import { intParam } from './http';
 import { getDraft, getForm, getPublished } from './service';
 import { rangeDays, summary, type QuestionStat } from './stats';
@@ -51,7 +51,7 @@ summaryRoutes.get('/:id/summary', async (c: C) => {
   const scored = s.questions.filter((q) => q.tallies || q.average !== undefined || q.nps !== undefined || q.csat !== undefined);
   return renderPage(
     c,
-    { title: `Summary of ${form.name}`, crumbs: crumbs(form, 'Summary') },
+    { title: `Summary of ${form.name}`, crumbs: crumbs(form, 'Summary'), styles: STYLES },
     <>
       {CSS}
       <PageHeader title={form.name} description="How people move through the form." />
