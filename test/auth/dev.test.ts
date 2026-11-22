@@ -18,12 +18,35 @@ describe('the dev-only account doors', () => {
     const live = createTestEnv({ ENVIRONMENT: mode }).env;
     const owner = adopt(new Browser(app, live), (await createTestSession(live, { instanceOwner: true })).cookie);
     expect(await owner.signedIn()).toBe(true);
-    for (const door of ['create-workspace', 'switch-workspace', 'list-workspaces', 'list-members', 'list-invites', 'invite', 'change-role', 'remove-member', 'nope']) {
+    const doors = [
+      'create-workspace', 'switch-workspace', 'list-workspaces', 'list-members', 'list-invites', 'invite', 'change-role', 'remove-member',
+      'account', 'set-password', 'start-two-step', 'confirm-two-step', 'list-passkeys', 'nope',
+    ];
+    for (const door of doors) {
       const res = await owner.postJson(`/dev/auth/${door}`, { name: 'Sneaky' });
       expect(res.status).toBe(404);
     }
     expect((await owner.get('/dev/auth/list-workspaces')).status).toBe(404);
     expect(await workspaces(live)).toBe(1);
+    expect(await live.DB.prepare(`SELECT COUNT(*) AS n FROM "account" WHERE "providerId" = 'credential'`).first<number>('n')).toBe(0);
+  });
+
+  it('change only the caller’s own account, and nobody’s when signed out', async () => {
+    const json = { accept: 'application/json' };
+    const anon = new Browser(app, env);
+    for (const door of ['account', 'set-password', 'start-two-step', 'confirm-two-step', 'list-passkeys']) {
+      expect([door, (await anon.postJson(`/dev/auth/${door}`, { password: 'correct horse battery staple', code: '123456' }, json)).status]).toEqual([door, 401]);
+    }
+    const sam = await createTestSession(env, { email: 'sam@example.com', role: 'member' });
+    const other = await createTestSession(env, { email: 'kim@example.com', role: 'member' });
+    const b = adopt(new Browser(app, env), sam.cookie);
+    // A user id in the body is ignored: the door has no way to name someone else.
+    expect((await b.postJson('/dev/auth/set-password', { password: 'correct horse battery staple', userId: other.user.id }, json)).status).toBe(200);
+    const rows = await env.DB.prepare(`SELECT "userId" FROM "account" WHERE "providerId" = 'credential'`).all<{ userId: string }>();
+    expect(rows.results.map((r) => r.userId)).toEqual([sam.user.id]);
+    const account = (await (await b.postJson('/dev/auth/account', {}, json)).json()) as { result: { email: string; hasPassword: boolean } };
+    expect(account.result).toMatchObject({ email: 'sam@example.com' });
+    expect((await b.postJson('/dev/auth/list-passkeys', {}, json)).status).toBe(200);
   });
 
   it('run the real service with the caller’s own session', async () => {

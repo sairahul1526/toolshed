@@ -24,6 +24,10 @@ export const OWNER_NAME = 'Olive Owner';
 export const FIRST_WORKSPACE = 'First Shed';
 /** The owner's saved sign-in, written by global setup. One file per port, never in git. */
 export const ownerState = resolve('.wrangler', 'e2e-auth', `owner-${port}.json`);
+/** What global setup saw wrong on the first-run pages, for the auth tests to report. */
+export const setupLook = resolve('.wrangler', 'e2e-auth', `setup-look-${port}.json`);
+/** Different on every run, so people made by one run never meet the limits or leftovers of another. */
+export const RUN = Date.now().toString(36);
 
 interface OutboxEmail {
   id: string;
@@ -81,11 +85,12 @@ export async function enterCode(page: Page, code: string): Promise<void> {
 /**
  * Sign this page in as someone who already has an account, with an emailed code. Whoever was
  * signed in on the page before is signed out first. Ends on the page that follows sign-in.
+ * `origin` is for the rare test that opens the app under another local name.
  */
-export async function signInAs(page: Page, email: string): Promise<void> {
+export async function signInAs(page: Page, email: string, origin = baseURL): Promise<void> {
   await page.context().clearCookies();
   const mark = await outboxMark(page.request, email);
-  await page.goto(`${baseURL}/sign-in`);
+  await page.goto(`${origin}/sign-in`);
   await page.getByLabel('Email').fill(email);
   await page.getByRole('button', { name: 'Email me a code' }).click();
   await expect(page.getByRole('heading', { name: 'Check your email' })).toBeVisible();
@@ -94,39 +99,46 @@ export async function signInAs(page: Page, email: string): Promise<void> {
 }
 
 /** Fill in the "Name your workspace" step and continue. */
-export async function nameWorkspace(page: Page, name = FIRST_WORKSPACE, yourName = OWNER_NAME): Promise<void> {
+export async function nameWorkspace(page: Page, name = FIRST_WORKSPACE, yourName = OWNER_NAME, seen: (step: string) => Promise<void> = async () => {}): Promise<void> {
   await page.getByLabel('Workspace name').fill(name);
   await page.getByLabel('Your name').fill(yourName);
   await page.getByRole('button', { name: 'Continue' }).click();
   await page.waitForURL((url) => url.pathname !== '/setup/workspace');
   // With modules installed, setup offers a first thing to do. Tests start from the plain dashboard.
-  if (new URL(page.url()).pathname === '/setup/first') await page.getByRole('link', { name: /^Skip/ }).click();
+  if (new URL(page.url()).pathname === '/setup/first') {
+    await seen('setup-first');
+    await page.getByRole('link', { name: /^Skip/ }).click();
+  }
   await page.waitForURL((url) => url.pathname.startsWith('/app'));
 }
 
 /**
  * Make sure the install has its owner and first workspace, and leave `page` signed in as the
- * owner on the dashboard. Safe to call again on an install that is already claimed.
+ * owner on the dashboard. Safe to call again on an install that is already claimed. `seen` is
+ * called on each first-run page, which can only be looked at while the install is unclaimed.
  */
-export async function ensureOwner(page: Page): Promise<void> {
+export async function ensureOwner(page: Page, seen: (step: string) => Promise<void> = async () => {}): Promise<void> {
   await page.goto(`${baseURL}/setup`);
   if (await page.getByRole('heading', { name: 'Claim this Toolshed' }).isVisible()) {
+    await seen('setup-claim');
     const mark = await outboxMark(page.request, OWNER_EMAIL);
     await page.getByRole('button', { name: 'Send me a code' }).click();
     await expect(page.getByRole('heading', { name: 'Check your email' })).toBeVisible();
+    await seen('setup-code');
     await enterCode(page, await readCode(page.request, OWNER_EMAIL, { after: mark }));
     await page.waitForURL('**/setup/workspace');
+    await seen('setup-workspace');
   } else {
     await signInAs(page, OWNER_EMAIL);
     // An owner who never named a workspace is sent back to that step.
     if (new URL(page.url()).pathname !== '/setup/workspace') await page.goto(`${baseURL}/setup`);
   }
-  if (new URL(page.url()).pathname === '/setup/workspace') await nameWorkspace(page);
+  if (new URL(page.url()).pathname === '/setup/workspace') await nameWorkspace(page, FIRST_WORKSPACE, OWNER_NAME, seen);
 }
 
 /** Call a `/dev/auth/*` door as the person signed in on `page`. Throws with the app's own message when refused. */
-export async function authDoor<T>(page: Page, door: string, body: Record<string, unknown> = {}): Promise<T> {
-  const res = await page.request.post(`${baseURL}/dev/auth/${door}`, { data: body, headers: { origin: baseURL, accept: 'application/json' } });
+export async function authDoor<T>(page: Page, door: string, body: Record<string, unknown> = {}, origin = baseURL): Promise<T> {
+  const res = await page.request.post(`${origin}/dev/auth/${door}`, { data: body, headers: { origin, accept: 'application/json' } });
   const json = (await res.json().catch(() => ({}))) as { result?: T; message?: string; code?: string };
   if (!res.ok()) throw new Error(`${door} was refused (${res.status()} ${json.code ?? ''}): ${json.message ?? ''}`);
   return json.result as T;
@@ -207,6 +219,24 @@ async function memberPage(browser: Browser, role: MemberRole, workspace?: string
   await signInAs(page, person.email);
   await openWorkspace(page, workspace ?? FIRST_WORKSPACE, false);
   return page;
+}
+
+/**
+ * A page signed in as someone new, made for this run only: the owner invites them to the first
+ * workspace as a member and they accept through the real invite page. For tests that change how
+ * a person signs in (a password, two-step, a pause), so the shared people stay as they are.
+ */
+export async function newPerson(browser: Browser, tag: string, name = 'Nat Newcomer'): Promise<{ page: Page; email: string }> {
+  const email = `${tag}-${RUN}@example.com`;
+  const owner = await ownerPage(browser);
+  const page = await (await browser.newContext({ baseURL })).newPage();
+  try {
+    const invite = await authDoor<{ link: string }>(owner, 'invite', { email, role: 'member' });
+    await acceptInvite(page, invite.link, email, name);
+  } finally {
+    await owner.context().close();
+  }
+  return { page, email };
 }
 
 /**
