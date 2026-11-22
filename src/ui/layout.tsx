@@ -6,7 +6,7 @@
 import { raw } from 'hono/html';
 import type { Child } from 'hono/jsx';
 import { roleAtLeast } from '../env';
-import type { ShellData } from '../core/shell-data';
+import type { ShellData, ShellNotifications } from '../core/shell-data';
 import { DEFAULT_APPEARANCE, parseAppearance, type Appearance, type PublicPreset } from './appearance';
 import { Avatar } from './components/data';
 import { Breadcrumb, Toast, type Crumb } from './components/feedback';
@@ -16,7 +16,7 @@ import { Menu } from './components/overlays';
 import { cx } from './components/util';
 import type { Flash } from './flash';
 import { ICON_SPRITE } from './icons';
-import { formatNumber } from './format';
+import { formatNumber, timeAgo } from './format';
 
 export interface DocumentProps {
   /** Shown in the tab, after " · Toolshed". Leave empty for just "Toolshed". */
@@ -152,7 +152,13 @@ export function navGroups(shell: ShellData): NavGroup[] {
   const mods: NavLink[] = shell.modules.map((m) => ({ href: m.href, icon: m.icon, label: m.name, count: m.count }));
   if (shell.modulesOff > 0) mods.push({ href: '/app/modules', icon: 'plus', label: 'Add a module', count: shell.modulesOff });
   groups.push({ label: 'Modules', add: true, links: mods });
-  if (roleAtLeast(shell.org.role, 'admin')) {
+  const admin = roleAtLeast(shell.org.role, 'admin');
+  // Admins see their own workspace's email log and audit log, so those links live with the workspace.
+  const shared: NavLink[] = [
+    { href: '/app/email', icon: 'mail', label: 'Email' },
+    { href: '/app/audit-log', icon: 'list', label: 'Audit log' },
+  ];
+  if (admin) {
     groups.push({
       label: 'Workspace',
       links: [
@@ -160,6 +166,7 @@ export function navGroups(shell: ShellData): NavGroup[] {
         { href: '/app/modules', icon: 'grid', label: 'Modules' },
         { href: '/app/appearance', icon: 'brush', label: 'Appearance' },
         { href: '/app/api-keys', icon: 'key', label: 'API keys' },
+        ...shared,
         { href: '/app/settings', icon: 'gear', label: 'Settings' },
       ],
     });
@@ -169,8 +176,7 @@ export function navGroups(shell: ShellData): NavGroup[] {
       label: 'Owner',
       links: [
         { href: '/app/users', icon: 'shield', label: 'Users' },
-        { href: '/app/email', icon: 'mail', label: 'Email' },
-        { href: '/app/audit-log', icon: 'list', label: 'Audit log' },
+        ...(admin ? [] : shared),
         { href: '/app/updates', icon: 'refresh', label: 'Updates' },
       ],
     });
@@ -181,6 +187,73 @@ export function navGroups(shell: ShellData): NavGroup[] {
 function isActive(path: string, href: string): boolean {
   if (href === '/app') return path === '/app' || path === '/app/';
   return path === href || path.startsWith(`${href}/`);
+}
+
+/** The bell menu shows a taste of each notification, not all of it. */
+function shorten(text: string, max: number): string {
+  const chars = [...text];
+  return chars.length > max ? `${chars.slice(0, max - 1).join('').trimEnd()}…` : text;
+}
+
+/**
+ * The bell. It is a plain link to the full list, so it works without JavaScript; app.js turns it into
+ * the menu below it.
+ */
+function Bell({ notifications }: { notifications: ShellNotifications }) {
+  const { unread, failed } = notifications;
+  const label = unread > 0 ? `Notifications, ${formatNumber(unread)} new` : 'Notifications';
+  return (
+    <a class="icon-btn" href="/app/notifications" data-menu="notes" aria-label={label} title="Notifications">
+      <Icon name="bell" />
+      {unread > 0 && !failed ? <span class="dot" aria-hidden="true"></span> : null}
+    </a>
+  );
+}
+
+function BellMenu({ notifications, path }: { notifications: ShellNotifications; path: string }) {
+  const { unread, latest, failed } = notifications;
+  return (
+    <form method="post" action="/app/notifications/read-all" data-no-busy>
+      <input type="hidden" name="next" value={path} />
+      <div class="menu menu-notes" id="menu-notes" role="menu">
+        <div class="menu-head">
+          <b>Notifications</b>
+          {unread > 0 ? <span>{formatNumber(unread)} new</span> : null}
+        </div>
+        <hr />
+        {failed ? (
+          <p class="menu-empty">Notifications could not be loaded. Try again in a moment.</p>
+        ) : latest.length === 0 ? (
+          <p class="menu-empty">You are all caught up.</p>
+        ) : (
+          latest.map((n) => (
+            <a href={`/app/notifications/${encodeURIComponent(n.id)}/open`} role="menuitem" class="note">
+              <span class={n.read ? 'unread-dot off' : 'unread-dot'} aria-hidden="true"></span>
+              <span class="row-text">
+                <b>
+                  {n.read ? null : <span class="sr-only">Unread: </span>}
+                  {shorten(n.title, 80)}
+                </b>
+                {n.body ? <span>{shorten(n.body, 90)}</span> : null}
+                <span>{timeAgo(n.at)}</span>
+              </span>
+            </a>
+          ))
+        )}
+        <hr />
+        {unread > 0 && !failed ? (
+          <button type="submit" role="menuitem">
+            <Icon name="check" />
+            Mark all as read
+          </button>
+        ) : null}
+        <a href="/app/notifications" role="menuitem">
+          <Icon name="list" />
+          See all
+        </a>
+      </div>
+    </form>
+  );
 }
 
 export interface AppShellProps extends Omit<DocumentProps, 'children' | 'layout' | 'bodyClass' | 'appearance'> {
@@ -196,6 +269,7 @@ export interface AppShellProps extends Omit<DocumentProps, 'children' | 'layout'
 export function AppShell({ shell, path, crumbs = [], children, ...doc }: AppShellProps) {
   const appearance = parseAppearance(shell.appearance);
   const groups = navGroups(shell);
+  const bell = shell.notifications ?? { unread: 0, latest: [], failed: false };
   const trail: Crumb[] = [{ label: shell.org.name, href: '/app' }, ...crumbs];
   const roleLabel = shell.org.role.charAt(0).toUpperCase() + shell.org.role.slice(1);
   return (
@@ -255,6 +329,7 @@ export function AppShell({ shell, path, crumbs = [], children, ...doc }: AppShel
                 <Icon name="moon" class="i i-moon" />
                 <Icon name="sun" class="i i-sun" />
               </button>
+              <Bell notifications={bell} />
               <button type="button" class="me" aria-label="Account menu" data-menu="account">
                 <Avatar name={shell.user.name || shell.user.email} src={shell.user.image} size="sm" />
                 <span class="me-name">{shell.user.name || shell.user.email}</span>
@@ -279,6 +354,7 @@ export function AppShell({ shell, path, crumbs = [], children, ...doc }: AppShel
           ]}
         />
       </form>
+      <BellMenu notifications={bell} path={path} />
       <dialog id="command" class="command" aria-label="Search">
         <div class="command-box">
           <Icon name="search" />
