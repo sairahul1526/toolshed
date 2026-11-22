@@ -16,7 +16,7 @@ import { callAuth } from './bridge';
 import { issueCode } from './codes';
 import { CODE_TTL_MS, LIMITS } from './config';
 import { fingerprint } from './crypto';
-import { clientIp, forwardCookies, hit, setFlow } from './http';
+import { addressBlock, clientIp, forwardCookies, hit, setFlow } from './http';
 import { ownerSessionToken, recordImpersonationEnd } from './impersonation';
 import { hasOpenInvite } from './invites';
 import { sessionCookieName, sessionFromRequest } from './session';
@@ -205,7 +205,7 @@ export async function recordFailedBurst(c: Context<AppEnv>, email: string, what:
  */
 export async function recordBusyAddress(c: Context<AppEnv>): Promise<void> {
   const ip = clientIp(c);
-  const first = await rateLimit(c.env, `auth.burst:address:${ip}`, { limit: 1, windowSec: LIMITS.checkPerIp.windowSec });
+  const first = await rateLimit(c.env, `auth.burst:address:${addressBlock(ip)}`, { limit: 1, windowSec: LIMITS.checkPerIp.windowSec });
   if (!first.ok) return;
   await audit(c.env, {
     orgId: null,
