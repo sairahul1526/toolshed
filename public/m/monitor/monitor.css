@@ -58,7 +58,7 @@ td .mon-bars { height: 22px; }
 .rows .grow .input { flex: 1; min-width: 0; }
 .mon-groups li { flex-wrap: wrap; row-gap: 8px; }
 .mon-groups .grow { flex: 1 1 220px; }
-.mon-badge { display: block; height: 20px; width: auto; }
+.mon-badge { display: block; height: 20px; width: 140px; max-width: 100%; }
 .mon-report { margin-top: 16px; }
 
 /* Incident timeline */
@@ -80,4 +80,4 @@ td .mon-bars { height: 22px; }
 .mon-checklist .tick { font-size: 12px; font-weight: 600; }
 
 /* A ruled card whose body is a form or a stack of fields needs room under the rule. */
-.card-body.after-head:has(> .stack), .card-body.after-head:has(> form) { padding-top: 16px; }
+.card-body.after-head { padding-top: 16px; }

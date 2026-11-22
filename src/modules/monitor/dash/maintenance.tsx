@@ -69,7 +69,7 @@ app.get('/maintenance', async (c) => {
             when: e.occ ? `${formatDateTime(e.occ.start)}, ${fmtDuration(e.m.duration_min * 60_000)}` : formatDateTime(e.m.starts_at),
             repeat: REPEAT_LABEL[e.m.recurrence] ?? e.m.recurrence,
           }))}
-          empty={<EmptyState bare icon="calendar" title="No maintenance planned" body="Schedule a window before you deploy or move servers, so nobody gets paged for it." actions={<LinkButton href={`${BASE}/maintenance/new`}>Schedule one</LinkButton>} />}
+          empty={<EmptyState bare icon="cal" title="No maintenance planned" body="Schedule a window before you deploy or move servers, so nobody gets paged for it." actions={<LinkButton href={`${BASE}/maintenance/new`}>Schedule one</LinkButton>} />}
         />
       </Card>
     </>,

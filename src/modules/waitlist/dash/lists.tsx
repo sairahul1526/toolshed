@@ -14,7 +14,7 @@ const TONE: Record<WaitlistStatus, 'good' | 'neutral' | 'warn'> = { live: 'good'
 
 function NewForm({ first }: { first: boolean }) {
   return (
-    <form method="post" action={`${ROOT}/new`} class="wl-new">
+    <form method="post" action={`${ROOT}/new`} class="wl-new stack">
       <Field id="new-name" label="Name of your waitlist" hint="People see this on the signup page. You can change it later.">
         <Input id="new-name" name="name" required maxlength={80} placeholder="Early access" autocomplete="off" />
       </Field>
@@ -31,18 +31,19 @@ lists.get('/', async (c) => {
       <>
         <PageHeader title="Waitlist" description="Collect signups before launch, let people move up by inviting friends, and let them in in waves." />
         {await EmailNotice({ c })}
-        <Card>
+        <Card flush>
           <EmptyState
+            bare
             icon="users"
             title="No waitlists yet"
             body="Start with a real waitlist, or fill the workspace with 24 sample people to see how it works. Sample data can be removed in one click."
             actions={
               <form method="post" action={`${ROOT}/sample`}>
-                <Button type="submit" icon="sparkles">Try it with sample data</Button>
+                <Button type="submit" icon="spark">Try it with sample data</Button>
               </form>
             }
           />
-          <NewForm first />
+          <div class="wl-first"><NewForm first /></div>
         </Card>
       </>
     ));

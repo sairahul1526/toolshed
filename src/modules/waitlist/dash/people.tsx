@@ -178,13 +178,13 @@ people.get('/people/:sid', async (c) => {
   const back = to('people', wl);
   return renderPage(c, { title: personName(s), crumbs: [{ label: 'Waitlist', href: ROOT }, { label: wl.name, href: back }, { label: personName(s) }] }, (
     <>
-      <PageHeader title={personName(s)} description={s.email} actions={<LinkButton href={back} icon="arrow-left">All signups</LinkButton>} />
+      <PageHeader title={personName(s)} description={s.email} actions={<LinkButton href={back} icon="left">All signups</LinkButton>} />
       {ListNav({ lists, wl, active: 'people' })}
       <div class="wl-detail">
         <div>
           <Detail wl={wl} s={s} position={position} referrer={referrer} base={base} />
         </div>
-        <div>
+        <div class="stack">
           <Card title="Change">
             <form method="post" action={to(`people/${s.id}`, wl)} class="wl-form-stack">
               <Field id="p-name" label="Name" optional><Input id="p-name" name="name" value={s.name} maxlength={100} /></Field>
