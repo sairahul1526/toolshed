@@ -73,7 +73,7 @@ importScreen.post('/import', async (c) => {
       <>
         <PageHeader title="Check the columns" description={`${formatNumber(preview.rowCount)} rows found. We matched the columns we could; fix any that look wrong.`} />
         {preview.truncated ? <Callout tone="warn" title="Only the first rows will be imported">This file has more than {formatNumber(IMPORT_MAX_ROWS)} rows. Import the rest in another file.</Callout> : null}
-        <form method="post" action={`${IMPORT}/run`}>
+        <form method="post" action={`${IMPORT}/run`} class="stack">
           <textarea name="csv" hidden>{csv}</textarea>
           <Card title="Which column is which?">
             <div class="grid-2">
