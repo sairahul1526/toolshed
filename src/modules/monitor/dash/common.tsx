@@ -7,7 +7,7 @@ import { moduleContext } from '../../../core/registry';
 import type { AppEnv } from '../../../env';
 import { Callout, Field, Icon, Input, Pill, setFlash, Textarea } from '../../../ui';
 import { fmtPct } from '../fmt';
-import { barLevel } from '../pages';
+import { barLevel, listPages } from '../pages';
 import type { Bucket } from '../uptime';
 import type { MonitorRow } from '../schema';
 
@@ -20,7 +20,21 @@ export const STYLE = '/m/monitor/monitor.css';
 export const SCRIPT = '/m/monitor/monitor.js';
 
 export const mctx = (c: C) => moduleContext(c.env, c.get('org')!);
-export const record = (c: C, action: string, targetType: string, targetId: string, summary: string) => auditFromRequest(c, { action, targetType, targetId, summary });
+/**
+ * Public status pages are cached for a couple of minutes. A change made here should show at once, so
+ * drop the cached copy of every page in the workspace. Skipped where the Cache API does not exist (tests).
+ */
+export async function purgeStatus(c: C): Promise<void> {
+  const store = (globalThis as { caches?: { default?: Cache } }).caches?.default;
+  if (!store) return;
+  const origin = new URL(c.req.url).origin;
+  for (const p of await listPages(await mctx(c))) await store.delete(new Request(`${origin}/status/${p.slug}`)).catch(() => false);
+}
+
+export async function record(c: C, action: string, targetType: string, targetId: string, summary: string): Promise<void> {
+  await auditFromRequest(c, { action, targetType, targetId, summary });
+  await purgeStatus(c);
+}
 
 /** Read a posted form. Names in `arrays` always come back as lists (checkbox groups); the rest take the last value sent. */
 export async function readForm(c: C, arrays: string[] = []): Promise<Values> {

@@ -23,7 +23,7 @@ const listQuery = z.object({ q: z.string().max(100).optional(), status: z.enum([
 app.get('/', async (c) => {
   const ctx = await mctx(c);
   const q = parse(listQuery, Object.fromEntries(new URL(c.req.url).searchParams));
-  const all = (await listMonitors(ctx)).filter((m) => m.sample === 0 || true);
+  const all = await listMonitors(ctx);
   if (all.length === 0) return firstRun(c);
   const series = await dailySeries(c.env, ctx.db.orgId, all.map((m) => m.id), 30);
   const needle = (q.q ?? '').trim().toLowerCase();
@@ -213,7 +213,9 @@ async function detail(c: C, id: string) {
     }
   }
   const base = viewBase(c.env, c.req.url);
-  const waiting = m.status === 'pending' && !m.paused;
+  const pending = m.status === 'pending' && !m.paused;
+  // A heartbeat that has been pinged is no longer waiting for anything on this screen; the next minute's run marks it up.
+  const waiting = pending && (m.type !== 'heartbeat' || m.hb_last_ping_at === null);
   const first = q.first === '1';
   return renderPage(
     c,
@@ -244,7 +246,7 @@ async function detail(c: C, id: string) {
         }
       />
       {waiting ? <div data-poll="5000" hidden /> : null}
-      {first || waiting ? <FirstSteps m={m} latest={latest[0]} page={linkedPage} base={base} /> : null}
+      {first || pending ? <FirstSteps m={m} latest={latest[0]} page={linkedPage} base={base} /> : null}
       {m.status === 'down' && !m.paused ? (
         <Callout tone="bad" title={`Down since ${m.since_at ? formatDateTime(m.since_at) : 'a moment ago'}`}>
           {m.last_error ?? 'The last check failed.'}
@@ -399,7 +401,7 @@ function FirstSteps({ m, latest, page, base }: { m: MonitorRow; latest?: { ok: b
           <span class="tick">✓</span>
           <span>
             <b>Added {m.name}</b>
-            <span>We check it {heartbeat ? 'whenever you ping' : 'every minute'}.</span>
+            <span>We check it {heartbeat ? 'whenever you ping' : `every ${m.interval_min === 1 ? 'minute' : `${m.interval_min} minutes`}`}.</span>
           </span>
         </li>
         <li class={have ? 'ok' : ''}>

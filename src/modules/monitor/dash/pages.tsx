@@ -8,7 +8,7 @@ import { listMonitors, viewBase } from '../monitors';
 import { MAX_COMPONENTS, createComponent, createGroup, createPage, deleteComponent, deleteGroup, deletePage, getPage, listPages, pageParts, reorder, updateComponent, updateGroup, updatePage } from '../pages';
 import { MANUAL_STATUSES, type ComponentRow, type GroupRow, type PageRow } from '../schema';
 import { listSubscribers, removeSubscriber, subscriberCounts } from '../subscribers';
-import { Assets, AreaField, BASE, Back, Problems, TextField, Toggle, failed, done, mctx, on, readForm, record, text, type C, type Errors, type Values } from './common';
+import { Assets, AreaField, BASE, Back, Problems, TextField, Toggle, failed, done, mctx, on, purgeStatus, readForm, record, text, type C, type Errors, type Values } from './common';
 
 const app = new Hono<AppEnv>();
 
@@ -135,7 +135,7 @@ async function screen(c: C, id: string, tab: Tab, o: { v?: Values; errors?: Erro
         description={page.published ? <a href={`/status/${page.slug}`}>{`${base}/status/${page.slug}`}</a> : 'Only you can see this page until you publish it.'}
         actions={
           page.published ? (
-            <LinkButton href={`/status/${page.slug}`} icon="external">
+            <LinkButton href={`/status/${page.slug}`} icon="link">
               View page
             </LinkButton>
           ) : null
@@ -258,7 +258,7 @@ function ComponentsTab({ loaded, monitors, v, errors }: { loaded: Loaded; monito
       ) : null}
       <Card title="Groups" description="Fold related components under a heading, like “Payments” or “API”." flush>
         {groups.length > 0 ? (
-          <ul class="rows">
+          <ul class="rows mon-groups">
             {groups.map((g, i) => (
               <li>
                 <form method="post" action={`${BASE}/groups/${g.id}/edit`} class="row grow">
@@ -463,7 +463,7 @@ function LookTab({ page, v, errors }: { page: PageRow; v: Values; errors: Errors
           Save style
         </Button>
         {page.published ? (
-          <LinkButton href={`/status/${page.slug}`} icon="external">
+          <LinkButton href={`/status/${page.slug}`} icon="link">
             View page
           </LinkButton>
         ) : null}
@@ -487,6 +487,7 @@ app.post('/pages/:id/look', async (c) => {
 app.post('/pages/:id/delete', async (c) => {
   const ctx = await mctx(c);
   const p = await getPage(ctx, c.req.param('id'));
+  await purgeStatus(c);
   await deletePage(ctx, p.id);
   await record(c, 'monitor.page_deleted', 'page', p.id, `Deleted status page ${p.title}`);
   return done(c, `${p.title} was deleted.`, `${BASE}/pages`);

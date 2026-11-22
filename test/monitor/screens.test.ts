@@ -1,12 +1,13 @@
-import { describe, expect, it } from 'vitest';
+import { describe, expect, it, vi } from 'vitest';
 import monitor from '../../src/modules/monitor/module';
 import { listChannels } from '../../src/modules/monitor/channels';
 import { createMonitor, listMonitors } from '../../src/modules/monitor/monitors';
+import { recordPing } from '../../src/modules/monitor/heartbeats';
 import { createPage } from '../../src/modules/monitor/pages';
 import { moduleContext } from '../../src/core/registry';
 import { mountModule } from '../helpers/app';
 import { createTestEnv } from '../helpers/d1';
-import { ctxOf, fakeSite, useModule } from './helpers';
+import { T0, ctxOf, fakeSite, useModule } from './helpers';
 
 useModule();
 
@@ -59,6 +60,20 @@ describe('monitor screens', () => {
     const body = await html(await app.request(res.headers.get('location') ?? ''));
     expect(body).toContain('/hb/');
     expect(body).toContain('curl');
+  });
+
+  it('stops polling for a heartbeat once its first ping is in, and keeps showing the first steps', async () => {
+    const t = createTestEnv();
+    const app = await mountModule(t, monitor);
+    const res = await app.request('/app/monitor/new', { form: { type: 'heartbeat', name: 'Nightly backup', hbPeriodSec: '86400', hbGraceMin: '30', failAfter: '1', channelMode: 'all' } });
+    const to = res.headers.get('location') ?? '';
+    const before = await html(await app.request(to));
+    expect(before).toContain('data-poll');
+    const token = before.match(/\/hb\/([A-Za-z0-9_-]{16,64})/)?.[1] ?? '';
+    expect(await recordPing(t.env, token, 'success')).toBe('ok');
+    const after = await html(await app.request(to.replace('?first=1', '')));
+    expect(after).not.toContain('data-poll');
+    expect(after).toContain('First ping received');
   });
 
   it('lets a viewer read but not change anything', async () => {
@@ -144,5 +159,26 @@ describe('monitor screens', () => {
     const other = await moduleContext(t.env, { id: 'org_other', name: 'Other', slug: 'other' });
     const p = await createPage(other, { title: 'Theirs', slug: 'theirs', published: true });
     expect((await app.request(`/app/monitor/pages/${p.id}`)).status).toBe(404);
+  });
+
+  it('drops the cached status page when an incident changes, so visitors see it at once', async () => {
+    const t = createTestEnv();
+    const app = await mountModule(t, monitor);
+    const ctx = await ctxOf(t);
+    await createPage(ctx, { title: 'Shed status', slug: 'shed-status', published: true });
+    const dropped: string[] = [];
+    vi.stubGlobal('caches', { default: { delete: async (req: Request) => (dropped.push(new URL(req.url).pathname), true) } });
+    const res = await app.request('/app/monitor/incidents/new', { form: { title: 'Down', message: 'Looking', status: 'investigating', impact: 'major' } });
+    expect(res.status).toBe(302);
+    expect(dropped).toContain('/status/shed-status');
+  });
+
+  it('says how often a monitor is checked in the first steps, not a fixed minute', async () => {
+    fakeSite();
+    const t = createTestEnv();
+    const app = await mountModule(t, monitor);
+    const m = await createMonitor(await ctxOf(t), { name: 'Slow', url: 'https://example.com/', intervalMin: 10 }, { at: T0 });
+    const body = await html(await app.request(`/app/monitor/m/${m.id}?first=1`));
+    expect(body).toContain('every 10 minutes');
   });
 });
