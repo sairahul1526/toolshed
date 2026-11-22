@@ -69,6 +69,13 @@ export async function listSessions(c: Context<AppEnv>, now = Date.now()): Promis
 export const END_IMPERSONATIONS = 'DELETE FROM "session" WHERE "impersonatedBy" = ?1';
 
 /**
+ * Forgets every browser this person told to skip the two-step check, this one included. Bind
+ * their user id. A browser they sign out, or one that knew the old password or the old second
+ * step, must not come back in on the first step alone for the rest of its 30 days.
+ */
+export const FORGET_TRUSTED_DEVICES = `DELETE FROM "verification" WHERE "value" = ?1 AND "identifier" GLOB 'trust-device-*'`;
+
+/**
  * Sign one device out. `current` is true when it was the one asking: the caller should then send
  * the person to the sign-in page, because their cookie no longer works.
  */
@@ -101,6 +108,7 @@ export async function revokeOtherSessions(c: Context<AppEnv>): Promise<{ count: 
   const [done] = await c.env.DB.batch([
     c.env.DB.prepare('DELETE FROM "session" WHERE "userId" = ?1 AND "id" <> ?2').bind(actor.id, actor.sessionId),
     c.env.DB.prepare(END_IMPERSONATIONS).bind(actor.id),
+    c.env.DB.prepare(FORGET_TRUSTED_DEVICES).bind(actor.id),
   ]);
   const count = done?.meta.changes ?? 0;
   if (count > 0) {

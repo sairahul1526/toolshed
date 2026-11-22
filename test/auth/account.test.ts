@@ -1,6 +1,6 @@
 import { beforeEach, describe, expect, it } from 'vitest';
 import { LIMITS } from '../../src/auth/config';
-import { getAccount, regenerateRecoveryCodes, removePassword, setPassword, setUsername, startTwoStep, confirmTwoStep, turnOffTwoStep } from '../../src/auth/service';
+import { getAccount, regenerateRecoveryCodes, removePassword, revokeOtherSessions, setPassword, setUsername, startTwoStep, confirmTwoStep, turnOffTwoStep } from '../../src/auth/service';
 import { sessionCookieName } from '../../src/auth/session';
 import type { Env } from '../../src/env';
 import { secretFromUri, totp } from '../e2e/helpers/totp';
@@ -265,6 +265,47 @@ describe('two-step sign-in', () => {
 
     expect((await signInByCode(laptop, env, EMAIL)).headers.get('location')).toBe('/app');
     expect((await signInByCode(new Browser(app, env), env, EMAIL)).headers.get('location')).toBe('/sign-in/two-step');
+  });
+
+  /** A second browser that passed the check once, asked to be trusted, and now gets in on the first step alone. */
+  async function trustedLaptop(secret: string): Promise<Browser> {
+    const laptop = new Browser(app, env);
+    await upToSecondStep(laptop);
+    await laptop.post('/sign-in/two-step', { code: totp(secret), trust: 'yes' });
+    await laptop.post('/sign-out');
+    expect((await signInByCode(laptop, env, EMAIL)).headers.get('location')).toBe('/app');
+    await laptop.post('/sign-out');
+    return laptop;
+  }
+  const trusted = () => count(`SELECT COUNT(*) AS n FROM "verification" WHERE "identifier" LIKE 'trust-device-%'`);
+
+  it.each([
+    ['the other devices are signed out', async () => void (await must(env, b, (c) => revokeOtherSessions(c)))],
+    ['a password is set', async () => void (await must(env, b, (c) => setPassword(c, { password: PASSWORD })))],
+    ['new recovery codes are made', async () => void (await must(env, b, (c) => regenerateRecoveryCodes(c)))],
+  ])('asks a trusted device for the code again once %s', async (_what, change) => {
+    const { secret } = await enrol();
+    const laptop = await trustedLaptop(secret);
+    expect(await trusted()).toBe(1);
+    await change();
+    expect(await trusted()).toBe(0);
+    expect((await signInByCode(laptop, env, EMAIL)).headers.get('location')).toBe('/sign-in/two-step');
+  });
+
+  it('does not let a device trusted before two-step was turned off skip it when it is turned on again', async () => {
+    const laptop = await trustedLaptop((await enrol()).secret);
+    await must(env, b, (c) => turnOffTwoStep(c));
+    expect(await trusted()).toBe(0);
+    await enrol();
+    expect((await signInByCode(laptop, env, EMAIL)).headers.get('location')).toBe('/sign-in/two-step');
+  });
+
+  it('leaves another person’s trusted devices alone', async () => {
+    const { secret } = await enrol();
+    await trustedLaptop(secret);
+    const other = await createTestSession(env, { email: 'grace@example.com' });
+    await must(env, adopt(new Browser(app, env), other.cookie), (c) => revokeOtherSessions(c));
+    expect(await trusted()).toBe(1);
   });
 
   it('makes new recovery codes and turns off', async () => {
