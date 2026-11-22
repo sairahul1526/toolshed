@@ -6,7 +6,7 @@
 import { raw } from 'hono/html';
 import type { Child } from 'hono/jsx';
 import { roleAtLeast } from '../env';
-import type { ShellData, ShellNotifications } from '../core/shell-data';
+import type { ShellData, ShellImpersonation, ShellNotifications } from '../core/shell-data';
 import { DEFAULT_APPEARANCE, parseAppearance, type Appearance, type PublicPreset } from './appearance';
 import { Avatar } from './components/data';
 import { Breadcrumb, Toast, type Crumb } from './components/feedback';
@@ -16,7 +16,7 @@ import { Menu } from './components/overlays';
 import { cx } from './components/util';
 import type { Flash } from './flash';
 import { ICON_SPRITE } from './icons';
-import { formatNumber, timeAgo } from './format';
+import { formatDateTime, formatNumber, timeAgo } from './format';
 
 export interface DocumentProps {
   /** Shown in the tab, after " · Toolshed". Leave empty for just "Toolshed". */
@@ -258,6 +258,23 @@ function BellMenu({ notifications, path }: { notifications: ShellNotifications; 
   );
 }
 
+/** The strip above the top bar while the install owner is signed in as someone else. */
+export function ImpersonationBanner({ session }: { session: ShellImpersonation }) {
+  return (
+    <div class="banner" role="status">
+      <Icon name="eye" />
+      <span>
+        You’re signed in as <b>{session.name}</b>. Every action is logged under your name. This ends by itself at {formatDateTime(session.expiresAt)}.
+      </span>
+      <form method="post" action="/app/users/impersonation/stop" data-no-busy>
+        <button type="submit" class="btn sm">
+          Stop
+        </button>
+      </form>
+    </div>
+  );
+}
+
 export interface AppShellProps extends Omit<DocumentProps, 'children' | 'layout' | 'bodyClass' | 'appearance'> {
   shell: ShellData;
   /** The URL path being shown, so the sidebar can mark the current page. */
@@ -323,6 +340,7 @@ export function AppShell({ shell, path, crumbs = [], children, ...doc }: AppShel
         </aside>
         <div class="scrim" data-scrim></div>
         <div class="main">
+          {shell.impersonation ? <ImpersonationBanner session={shell.impersonation} /> : null}
           <header class="top">
             <IconButton icon="menu" label="Open menu" class="menu-btn" data-drawer />
             <Breadcrumb items={trail} />

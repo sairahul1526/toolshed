@@ -1,7 +1,8 @@
 import { beforeEach, describe, expect, it } from 'vitest';
 import { createApp } from '../../src/app';
+import account from '../../src/dashboard/account';
 import screen from '../../src/dashboard/users';
-import { ImpersonationBanner } from '../../src/dashboard/users/banner';
+import { ImpersonationBanner } from '../../src/ui/layout';
 import type { Env, Role } from '../../src/env';
 import { adopt, Browser } from '../auth/browser';
 import { createTestSession, type TestSession } from '../helpers/auth';
@@ -30,7 +31,7 @@ async function person(opts: { email: string; name?: string; role?: Role; orgId?:
 
 beforeEach(async () => {
   env = createTestEnv().env;
-  app = createApp({ screens: { users: screen } });
+  app = createApp({ screens: { users: screen, account } });
   owner = await createTestSession(env, { email: 'olive@example.com', name: 'Olive Owner', role: 'owner', instanceOwner: true });
   asOwner = adopt(new Browser(app, env), owner.cookie);
 });
@@ -255,12 +256,17 @@ describe('sign in as', () => {
 
     // The browser is now Mel's: the owner's screens are closed to it.
     expect((await asOwner.get(BASE, html)).status).toBe(403);
+    // Every page in the shell shows the strip with Stop while this lasts.
+    const during = await body(await asOwner.get('/app/account', html));
+    expect(during).toContain('You’re signed in as <b>Mel Member</b>');
+    expect(during).toContain('action="/app/users/impersonation/stop"');
 
     const stop = await asOwner.post(`${BASE}/impersonation/stop`);
     expect(stop.status).toBe(303);
     expect(stop.headers.get('location')).toBe(BASE);
     expect(await audits('impersonation.stopped')).toBe(1);
     expect((await asOwner.get(BASE)).status).toBe(200);
+    expect(await body(await asOwner.get('/app/account', html))).not.toContain('impersonation/stop');
   });
 
   it('refuses to sign in as a banned account and says so', async () => {
@@ -280,7 +286,7 @@ describe('sign in as', () => {
 
   it('draws the banner with a Stop button', () => {
     const view = String(
-      ImpersonationBanner({ session: { user: { id: 'u', name: '<b>Mel</b>', email: 'mel@example.com' }, by: { id: 'o', name: 'Olive', email: 'olive@example.com' }, expiresAt: Date.UTC(2026, 10, 22, 10, 0) } }),
+      ImpersonationBanner({ session: { name: '<b>Mel</b>', expiresAt: Date.UTC(2026, 10, 22, 10, 0) } }),
     );
     expect(view).toContain('/app/users/impersonation/stop');
     expect(view).toContain('Stop');

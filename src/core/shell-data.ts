@@ -5,6 +5,7 @@
 import type { Context } from 'hono';
 import type { ActiveOrg, AppEnv, Env, SessionUser } from '../env';
 import { roleAtLeast } from '../env';
+import { currentImpersonation } from '../auth/service';
 import { listNotifications, type NotificationItem } from './notifications';
 import type { NavItem } from './module';
 import { allModules, moduleContext, moduleStates } from './registry';
@@ -41,6 +42,26 @@ export interface ShellData {
   appearance: Record<string, string>;
   /** Left out by previews that have no database (/dev/ui); the bell then shows nothing new. */
   notifications?: ShellNotifications;
+  /** Set while the install owner is signed in as this person. The shell then shows a strip with Stop. */
+  impersonation?: ShellImpersonation | null;
+}
+
+export interface ShellImpersonation {
+  /** Name (or email) of the person the browser is signed in as. */
+  name: string;
+  /** When the session ends by itself, ms. */
+  expiresAt: number;
+}
+
+/** A failed lookup must not take the page down; the strip is then left out. */
+async function loadImpersonation(c: Context<AppEnv>): Promise<ShellImpersonation | null> {
+  try {
+    const session = await currentImpersonation(c);
+    return session ? { name: session.user.name || session.user.email, expiresAt: session.expiresAt } : null;
+  } catch (err) {
+    console.error('[shell] impersonation lookup failed', err);
+    return null;
+  }
 }
 
 const BELL_ITEMS = 5;
@@ -61,11 +82,12 @@ export async function shellData(c: Context<AppEnv>): Promise<ShellData> {
   const org = c.get('org');
   if (!user || !org) throw new Error('shellData needs a signed-in user and an active workspace');
 
-  const [states, appearance, ctx, notifications] = await Promise.all([
+  const [states, appearance, ctx, notifications, impersonation] = await Promise.all([
     moduleStates(c.env, org.id),
     getSetting<Record<string, string>>(c.env, org.id, 'appearance', {}),
     moduleContext(c.env, org),
     loadBell(c.env, org, user),
+    loadImpersonation(c),
   ]);
 
   const on = allModules().filter((m) => states.get(m.id)?.enabled && m.dashboard);
@@ -81,5 +103,5 @@ export async function shellData(c: Context<AppEnv>): Promise<ShellData> {
     }),
   );
 
-  return { user, org, modules, modulesOff: allModules().length - on.length, appearance, notifications };
+  return { user, org, modules, modulesOff: allModules().length - on.length, appearance, notifications, impersonation };
 }
