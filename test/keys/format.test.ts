@@ -1,7 +1,7 @@
 import { createHash } from 'node:crypto';
 import { describe, expect, it } from 'vitest';
 import { generateKey, KEY_PREFIX, parseKey } from '../../src/core/apikeys';
-import { b64uDecode, b64uEncode, base62Fixed, constantTimeEqual, crc32, fromHex, fromUtf8, randomBase62, toHex, utf8 } from '../../src/core/keys/encoding';
+import { b64uDecode, b64uEncode, base62Fixed, constantTimeEqual, crc32, fromHex, fromUtf8, randomBase62, randomBytes, toHex, utf8 } from '../../src/core/keys/encoding';
 import { hashKey } from '../../src/core/keys/format';
 
 describe('key format', () => {
@@ -88,6 +88,20 @@ describe('byte helpers', () => {
     expect(b64uDecode(text)).toEqual(bytes);
     expect(b64uDecode('')).toEqual(new Uint8Array(0));
     for (const bad of ['a', 'ab+c', 'ab/c', 'abc=', 'ab c', 'ab\ncd']) expect(b64uDecode(bad), bad).toBeNull();
+  });
+
+  it('refuses a spelling that is not the one b64uEncode writes (non-zero trailing bits)', () => {
+    // One byte is two characters: the last carries 4 spare bits, which must be zero. 'QQ' is 0x41; 'QR'..'QZ' decode to the same byte.
+    expect(b64uDecode('QQ')).toEqual(new Uint8Array([0x41]));
+    for (const alias of ['QR', 'QZ', 'Qa', 'Q_']) expect(b64uDecode(alias), alias).toBeNull();
+    // Two bytes are three characters with 2 spare bits.
+    expect(b64uDecode('QUI')).toEqual(new Uint8Array([0x41, 0x42]));
+    expect(b64uDecode('QUJ')).toBeNull();
+    for (let n = 0; n < 40; n++) {
+      const bytes = randomBytes(n);
+      const text = b64uEncode(bytes);
+      expect(b64uDecode(text)).toEqual(bytes);
+    }
   });
 
   it('round-trips hex and refuses anything that is not lowercase hex', () => {

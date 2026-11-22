@@ -35,14 +35,18 @@ export function b64uEncode(bytes: Uint8Array): string {
   return btoa(s).replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/, '');
 }
 
-/** Strict base64url (no padding, no other characters). Returns null for anything else. */
+/**
+ * Strict, canonical base64url: no padding, no other characters, and the one spelling that
+ * `b64uEncode` would write. A final character with leftover non-zero bits decodes to the same
+ * bytes as another spelling, so it is refused. Returns null for anything else.
+ */
 export function b64uDecode(text: string): Bytes | null {
   if (!/^[A-Za-z0-9_-]*$/.test(text) || text.length % 4 === 1) return null;
   try {
     const bin = atob(text.replace(/-/g, '+').replace(/_/g, '/'));
     const out = new Uint8Array(bin.length);
     for (let i = 0; i < bin.length; i++) out[i] = bin.charCodeAt(i);
-    return out;
+    return b64uEncode(out) === text ? out : null;
   } catch {
     return null;
   }

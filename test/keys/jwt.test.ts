@@ -112,6 +112,13 @@ describe('signJwt and verifyJwt', () => {
     expect(read!.jti).not.toBe((await verifyJwt(t.env, b.token, { now: T0 }))!.jti);
   });
 
+  it('accepts the full 15 minutes for both kinds, and no more', async () => {
+    for (const kind of ['user', 'key'] as const) {
+      const { token } = await signJwt(t.env, { ...claims, scopes: ['links:read'], kind }, { now: T0, ttlSeconds: TOKEN_TTL_SECONDS });
+      expect(await verifyJwt(t.env, token, { now: T0 }), kind).toMatchObject({ kind, exp: S0 + 900 });
+    }
+  });
+
   it('refuses to sign nonsense', async () => {
     const bad: [Record<string, unknown>, Record<string, unknown>][] = [
       [{ role: 'owner' }, {}],
@@ -122,6 +129,8 @@ describe('signJwt and verifyJwt', () => {
       [{ orgId: '' }, {}],
       [{}, { ttlSeconds: 0 }],
       [{}, { ttlSeconds: 1.5 }],
+      [{}, { ttlSeconds: 901 }],
+      [{}, { ttlSeconds: 24 * 3600 }],
       [{}, { ttlSeconds: 24 * 3600 + 1 }],
     ];
     for (const [claim, opts] of bad) {
@@ -313,6 +322,9 @@ describe('claims of a correctly signed token', () => {
       { exp: S0 + 900.5 },
       { exp: S0 },
       { exp: S0 - 1 },
+      { exp: S0 + 901 },
+      { exp: S0 + 901, kind: 'key' },
+      { exp: S0 + 24 * 3600 },
       { exp: S0 + 24 * 3600 + 1 },
       { exp: Number.MAX_SAFE_INTEGER },
       { iat: undefined },
@@ -407,6 +419,13 @@ describe('the signing key', () => {
     expect(err).toBeInstanceOf(AppError);
     expect((err as AppError).code).toBe('needs_setup');
     expect(tableRows(weak, 'jwt_signing_keys')).toHaveLength(0);
+  });
+
+  it('shares the 32 character minimum with link signing', async () => {
+    const short = createTestEnv({ AUTH_SECRET: 'x'.repeat(31) });
+    expect(((await signJwt(short.env, { ...claims, scopes: ['*'] }, { now: T0 }).catch((e: unknown) => e)) as AppError).code).toBe('needs_setup');
+    const enough = createTestEnv({ AUTH_SECRET: 'x'.repeat(32) });
+    expect((await signJwt(enough.env, { ...claims, scopes: ['*'] }, { now: T0 })).token).toBeTruthy();
   });
 
   it('is replaced when AUTH_SECRET changes, and everything signed before stops', async () => {
@@ -616,6 +635,15 @@ describe('embed tokens', () => {
     expect(await verifyEmbedToken(t.env, token, { module: 'feedback', orgId: ORG_B }, { now: T0 })).toBeNull();
     expect(await verifyEmbedToken(t.env, token, { module: 'links' }, { now: T0 })).toBeNull();
     expect(await verifyEmbedToken(t.env, token, { module: 'feedback' }, { now: T0 + 60 * MINUTE + 30 * SECOND })).toBeNull();
+  });
+
+  it('may live a full day, unlike access tokens', async () => {
+    const { token } = await signEmbedToken(t.env, { ...input, ttlSeconds: 24 * 3600 }, { now: T0 });
+    expect(await verifyEmbedToken(t.env, token, { module: 'feedback' }, { now: T0 })).toMatchObject({ exp: S0 + 24 * 3600 });
+    const forge = await plantKey(t);
+    const long = await forge(payloadWith({ kind: 'embed', module: 'feedback', scopes: ['feedback:vote'], role: undefined, exp: S0 + 24 * 3600 }));
+    expect(await verifyEmbedToken(t.env, long, { module: 'feedback' }, { now: T0 })).not.toBeNull();
+    expect(await verifyJwt(t.env, long, { now: T0 })).toBeNull();
   });
 
   it('live 15 minutes unless told otherwise', async () => {

@@ -57,7 +57,7 @@ function isId(value: unknown): value is string {
 }
 
 export interface SignJwtOptions extends TokenOptions {
-  /** Defaults to 15 minutes. At most a day. */
+  /** Defaults to 15 minutes, which is also the longest an access token may live. */
   ttlSeconds?: number;
   /** The token is refused before this time (ms). */
   notBefore?: number;
@@ -75,6 +75,8 @@ export async function signJwt(
   if (!isId(claims.sub) || !isId(claims.orgId)) throw new Error('A token needs a subject and a workspace');
   if (!asKeyRole(claims.role)) throw new Error('A token can act as Admin, Member or Viewer, never as the owner');
   if (!readScopes(claims.scopes)) throw new Error('A token’s scopes must be a short list of scope names');
+  // verifyJwt refuses a longer life, so signing one would only hand out a token that never works.
+  if (opts.ttlSeconds !== undefined && opts.ttlSeconds > TOKEN_TTL_SECONDS) throw new Error(`An access token can live at most ${TOKEN_TTL_SECONDS} seconds`);
   return signToken(
     env,
     { sub: claims.sub, org: claims.orgId, role: claims.role, scopes: claims.scopes, kind: claims.kind ?? 'user' },
@@ -89,6 +91,8 @@ export async function signJwt(
 export async function verifyJwt(env: Env, token: string, opts: TokenOptions = {}): Promise<JwtClaims | null> {
   const payload = await readToken(env, token, opts);
   if (!payload) return null;
+  // readToken allows a day, for embed tokens. Access tokens are the 15 minute kind only.
+  if (payload.exp - payload.iat > TOKEN_TTL_SECONDS) return null;
   const role = asKeyRole(payload.role);
   const scopes = readScopes(payload.scopes);
   if ((payload.kind !== 'user' && payload.kind !== 'key') || !isId(payload.sub) || !isId(payload.org) || !role || !scopes) return null;
