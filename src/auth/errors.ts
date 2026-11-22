@@ -39,6 +39,7 @@ export const authErrors = defineErrors('auth', {
   workspace_not_found: { status: 404, message: 'We couldn’t find that workspace.' },
   workspace_create_off: { status: 403, message: 'Only the owner of this Toolshed can create workspaces.' },
   slug_taken: { status: 409, message: 'That short name is taken. Try another.' },
+  workspace_limit: { status: 409, message: 'You own the most workspaces one person can. Delete one you no longer use first.' },
   invite_not_found: { status: 404, message: 'That invite doesn’t work any more. Ask for a new one.' },
   invite_expired: { status: 410, message: 'This invite has expired. Ask for a new one.' },
   invite_wrong_account: { status: 403, message: 'This invite is for a different email. Sign out, then open the invite again.' },

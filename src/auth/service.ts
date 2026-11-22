@@ -6,3 +6,4 @@
 export * from './service/actor';
 export * from './service/account';
 export * from './service/two-step';
+export * from './service/workspaces';

@@ -17,6 +17,8 @@
   },
   // One dispatcher runs every minute and fans out to module schedules.
   "triggers": { "crons": ["* * * * *"] },
+  // Also set at deploy, as secrets or variables: AUTH_SECRET, OWNER_EMAIL, and EMAIL_FROM (the address
+  // emails come from until the owner picks one on the Email screen; needs the "send_email" binding).
   "vars": { "ENVIRONMENT": "production" },
   "observability": { "enabled": true }
 }

@@ -1,6 +1,7 @@
 /** Small request helpers shared by the auth routes and services. */
 import type { Context } from 'hono';
 import { deleteCookie, getCookie, setCookie } from 'hono/cookie';
+import { AppError } from '../core/errors';
 import { rateLimit, type RateLimitRule } from '../core/ratelimit';
 import type { AppEnv, Env } from '../env';
 import { baseUrl, COOKIE_PREFIX, secureCookies } from './auth';
@@ -26,6 +27,12 @@ export async function hit(env: Env, name: keyof typeof LIMITS, who: string, now?
   const rule = env.ENVIRONMENT === 'dev' ? { limit: base.limit * 20, windowSec: base.windowSec } : base;
   const res = await rateLimit(env, `auth.${name}:${who}`, rule, now);
   return res.ok ? 0 : Math.max(1, res.retryAfter);
+}
+
+/** `hit`, for callers that answer with an error instead of a page: throws `rate_limited` (429, Retry-After). */
+export async function enforceHit(env: Env, name: keyof typeof LIMITS, who: string): Promise<void> {
+  const wait = await hit(env, name, who);
+  if (wait) throw new AppError('rate_limited', 429, `Too many tries. Try again in ${waitText(wait)}.`, undefined, { 'Retry-After': String(wait) });
 }
 
 /** "14 minutes", "40 seconds". */

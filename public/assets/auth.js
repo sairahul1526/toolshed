@@ -1,7 +1,27 @@
 /*
- * Passkeys, the one part of sign-in that needs a script. Everything else on these pages is a
- * plain form. No library: browsers that have passkeys can turn the server's JSON into the
- * options WebAuthn wants and turn the result back into JSON by themselves.
+ * The small script of the sign-in and setup pages. Every page works as a plain form without it.
+ *
+ *   <select data-timezone>                                     starts on the browser's own time zone
+ */
+(function () {
+  'use strict';
+
+  var select = document.querySelector('select[data-timezone]');
+  if (!select) return;
+  try {
+    var zone = Intl.DateTimeFormat().resolvedOptions().timeZone;
+    for (var i = 0; i < select.options.length; i++) {
+      if (select.options[i].value === zone) select.selectedIndex = i;
+    }
+  } catch (err) {
+    /* An old browser: the list stays on UTC. */
+  }
+})();
+
+/*
+ * Passkeys, the one part of sign-in that needs a script. No library: browsers that have passkeys
+ * can turn the server's JSON into the options WebAuthn wants and turn the result back into JSON
+ * by themselves.
  *
  *   <button data-passkey-signin data-next="/app" hidden>      sign in with a passkey
  *   <button data-passkey-add data-name="#passkey-name" hidden> add a passkey to the signed-in account

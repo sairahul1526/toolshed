@@ -42,6 +42,7 @@ export const signInRoutes = new Hono<AppEnv>();
 signInRoutes.use('/sign-in', sameOrigin);
 signInRoutes.use('/sign-in/*', sameOrigin);
 signInRoutes.use('/sign-out', sameOrigin);
+signInRoutes.use('/api/auth/sign-out', sameOrigin);
 
 const page = (c: C, title: string, body: Parameters<typeof renderAuthPage>[2], status?: 400 | 422 | 429) =>
   renderAuthPage(c, { title, footer: signInFooter, ...(status ? { status } : {}) }, body);
@@ -321,7 +322,8 @@ signInRoutes.get('/sign-up', async (c) => {
   return page(c, 'Accounts are by invite', <InviteOnly />);
 });
 
-signInRoutes.post('/sign-out', async (c) => {
+// The dashboard's own sign-out form posts to the second address.
+signInRoutes.on('POST', ['/sign-out', '/api/auth/sign-out'], async (c) => {
   await signOut(c);
   return c.redirect('/sign-in', 303);
 });

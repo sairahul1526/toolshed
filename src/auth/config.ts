@@ -48,4 +48,6 @@ export const LIMITS = {
   invitePerUser: { limit: 50, windowSec: 60 * 60 },
   /** Passkey sign-in attempts from one IP. */
   passkeyPerIp: { limit: 60, windowSec: 15 * 60 },
+  /** API keys and tokens from one IP that turned out not to be valid. */
+  bearerPerIp: { limit: 30, windowSec: 60 },
 } as const satisfies Record<string, RateLimitRule>;

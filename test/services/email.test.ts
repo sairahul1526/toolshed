@@ -122,6 +122,27 @@ describe('sendEmail live', () => {
     expect(log.items[0]).toMatchObject({ status: 'sent', messageId: 'cf_1', attempts: 1, template: 'test' });
   });
 
+  it('uses EMAIL_FROM until a sender is saved, and ignores one that is not an address', async () => {
+    const { env, binding } = liveEnv();
+    expect((await sendEmail(env, mail())).status).toBe('not_configured');
+    const deployed = { ...env, EMAIL_FROM: ' Hello@Mail.Example.com ' };
+    expect(await getSender(deployed)).toEqual({ fromAddress: 'hello@mail.example.com', fromName: 'Toolshed' });
+    expect(await emailStatus(deployed)).toEqual({ status: 'ready', mode: 'live' });
+    expect((await sendEmail(deployed, mail())).status).toBe('sent');
+    expect(binding.calls[0]?.from).toEqual({ email: 'hello@mail.example.com', name: 'Toolshed' });
+
+    for (const bad of ['not-an-address', 'a@b', 'x@example.com\nBcc: y@example.com', '']) {
+      expect((await getSender({ ...env, EMAIL_FROM: bad })).fromAddress).toBe('');
+    }
+
+    // A saved sender wins, and clearing it on the Email screen still turns sending off.
+    await setSender(deployed, { fromName: 'Acme', fromAddress: 'team@mail.example.com' });
+    expect((await getSender(deployed)).fromAddress).toBe('team@mail.example.com');
+    await setSender(deployed, { fromName: 'Acme', fromAddress: '' });
+    expect((await getSender(deployed)).fromAddress).toBe('');
+    expect((await sendEmail(deployed, mail())).status).toBe('not_configured');
+  });
+
   it('a message replyTo wins over the saved one', async () => {
     const { env, binding } = liveEnv();
     await setSender(env, { fromName: 'Acme', fromAddress: 'hello@mail.example.com', replyTo: 'help@example.com' });

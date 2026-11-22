@@ -58,10 +58,16 @@ export interface SenderSettings {
 
 const SENDER_KEY = 'email.sender';
 
+/**
+ * The sender saved on the Email screen. Before anyone has saved one, the `EMAIL_FROM` variable set
+ * at deploy is used, so a new install can email its first sign-in code. A saved address always
+ * wins, and a saved empty address still turns sending off.
+ */
 export async function getSender(env: Env): Promise<SenderSettings> {
   const saved = await getSetting<Partial<SenderSettings>>(env, INSTANCE, SENDER_KEY, {});
+  const deployed = normaliseAddress(env.EMAIL_FROM ?? '');
   return {
-    fromAddress: typeof saved.fromAddress === 'string' ? saved.fromAddress : '',
+    fromAddress: typeof saved.fromAddress === 'string' ? saved.fromAddress : isValidAddress(deployed) ? deployed : '',
     fromName: typeof saved.fromName === 'string' && saved.fromName.trim() ? saved.fromName : 'Toolshed',
     ...(typeof saved.replyTo === 'string' && saved.replyTo ? { replyTo: saved.replyTo } : {}),
   };

@@ -57,6 +57,23 @@ export async function getAccount(c: Context<AppEnv>, now = Date.now()): Promise<
   };
 }
 
+export const personNameSchema = z
+  .string()
+  .trim()
+  .min(1, 'Enter your name.')
+  .max(80, 'Keep your name under 80 characters.')
+  .refine((v) => !/[\u0000-\u001f\u007f<>]/.test(v), 'Use letters, numbers and simple punctuation only.');
+
+/** Change the name other people see. */
+export async function changeName(c: Context<AppEnv>, input: { name: string }): Promise<{ name: string }> {
+  const actor = await selfFrom(c);
+  const { name } = parse(z.object({ name: personNameSchema }), { name: input.name });
+  if (name === actor.name) return { name };
+  await c.env.DB.prepare('UPDATE "user" SET "name" = ?1, "updatedAt" = ?2 WHERE "id" = ?3').bind(name, new Date().toISOString(), actor.id).run();
+  await auditBy(c.env, actor, { orgId: null, action: 'user.renamed', targetType: 'user', targetId: actor.id, summary: `Changed their name to ${name}` });
+  return { name };
+}
+
 /**
  * Set a password, or replace the one there is. The current password is not asked for: the recent
  * sign-in is the proof, which also keeps this to one hash per request. Every other device is
