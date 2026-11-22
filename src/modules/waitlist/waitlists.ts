@@ -25,6 +25,9 @@ const question = z.object({
   type: z.enum(QUESTION_TYPES),
   required: z.boolean().default(false),
   options: z.array(z.string().trim().min(1).max(60)).max(12).default([]),
+}).refine((q) => q.type !== 'select' || q.options.length > 0, {
+  message: 'A select question needs its choices after a fourth bar, for example: Team size | select | required | 1-5, 6-20, 21+',
+  path: ['options'],
 });
 
 export const waitlistSchema = z.object({

@@ -134,7 +134,8 @@ async function show(c: C, wl: Waitlist, lists: Waitlist[], draft: Draft, status:
     db.first<{ n: number }>('SELECT COUNT(*) AS n FROM wl_signups WHERE org_id = :org AND waitlist_id = ? AND is_test = 1', wl.id),
   ]);
   const { values: v, checks, errors } = draft;
-  const err = (k: string) => errors[k];
+  // A problem inside one question is reported as `questions.1.options`; the questions box shows it.
+  const err = (k: string) => errors[k] ?? (k === 'questions' ? Object.entries(errors).find(([key]) => key.startsWith('questions.'))?.[1] : undefined);
   const text = (k: string, label: string, extra: { hint?: string; optional?: boolean; type?: string; max?: number } = {}) => (
     <Field id={`f-${k}`} label={label} hint={extra.hint} optional={extra.optional} error={err(k)}>
       <Input id={`f-${k}`} name={k} type={extra.type ?? 'text'} value={v[k]} maxlength={extra.max} invalid={Boolean(err(k))} />
@@ -214,9 +215,11 @@ async function show(c: C, wl: Waitlist, lists: Waitlist[], draft: Draft, status:
           title: 'Delete this waitlist',
           description: 'Removes the page and every signup on it. This cannot be undone.',
           action: (
-            <ConfirmButton id="del-wl" title="Delete this waitlist?" body="Every signup, invite and email record on this waitlist is deleted for good." confirmLabel="Delete waitlist" formAction={to('edit/delete', wl)}>
-              Delete waitlist
-            </ConfirmButton>
+            <form method="post" action={to('edit/delete', wl)}>
+              <ConfirmButton id="del-wl" title="Delete this waitlist?" body="Every signup, invite and email record on this waitlist is deleted for good." confirmLabel="Delete waitlist">
+                Delete waitlist
+              </ConfirmButton>
+            </form>
           ),
         }]}
       />

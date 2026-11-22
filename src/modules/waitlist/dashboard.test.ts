@@ -71,6 +71,14 @@ describe('dashboard', () => {
     expect(res.status).toBe(422);
   });
 
+  it('puts the delete confirmation inside a form that posts to the delete route', async () => {
+    const { app } = await setup();
+    const wl = await make(app);
+    const html = await (await app.request(`/app/waitlist/edit?w=${wl.id}`)).text();
+    const form = html.match(/<form[^>]*action="[^"]*\/edit\/delete[^"]*"[^>]*>[\s\S]*?<\/form>/)?.[0] ?? '';
+    expect(form).toContain('id="confirm-del-wl"');
+  });
+
   it('imports a pasted csv after mapping columns', async () => {
     const { app, t } = await setup();
     const wl = await make(app);

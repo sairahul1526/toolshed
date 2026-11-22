@@ -53,6 +53,17 @@ describe('rules', () => {
   });
 });
 
+describe('questions', () => {
+  it('refuses a select question that has no choices, and says why', async () => {
+    const t = createTestEnv();
+    const app = await mountModule(t, mod);
+    const res = await app.request('/api/v1/waitlist/waitlists', { json: { name: 'Launch', questions: [{ id: 'q1', label: 'Team size', type: 'select', required: true, options: [] }] } });
+    expect(res.status).toBe(422);
+    const body = (await res.json()) as { fields?: Record<string, string> };
+    expect(JSON.stringify(body)).toContain('needs its choices');
+  });
+});
+
 describe('sign up', () => {
   it('returns code, link and position and rejects bad input', async () => {
     const s = await setup({ double_optin: false });
