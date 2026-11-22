@@ -95,7 +95,7 @@ svg.i { width: 16px; height: 16px; flex: none; stroke: currentColor; fill: none;
   padding: 14px 12px; border-right: 1px solid var(--border); background: var(--surface); overflow: hidden;
 }
 .side-head { display: flex; align-items: center; justify-content: space-between; gap: 8px; padding: 2px 4px 10px; }
-.logo { display: flex; align-items: center; gap: 10px; font-weight: 600; font-size: 15px; white-space: nowrap; }
+.logo { display: flex; align-items: center; gap: 10px; font-weight: 600; font-size: 15px; white-space: nowrap; text-decoration: none; }
 .logo-mark { width: 28px; height: 28px; border-radius: 8px; background: var(--text); color: var(--bg); display: grid; place-items: center; flex: none; }
 .logo-mark svg { width: 16px; height: 16px; }
 .icon-btn {
@@ -626,6 +626,8 @@ a.btn.primary { color: var(--primary-text); }
 .mod-card .mc-top { display: flex; align-items: center; gap: 12px; }
 .mod-card .mc-top .switch { margin-left: auto; }
 .mod-card h3 { margin: 0; font-size: 14.5px; font-weight: 500; }
+.mod-card h3 a { text-decoration: none; }
+.mod-card h3 a:hover { text-decoration: underline; }
 .mod-card p { margin: 0; color: var(--muted); font-size: 13px; flex: 1; }
 .mod-card .mc-foot { display: flex; align-items: center; gap: 8px; font-size: 12.5px; color: var(--faint); }
 .mod-card.planned { background: transparent; box-shadow: none; border-style: dashed; cursor: default; }
@@ -746,6 +748,7 @@ td.actions-col, th.actions-col { text-align: right; }
   .stack-table td::before { content: attr(data-label); flex: none; color: var(--muted); font-size: 12.5px; text-align: left; }
   .stack-table td:not([data-label])::before { content: none; }
   .stack-table td.actions-col { justify-content: flex-end; }
+  .stack-table td details { flex: 1; min-width: 0; text-align: left; }
   .pagination { padding: 12px 14px; }
 }
 
