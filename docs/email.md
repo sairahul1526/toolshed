@@ -13,11 +13,15 @@ through Cloudflare Email Sending, using a binding on the Worker. There are no AP
    "send_email": [{ "name": "EMAIL" }]
    ```
 
-3. Deploy.
-4. Open the Email screen as the install owner and choose the sender address, for example
-   `hello@example.com`. It must be on the domain from step 1. Send yourself a test email.
+3. Set `EMAIL_FROM` to the address emails should come from, for example `hello@example.com`. It must be on
+   the domain from step 1. A new install needs this to email the code that claims it:
+   `npx wrangler secret put EMAIL_FROM`, or add it under `vars` in `wrangler.jsonc`.
+4. Deploy.
+5. Later, the install owner can change the sender on the Email screen and send a test email. An address
+   saved there wins over `EMAIL_FROM`, and clearing it there turns sending off.
 
-Until both the binding and a sender exist, the Email screen says "Needs setup" and nothing is sent. Features
+Until both the binding and a sender exist (`EMAIL_FROM` or one saved on the Email screen), the Email screen
+says "Needs setup" and nothing is sent. Features
 that depend on email (sign-in codes, invites) tell people so instead of failing quietly.
 
 In development (`ENVIRONMENT` is `dev` or `test`) nothing leaves the machine. Emails are saved and shown at

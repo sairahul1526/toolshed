@@ -2,5 +2,8 @@
 ENVIRONMENT=dev
 # A random string of at least 32 characters. Make one with: openssl rand -base64 32
 AUTH_SECRET=replace-with-a-long-random-string
-# The first person to sign up with this email becomes the owner.
+# Only this email can claim a new install, at /setup. A code is sent to it.
 OWNER_EMAIL=you@example.com
+# Optional. The address emails come from until the owner picks one on the Email screen.
+# Not needed for local development: emails are saved to /dev/outbox instead of being sent.
+# EMAIL_FROM=hello@example.com

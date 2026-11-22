@@ -24,6 +24,8 @@ export interface Env {
   OWNER_EMAIL?: string;
   /** Public base URL, for example https://tools.example.com. Read from the request when unset. */
   APP_URL?: string;
+  /** The address emails come from until the owner picks one on the Email screen, for example hello@example.com. */
+  EMAIL_FROM?: string;
 
   /** Optional bindings. Features that need them show "Needs setup" until they exist. */
   EMAIL?: SendEmail;
