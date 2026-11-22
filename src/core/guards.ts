@@ -1,6 +1,7 @@
 /**
  * Route guards. They only read what `loadAuth` (src/auth) put on the request:
- * `user`, `org` and `auth`. Use them in this order: requireUser → requireOrg → requireScope.
+ * `user`, `org` and `auth`. Use them in this order: requireUser → requireSession (dashboard
+ * only) → requireOrg → requireScope.
  */
 import type { MiddlewareHandler } from 'hono';
 import type { AppEnv, Role } from '../env';
@@ -13,6 +14,18 @@ export const requireUser: MiddlewareHandler<AppEnv> = async (c, next) => {
     if (wantsJson(c) || c.req.method !== 'GET') throw errors.unauthorized();
     const url = new URL(c.req.url);
     return c.redirect(`/sign-in?next=${encodeURIComponent(url.pathname + url.search)}`);
+  }
+  await next();
+};
+
+/**
+ * A person signed in through the browser, for the dashboard. A key or token is only as strong as
+ * its scopes, and pages check roles, not scopes: a read-only key acting as an admin could post
+ * any dashboard form. Keys and tokens belong on `/api/v1`. Use after `requireUser`.
+ */
+export const requireSession: MiddlewareHandler<AppEnv> = async (c, next) => {
+  if (c.get('auth').kind !== 'session') {
+    throw errors.forbidden('Keys and tokens only work on the API. Sign in to the dashboard to use these pages.');
   }
   await next();
 };

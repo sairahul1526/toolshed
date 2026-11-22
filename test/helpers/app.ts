@@ -13,7 +13,7 @@ import { Hono } from 'hono';
 import { HTTPException } from 'hono/http-exception';
 import type { ContentfulStatusCode } from 'hono/utils/http-status';
 import { AppError, errors, jsonError, toAppError, wantsJson } from '../../src/core/errors';
-import { requireOrg, requireUser, sameOrigin } from '../../src/core/guards';
+import { requireOrg, requireSession, requireUser, sameOrigin } from '../../src/core/guards';
 import type { ModuleDef } from '../../src/core/module';
 import { registerModules, requireModule, setModuleEnabled } from '../../src/core/registry';
 import type { AppEnv, AuthInfo, Role, SessionUser } from '../../src/env';
@@ -87,8 +87,8 @@ function build(def: ModuleDef): Hono<AppEnv> {
 
   if (def.public) app.route('/', def.public);
   if (def.dashboard) {
-    app.use(`/app/${def.id}`, requireUser, requireOrg(), sameOrigin, requireModule(def.id));
-    app.use(`/app/${def.id}/*`, requireUser, requireOrg(), sameOrigin, requireModule(def.id));
+    app.use(`/app/${def.id}`, requireUser, requireSession, requireOrg(), sameOrigin, requireModule(def.id));
+    app.use(`/app/${def.id}/*`, requireUser, requireSession, requireOrg(), sameOrigin, requireModule(def.id));
     app.route(`/app/${def.id}`, def.dashboard);
   }
   if (def.api) {

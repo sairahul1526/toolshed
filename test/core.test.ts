@@ -3,16 +3,19 @@ import { afterEach, describe, expect, it } from 'vitest';
 import { z } from 'zod';
 import { createApp } from '../src/app';
 import { newId, orgDb } from '../src/core/db';
+import { createApiKey } from '../src/core/apikeys';
 import { AppError, defineErrors, errors, listErrorCodes, parse } from '../src/core/errors';
 import { emit, eventCounts, recentEvents } from '../src/core/events';
 import { hasScope } from '../src/core/guards';
 import { runSchedules } from '../src/core/jobs';
+import { signJwt } from '../src/core/jwt';
 import { defineModule } from '../src/core/module';
 import { enforceRateLimit, rateLimit } from '../src/core/ratelimit';
 import { moduleState, purgeOrgData, registerModules, setModuleEnabled } from '../src/core/registry';
 import { getSetting, setSetting } from '../src/core/settings';
 import { sendEmail, devOutbox } from '../src/core/email';
 import type { AppEnv } from '../src/env';
+import { createTestSession } from './helpers/auth';
 import { createTestEnv } from './helpers/d1';
 
 afterEach(() => registerModules([]));
@@ -227,8 +230,13 @@ describe('app routing', () => {
     const pub = new Hono<AppEnv>().get('/p/:slug', (c) => c.text(`public ${c.req.param('slug')}`));
     const mod = defineModule({
       id: 'pages', name: 'Pages', description: 'Public pages', icon: 'file', category: 'content', version: '0.1.0',
-      public: pub, publicPrefixes: ['/p'],
-      dashboard: new Hono<AppEnv>().get('/', (c) => c.text('pages dashboard')),
+      public: pub, publicPrefixes: ['/p'], permissions: [{ scope: 'pages:read', label: 'Read pages' }],
+      dashboard: new Hono<AppEnv>()
+        .get('/', (c) => c.text('pages dashboard'))
+        .post('/', async (c) => {
+          await c.env.KV.put('pages:posted', c.get('auth').kind);
+          return c.text('saved');
+        }),
       api: new Hono<AppEnv>().get('/items', (c) => c.json({ items: [] })),
       fallback: async (c) => (new URL(c.req.url).pathname === '/short' ? c.redirect('https://example.com/', 302) : null),
     });
@@ -265,6 +273,32 @@ describe('app routing', () => {
     expect(api.status).toBe(401);
     const post = await app.request('/app/pages', { method: 'POST' }, t.env);
     expect(post.status).toBe(401);
+  });
+
+  it('keeps API keys and tokens out of the dashboard, whatever their role and scopes', async () => {
+    const { app, t } = build();
+    const s = await createTestSession(t.env, { role: 'admin' });
+    await setModuleEnabled(t.env, s.org.id, 'pages', true);
+    const actor = { orgId: s.org.id, userId: s.user.id, role: 'admin' as const, label: s.user.email, via: 'session' as const };
+    const readOnly = await createApiKey(t.env, actor, { name: 'Read only', scopes: ['pages:read'] });
+    const everything = await createApiKey(t.env, actor, { name: 'Everything', scopes: ['*'] });
+    const token = await signJwt(t.env, { sub: s.user.id, orgId: s.org.id, role: 'admin', scopes: ['*'], kind: 'user' }, { issuer: 'http://localhost' });
+
+    for (const bearer of [readOnly.secret, everything.secret, token.token]) {
+      const headers = { authorization: `Bearer ${bearer}` };
+      const page = await app.request('http://localhost/app/pages', { headers }, t.env);
+      expect(page.status).toBe(403);
+      expect(await page.text()).toContain('Keys and tokens only work on the API');
+      expect((await app.request('http://localhost/app/pages', { method: 'POST', headers }, t.env)).status).toBe(403);
+      // The same bearer still reads the API.
+      expect((await app.request('http://localhost/api/v1/pages/items', { headers }, t.env)).status).toBe(200);
+    }
+    expect(await t.env.KV.get('pages:posted')).toBeNull();
+
+    // A person signed in gets both.
+    expect(await (await app.request('http://localhost/app/pages', { headers: s.headers }, t.env)).text()).toBe('pages dashboard');
+    expect((await app.request('http://localhost/app/pages', { method: 'POST', headers: s.headers }, t.env)).status).toBe(200);
+    expect(await t.env.KV.get('pages:posted')).toBe('session');
   });
 
   it('hides dev routes in production', async () => {

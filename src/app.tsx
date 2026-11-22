@@ -10,7 +10,7 @@ import { authApp, loadAuth } from './auth';
 import { devOutbox } from './core/email';
 import { AppError, errors, jsonError, toAppError, wantsJson } from './core/errors';
 import './core/events';
-import { requireOrg, requireUser, sameOrigin } from './core/guards';
+import { requireOrg, requireSession, requireUser, sameOrigin } from './core/guards';
 import { RESERVED_IDS } from './core/module';
 import { allModules, requireModule } from './core/registry';
 import type { AppEnv } from './env';
@@ -87,8 +87,8 @@ export function createApp(parts: AppParts): Hono<AppEnv> {
   app.route('/', authApp);
   app.get('/', (c) => c.redirect('/app'));
 
-  // 4. Dashboard: signed in, inside a workspace, no cross-site posts, never framed.
-  app.use('/app/*', requireUser, requireOrg(), sameOrigin, async (c, next) => {
+  // 4. Dashboard: a person signed in (never a key or token), inside a workspace, no cross-site posts, never framed.
+  app.use('/app/*', requireUser, requireSession, requireOrg(), sameOrigin, async (c, next) => {
     await next();
     c.header('x-frame-options', 'DENY');
     c.header('cache-control', 'no-store');
