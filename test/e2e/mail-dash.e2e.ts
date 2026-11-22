@@ -541,6 +541,9 @@ test('stats, deliverability and settings show real numbers and save', async ({ p
 test('the public archive and its feed show the sent email, and a visitor can read it', async ({ browser }) => {
   const visitor = await visitorPage(browser);
   const v = watch(visitor);
+  // The sample email has an outside image. Answer it here so the test needs no network.
+  const pixel = Buffer.from('iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mNkYPhfDwAChwGA60e6kgAAAABJRU5ErkJggg==', 'base64');
+  await visitor.route('https://example.com/**', (route) => route.fulfill({ contentType: 'image/png', body: pixel }));
   await visitor.goto(`/n/${SLUG}/archive`);
   await expect(visitor.getByRole('link', { name: 'The shed this week' })).toBeVisible();
   await visitor.screenshot({ path: '.shots/e2e/mail/archive-light.png', fullPage: true });

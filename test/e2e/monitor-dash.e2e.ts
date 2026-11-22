@@ -157,7 +157,7 @@ test('a status page is built from components and groups, and a visitor reads it'
   await page.locator('#title').fill('Shed status');
   await page.getByRole('button', { name: /^Create/ }).click();
   await expect(page.getByRole('heading', { name: 'Shed status', level: 1 })).toBeVisible();
-  await expect(page.getByRole('link', { name: `http://127.0.0.1:8841/status/${pageSlug}` })).toBeVisible();
+  await expect(page.getByRole('link', { name: `${baseURL}/status/${pageSlug}` })).toBeVisible();
 
   await page.getByRole('textbox', { name: 'New group name' }).fill('Core');
   await page.getByRole('button', { name: 'Add group' }).click();
