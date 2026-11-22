@@ -54,7 +54,7 @@ listRoutes.get('/', async (c: C) => {
         <Card title="Start from a template" description="Each one is a working form with sensible questions, a thank you message and, where it makes sense, a score.">
           <TemplateGrid idPrefix="first" />
         </Card>
-        <Card title="Just looking around" description="Add three sample forms with made up responses to see how the screens fill up. Remove them in one click later." class="fm-sample">
+        <Card title="Just looking around" description="Add two sample forms with made up responses to see how the screens fill up. Remove them in one click later." class="fm-sample">
           <form method="post" action={`${BASE}/sample`}>
             <input type="hidden" name="on" value="1" />
             <Button type="submit">Add sample forms</Button>

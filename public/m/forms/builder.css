@@ -54,7 +54,14 @@
   .fb-side { position: static; max-height: none; }
   .fb-block .fb-tools { opacity: 1; }
   .fb-block { flex-wrap: wrap; }
+  .fb-pick { min-width: 160px; }
+  .fb-tools { margin-left: auto; }
   .fb-type { min-width: 0; }
+}
+@media (max-width: 760px) {
+  .editor-bar { flex-wrap: wrap; padding-inline: 12px; }
+  .editor-title { order: 3; flex-basis: 100%; flex-wrap: wrap; }
+  .editor-bar .actions { display: flex; flex-wrap: wrap; gap: 6px; margin-left: auto; }
 }
 @media (max-width: 480px) {
   .fb-tools .btn { padding-inline: 8px; }

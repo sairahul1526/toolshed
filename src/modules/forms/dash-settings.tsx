@@ -40,7 +40,7 @@ async function page(c: C, form: Form, errors: Errors = {}, status: 200 | 422 = 2
         <Card title="Name and address">
           <div class="fm-stack">
             <Field id="s-name" label="Name" error={e('name')}><Input id="s-name" name="name" value={val('name', form.name)} maxlength={120} required invalid={!!e('name')} /></Field>
-            <Field id="s-slug" label="Address" hint="Letters, numbers and hyphens. Addresses are unique across this install." error={e('slug')}><Input id="s-slug" name="slug" prefix="/f/" value={val('slug', form.slug)} maxlength={40} required invalid={!!e('slug')} /></Field>
+            <Field id="s-slug" label="Address" hint="Letters, numbers and hyphens. Addresses are unique across this install." error={e('slug')}><Input id="s-slug" name="slug" prefix="/f/" value={val('slug', form.slug)} maxlength={60} required invalid={!!e('slug')} /></Field>
           </div>
         </Card>
         <Card title="Who can respond">

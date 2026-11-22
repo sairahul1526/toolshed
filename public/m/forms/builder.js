@@ -42,11 +42,12 @@
       else if (k === 'checked' || k === 'disabled' || k === 'selected' || k === 'hidden') n[k] = !!v;
       else n.setAttribute(k, v === true ? '' : v);
     });
-    for (var i = 2; i < arguments.length; i++) {
-      var c = arguments[i];
-      if (c === null || c === undefined || c === false) continue;
+    var add = function (c) {
+      if (c === null || c === undefined || c === false) return;
+      if (Array.isArray(c)) { c.forEach(add); return; }
       n.appendChild(typeof c === 'string' ? document.createTextNode(c) : c);
-    }
+    };
+    for (var i = 2; i < arguments.length; i++) add(arguments[i]);
     return n;
   }
   function rnd(prefix) { return prefix + Math.random().toString(36).slice(2, 8); }
@@ -583,7 +584,7 @@
     inspector.textContent = '';
     var list = el('div', { class: 'fb-tabs', role: 'tablist', 'aria-label': 'Editor sections' });
     TABS.forEach(function (t) {
-      var b = el('button', { type: 'button', role: 'tab', id: 'fb-tab-' + t[0], 'aria-selected': tab === t[0] ? 'true' : 'false', tabindex: tab === t[0] ? '0' : '-1', 'aria-controls': 'fb-panel', text: t[1] });
+      var b = el('button', { type: 'button', role: 'tab', id: 'fb-tab-' + t[0], 'aria-selected': tab === t[0] ? 'true' : 'false', tabindex: tab === t[0] ? '0' : '-1', text: t[1] });
       b.addEventListener('click', function () { tab = t[0]; renderInspector(); });
       b.addEventListener('keydown', function (e) {
         if (e.key !== 'ArrowRight' && e.key !== 'ArrowLeft') return;
