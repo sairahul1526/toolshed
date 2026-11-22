@@ -262,6 +262,9 @@ export async function startImpersonation(c: Context<AppEnv>, userId: string, now
   const actor = await ownerFrom(c, { fresh: true });
   const target = await targetFor(c, actor, userId);
   if (isBanned(target, now)) throw authErrors.user_banned();
+  // Without a workspace the dashboard (and its Stop button) can't open, so the owner would be stuck.
+  const member = await c.env.DB.prepare('SELECT 1 AS n FROM "member" WHERE "userId" = ?1 LIMIT 1').bind(target.id).first<{ n: number }>();
+  if (!member) throw authErrors.no_workspace_to_see();
   await enforceHit(c.env, 'impersonatePerOwner', actor.id);
 
   const auth = await getAuth(c.env, c.req.url);

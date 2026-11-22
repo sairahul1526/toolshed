@@ -242,6 +242,7 @@ function FailuresCard({ page, before }: { page: UpdatesPage; before: number | nu
 
 function RetryButton({ failure, before }: { failure: JobFailure; before: number | null }) {
   if (!failure.canRetry) return <span class="muted">Can’t retry</span>;
+  if (failure.retriedAt) return <span class="muted">Back on the queue</span>;
   return (
     <form method="post" action={`${BASE}/jobs/${failure.id}/retry`}>
       {before !== null ? <input type="hidden" name="before" value={String(before)} /> : null}

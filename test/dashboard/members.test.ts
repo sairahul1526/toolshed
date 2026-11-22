@@ -200,6 +200,16 @@ describe('changing a role', () => {
 });
 
 describe('removing and leaving', () => {
+  it('refuses a removal or an invite resend while the owner is signed in as an admin', async () => {
+    const install = await createTestSession(t.env, { instanceOwner: true, orgId: 'org_owner_home', email: 'install-owner@example.com' });
+    await t.env.DB.prepare('UPDATE "session" SET "impersonatedBy" = ?1 WHERE "userId" = ?2').bind(install.user.id, me.admin.user.id).run();
+    const remove = await post(`/app/members/${me.viewer.user.id}/remove`, {}, me.admin);
+    expect(await flashOf(remove, me.admin)).toBe('Stop signing in as someone else before you do that.');
+    expect(await roleOf(me.viewer.user.id)).toBe('viewer');
+    const resend = await post('/app/members/invites/inv_any/resend', {}, me.admin);
+    expect(await flashOf(resend, me.admin)).toBe('Stop signing in as someone else before you do that.');
+  });
+
   it('removes a person, keeps their account and writes an audit entry', async () => {
     const res = await post(`/app/members/${me.viewer.user.id}/remove`, {});
     expect(await flashOf(res)).toBe('Vic Viewer was removed and signed out of this workspace.');

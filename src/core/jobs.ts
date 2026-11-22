@@ -187,8 +187,15 @@ export async function retryJobFailure(env: Env, id: string): Promise<void> {
   const row = await env.DB.prepare('SELECT name, payload FROM job_failures WHERE id = ?1').bind(id).first<{ name: string; payload: string | null }>();
   if (!row) throw errors.not_found('That failed job is gone. It may already have been cleared.');
   if (row.payload === null) throw errors.conflict('This job’s details were too large or too private to keep, so it can’t be retried from here.');
-  await enqueue(env, row.name, parseJson<unknown>(row.payload, null));
-  await env.DB.prepare('UPDATE job_failures SET retried_at = ?2 WHERE id = ?1').bind(id, Date.now()).run();
+  // Claim the row first, so a double click or a replayed form can't queue the job twice.
+  const claim = await env.DB.prepare('UPDATE job_failures SET retried_at = ?2 WHERE id = ?1 AND retried_at IS NULL').bind(id, Date.now()).run();
+  if (!claim.meta.changes) throw errors.conflict('This job was already put back on the queue.');
+  try {
+    await enqueue(env, row.name, parseJson<unknown>(row.payload, null));
+  } catch (err) {
+    await env.DB.prepare('UPDATE job_failures SET retried_at = NULL WHERE id = ?1').bind(id).run();
+    throw err;
+  }
 }
 
 /**

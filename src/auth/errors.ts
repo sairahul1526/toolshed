@@ -31,6 +31,7 @@ export const authErrors = defineErrors('auth', {
   last_owner: { status: 409, message: 'A workspace needs at least one owner. Make someone else an owner first.' },
   last_instance_owner: { status: 409, message: 'This Toolshed needs an owner, so this account can’t be deleted.' },
   is_owner: { status: 409, message: 'That person owns this Toolshed. You can’t do that to their account.' },
+  no_workspace_to_see: { status: 409, message: 'That person isn’t in any workspace, so there is nothing to see as them.' },
   user_banned: { status: 409, message: 'That account is suspended. Lift the suspension first.' },
   sole_owner: {
     status: 409,

@@ -147,6 +147,7 @@ export async function inviteMember(c: Context<AppEnv>, input: { email: string; r
 /** Email an invite again and give it a fresh 7 days. Works on an expired invite too. */
 export async function resendInvite(c: Context<AppEnv>, id: string): Promise<SentInvite> {
   const actor = await workspaceActor(c, 'admin');
+  if (actor.impersonatedBy) throw authErrors.impersonating();
   const { row, role } = await ownInvite(c, actor, id);
   await enforceHit(c.env, 'invitePerUser', actor.id);
 

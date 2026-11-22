@@ -172,6 +172,9 @@ describe('the failure log', () => {
     expect(await t.drainJobs()).toBe(1);
     expect(ran).toEqual([{ orgId: 'org_a', n: 1 }]);
     expect((await listJobFailures(t.env))[0]!.retriedAt).toBeGreaterThan(0);
+    // A second press or a replayed form must not queue it again.
+    await expect(retryJobFailure(t.env, f!.id)).rejects.toMatchObject({ code: 'conflict' });
+    expect(await t.drainJobs()).toBe(0);
 
     markJobSensitive('core.test-private');
     await recordJobFailure(t.env, { name: 'core.test-private', payload: { code: '1' } }, new Error('x'), 5);

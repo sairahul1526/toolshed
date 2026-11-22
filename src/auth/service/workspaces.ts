@@ -11,7 +11,7 @@ import { getSetting, INSTANCE } from '../../core/settings';
 import type { AppEnv, Env, Role } from '../../env';
 import { authErrors } from '../errors';
 import { eraseWorkspace, findWorkspace, isUniqueClash, saveWorkspaceName, slugSchema, workspaceNameSchema } from '../workspace-store';
-import { actorFrom, auditBy, freshFrom, isInstanceOwner, workspaceActor } from './actor';
+import { actorFrom, auditBy, freshFrom, isInstanceOwner, selfFrom, workspaceActor } from './actor';
 import { isRole } from './roles';
 
 export { slugSchema, workspaceNameSchema };
@@ -66,7 +66,7 @@ export async function mayCreateWorkspace(env: Env, userId: string): Promise<bool
  * `slug` out to get one made from the name.
  */
 export async function createWorkspace(c: Context<AppEnv>, input: { name: string; slug?: string | null }): Promise<Workspace> {
-  const actor = await actorFrom(c);
+  const actor = await selfFrom(c);
   const { name } = parse(z.object({ name: workspaceNameSchema }), { name: input.name });
   const typed = typeof input.slug === 'string' ? input.slug.trim() : '';
   const explicit = typed ? parse(z.object({ slug: slugSchema }), { slug: typed }).slug : null;

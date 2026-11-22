@@ -184,6 +184,7 @@ async function takeOut(c: Context<AppEnv>, actor: WorkspaceActor, userId: string
  */
 export async function removeMember(c: Context<AppEnv>, userId: string): Promise<void> {
   const actor = await workspaceActor(c, 'admin');
+  if (actor.impersonatedBy) throw authErrors.impersonating();
   // Leaving is its own action, with its own wording on the screen.
   if (userId === actor.id) throw authErrors.self_action();
   const target = await memberOf(c.env, actor.orgId, userId);

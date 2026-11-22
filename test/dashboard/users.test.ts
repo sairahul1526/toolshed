@@ -269,6 +269,15 @@ describe('sign in as', () => {
     expect(await body(await asOwner.get('/app/account', html))).not.toContain('impersonation/stop');
   });
 
+  it('refuses to sign in as someone with no workspace, where Stop could not be reached', async () => {
+    const mel = await person({ email: 'mel@example.com' });
+    await env.DB.prepare('DELETE FROM "member" WHERE "userId" = ?1').bind(mel.user.id).run();
+    const res = await asOwner.post(`${BASE}/${mel.user.id}/sign-in-as`);
+    expect(flashOf(res)).toContain('isn’t in any workspace');
+    expect(await audits('impersonation.started')).toBe(0);
+    expect((await asOwner.get(BASE)).status).toBe(200);
+  });
+
   it('refuses to sign in as a banned account and says so', async () => {
     const mel = await person({ email: 'mel@example.com' });
     await asOwner.post(`${BASE}/${mel.user.id}/ban`, { days: '' });
