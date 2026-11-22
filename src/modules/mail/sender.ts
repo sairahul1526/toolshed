@@ -18,7 +18,7 @@ export interface Outgoing {
   /** Groups the delivery log and makes "did we already send this?" answerable: `mail:<broadcast id>`. */
   template: string;
   replyTo?: string;
-  /** `List-Unsubscribe` and `List-Unsubscribe-Post`. Core email passes them on once it supports headers. */
+  /** `List-Unsubscribe` and `List-Unsubscribe-Post`, for one-click unsubscribe in mail apps. */
   headers?: Record<string, string>;
 }
 

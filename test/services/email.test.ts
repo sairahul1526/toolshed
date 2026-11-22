@@ -129,6 +129,38 @@ describe('sendEmail live', () => {
     expect(binding.calls[0]?.replyTo).toBe('maya@example.com');
   });
 
+  it('passes allowed headers on and drops the rest', async () => {
+    const { env, binding } = liveEnv();
+    await setSender(env, { fromName: 'Acme', fromAddress: 'hello@mail.example.com' });
+    await sendEmail(
+      env,
+      mail('sam@example.com', {
+        headers: {
+          'List-Unsubscribe': '<https://example.com/n/u/abc>',
+          'List-Unsubscribe-Post': 'List-Unsubscribe=One-Click',
+          'X-Campaign': 'weekly-12',
+          From: 'evil@example.com',
+          Bcc: 'evil@example.com',
+          'X-Split': 'one\r\nBcc: evil@example.com',
+          'X-Unicode': 'héllo',
+          'X-Empty': '',
+        },
+      }),
+    );
+    expect(binding.calls[0]?.headers).toEqual({
+      'List-Unsubscribe': '<https://example.com/n/u/abc>',
+      'List-Unsubscribe-Post': 'List-Unsubscribe=One-Click',
+      'X-Campaign': 'weekly-12',
+    });
+  });
+
+  it('sends no headers field when none are allowed', async () => {
+    const { env, binding } = liveEnv();
+    await setSender(env, { fromName: 'Acme', fromAddress: 'hello@mail.example.com' });
+    await sendEmail(env, mail('sam@example.com', { headers: { Subject: 'changed' } }));
+    expect(binding.calls[0]).not.toHaveProperty('headers');
+  });
+
   it('never stores bodies, codes or links in production', async () => {
     const { env } = liveEnv();
     await setUpSender(env);
