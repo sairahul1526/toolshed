@@ -7,8 +7,13 @@ import { errors } from './errors';
 export const MIN_SECRET_LENGTH = 32;
 
 /** `ok`, or why the secret cannot be used: nothing set, or shorter than `MIN_SECRET_LENGTH`. */
+/** The example value shipped in `.dev.vars.example`. */
+export const PLACEHOLDER_SECRET = 'replace-with-a-long-random-string';
+
 export function secretStatus(secret: unknown): 'ok' | 'missing' | 'short' {
   if (typeof secret !== 'string' || secret.trim() === '') return 'missing';
+  // The value in `.dev.vars.example` is public, so it counts as not set.
+  if (secret.trim() === PLACEHOLDER_SECRET) return 'missing';
   return secret.trim().length >= MIN_SECRET_LENGTH ? 'ok' : 'short';
 }
 

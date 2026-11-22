@@ -73,6 +73,9 @@ describe('a caller with a whole IPv6 network to pick addresses from', () => {
     expect(addressBlock('2001:0DB8:0001:0002:aaaa:bbbb:cccc:dddd')).toBe('2001:db8:1:2::/64');
     expect(addressBlock('2001:db8:1:2:ffff::')).toBe('2001:db8:1:2::/64');
     expect(addressBlock('::1')).toBe('0:0:0:0::/64');
+    // IPv4 written as hex inside IPv6 is one IPv4 address, not everybody's shared block.
+    expect(addressBlock('::ffff:102:304')).toBe('1.2.3.4');
+    expect(addressBlock('0:0:0:0:0:FFFF:c0a8:1')).toBe('192.168.0.1');
     expect(addressBlock('2001:db8:1:3::1')).toBe('2001:db8:1:3::/64');
   });
 

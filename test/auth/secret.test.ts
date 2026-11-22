@@ -21,6 +21,7 @@ describe('an install without a real AUTH_SECRET', () => {
     ['is not set', undefined],
     ['is empty', '   '],
     ['is a short word', 'too-short'],
+    ['is the example value from .dev.vars.example', 'replace-with-a-long-random-string'],
     ['is one character under the minimum', 'x'.repeat(31)],
   ])('shows the setup step on the sign-in page when the secret %s', async (_label, secret) => {
     const { env } = createTestEnv({ AUTH_SECRET: secret as string });

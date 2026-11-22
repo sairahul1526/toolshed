@@ -61,6 +61,8 @@ async function seed(t: TestEnv, org: string): Promise<void> {
   run('INSERT INTO notification_reads (org_id, user_id, notification_id, read_at) VALUES (?, ?, ?, 1)', org, 'usr_1', `ntf_${org}`);
   run(`INSERT INTO exports (id, org_id, requested_by, status, created_at) VALUES (?, ?, 'usr_1', 'ready', 1)`, `exp_${org}`, org);
   await t.env.FILES.put(exportKey(org, `exp_${org}`), 'zip');
+  // Modules keep their files under <module id>/<workspace id>/.
+  await t.env.FILES.put(`notes/${org}/attachments/a.png`, 'png');
   await setSetting(t.env, org, 'timezone', 'Europe/Paris');
 }
 
@@ -82,6 +84,7 @@ describe('purging a workspace', () => {
     await seed(t, KEPT);
     // A workspace whose id starts the same way is a different workspace.
     await t.env.FILES.put(exportKey(`${GONE}_2`, 'exp_x'), 'zip');
+    await t.env.FILES.put(`notes/${GONE}_2/a.png`, 'png');
     const before = left(t, KEPT);
     expect(Object.values(left(t, GONE)).every((n) => n > 0)).toBe(true);
 
@@ -89,7 +92,9 @@ describe('purging a workspace', () => {
 
     expect(left(t, GONE)).toEqual(nothing);
     expect(left(t, KEPT)).toEqual(before);
-    expect(await files(t)).toEqual([exportKey(`${GONE}_2`, 'exp_x'), exportKey(KEPT, `exp_${KEPT}`)].sort());
+    expect(await files(t)).toEqual(
+      [exportKey(`${GONE}_2`, 'exp_x'), exportKey(KEPT, `exp_${KEPT}`), `notes/${GONE}_2/a.png`, `notes/${KEPT}/attachments/a.png`].sort(),
+    );
   });
 
   it('is safe to run twice', async () => {

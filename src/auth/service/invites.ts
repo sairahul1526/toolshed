@@ -90,6 +90,8 @@ async function ownInvite(c: Context<AppEnv>, actor: WorkspaceActor, id: string):
  */
 export async function inviteMember(c: Context<AppEnv>, input: { email: string; role: string }): Promise<SentInvite> {
   const actor = await workspaceActor(c, 'admin');
+  // An invite lasts longer than a "sign in as" hour, so none is sent during one.
+  if (actor.impersonatedBy) throw authErrors.impersonating();
   const { email } = parse(z.object({ email: emailSchema }), { email: input.email });
   const role = parseRole(input.role);
   assertMayAssign(actor.role, null, role);

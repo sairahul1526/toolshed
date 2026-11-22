@@ -224,8 +224,12 @@ export async function recordBusyAddress(c: Context<AppEnv>): Promise<void> {
 export async function signOut(c: Context<AppEnv>): Promise<void> {
   const current = await sessionFromRequest(c);
   if (current) {
-    await c.env.DB.prepare('DELETE FROM "session" WHERE "id" = ?1').bind(current.session.id).run();
     const ownerId = current.session.impersonatedBy;
+    await c.env.DB.batch([
+      c.env.DB.prepare('DELETE FROM "session" WHERE "id" = ?1').bind(current.session.id),
+      // Signing out any of their own devices also ends every "sign in as" session they started.
+      ...(ownerId ? [] : [c.env.DB.prepare('DELETE FROM "session" WHERE "impersonatedBy" = ?1').bind(current.user.id)]),
+    ]);
     if (ownerId) {
       const token = await ownerSessionToken(c);
       if (token) await c.env.DB.prepare('DELETE FROM "session" WHERE "token" = ?1 AND "userId" = ?2').bind(token, ownerId).run();

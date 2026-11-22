@@ -130,6 +130,8 @@ async function afterGone(env: Env, orgId: string, userId: string): Promise<void>
  */
 export async function changeMemberRole(c: Context<AppEnv>, userId: string, role: string): Promise<{ userId: string; role: Role; changed: boolean }> {
   const actor = await workspaceActor(c, 'admin');
+  // A role given during a "sign in as" hour would outlast it.
+  if (actor.impersonatedBy) throw authErrors.impersonating();
   const next = parseRole(role);
   if (userId === actor.id) throw authErrors.role_self();
   const target = await memberOf(c.env, actor.orgId, userId);

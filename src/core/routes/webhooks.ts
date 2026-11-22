@@ -107,7 +107,12 @@ api.post('/deliveries/:id/resend', async (c) => {
 api.get('/:id', async (c) => c.json({ endpoint: await getEndpoint(c.env, orgOf(c), c.req.param('id')) }));
 
 api.patch('/:id', async (c) => {
-  const { endpoint, changed } = await updateEndpoint(c.env, orgOf(c), c.req.param('id'), await readJson(c));
+  const body = await readJson(c);
+  // A rename is harmless. A changed address, event list or on/off switch would
+  // keep sending after a "sign in as" hour ends.
+  const renameOnly = typeof body === 'object' && body !== null && Object.keys(body).every((k) => k === 'name');
+  if (!renameOnly) refuseWhileImpersonating(c.get('auth').impersonatedBy);
+  const { endpoint, changed } = await updateEndpoint(c.env, orgOf(c), c.req.param('id'), body);
   if (changed.length > 0) {
     await auditFromRequest(c, {
       action: 'webhook.updated',

@@ -82,6 +82,9 @@ describe('while an install owner is signed in as someone', () => {
     const id = made.json.endpoint.id as string;
     await refused('POST', `/api/v1/webhooks/${id}/rotate`);
     await refused('GET', `/api/v1/webhooks/${id}/secret`);
+    // Pointing an existing endpoint somewhere else would keep working after the hour.
+    await refused('PATCH', `/api/v1/webhooks/${id}`, { url: 'https://elsewhere.example/hook' });
+    expect(auditRows(t, 'webhook.updated')).toHaveLength(0);
     expect(auditRows(t, 'webhook.secret_rotated')).toHaveLength(0);
     expect(auditRows(t, 'webhook.secret_viewed')).toHaveLength(0);
   });

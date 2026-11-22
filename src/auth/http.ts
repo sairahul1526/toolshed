@@ -27,6 +27,11 @@ export function addressBlock(ip: string): string {
   if (more !== undefined || gap < 0) return ip;
   const groups = [...left, ...Array<string>(gap).fill('0'), ...right];
   if (groups.length !== 8 || groups.some((group) => !/^[0-9a-f]{1,4}$/.test(group))) return ip;
+  const n = groups.map((group) => parseInt(group, 16));
+  // IPv4 written as hex inside IPv6 (::ffff:102:304) is one IPv4 address, not a shared block.
+  if (n.slice(0, 5).every((v) => v === 0) && n[5] === 0xffff) {
+    return `${n[6]! >> 8}.${n[6]! & 255}.${n[7]! >> 8}.${n[7]! & 255}`;
+  }
   return `${groups
     .slice(0, 4)
     .map((group) => parseInt(group, 16).toString(16))

@@ -1,6 +1,7 @@
 import { beforeEach, describe, expect, it } from 'vitest';
 import { IMPERSONATION_TTL_SEC, LIMITS } from '../../src/auth/config';
 import { hit } from '../../src/auth/http';
+import { signOut } from '../../src/auth/signin';
 import {
   banUser,
   currentImpersonation,
@@ -11,6 +12,8 @@ import {
   listAllWorkspaces,
   listUsers,
   renameAnyWorkspace,
+  changeMemberRole,
+  inviteMember,
   revokeOtherSessions,
   revokeSession,
   setPassword,
@@ -333,6 +336,14 @@ describe('signing in as someone', () => {
     expect(await codeOf(env, asMel, (c) => getAccount(c))).toBe('unauthorized');
   });
 
+  it('cannot invite anyone or change a role, since both outlast the hour', async () => {
+    // Adam owns the workspace, so only the impersonation stands in the way.
+    await must(env, asOlive, (c) => startImpersonation(c, adam.user.id));
+    expect(await codeOf(env, asOlive, (c) => inviteMember(c, { email: 'friend@example.com', role: 'admin' }))).toBe('auth.impersonating');
+    expect(await codeOf(env, asOlive, (c) => changeMemberRole(c, mel.user.id, 'admin'))).toBe('auth.impersonating');
+    expect(await count('SELECT COUNT(*) AS n FROM "invitation"')).toBe(0);
+  });
+
   it('ends when the owner signs their devices out from somewhere else', async () => {
     const elsewhere = async (): Promise<Browser> => adopt(new Browser(app, env), (await createTestSession(env, { email: 'olive@example.com' })).cookie);
     const running = () => count('SELECT COUNT(*) AS n FROM "session" WHERE "impersonatedBy" = ?1', olive.user.id);
@@ -358,6 +369,13 @@ describe('signing in as someone', () => {
     await must(env, await elsewhere(), (c) => setPassword(c, { password: 'correct horse battery' }));
     expect(await running()).toBe(0);
     expect(await sessionsOf(mel.user.id)).toBe(1);
+
+    // Plain "Sign out" on another of the owner's devices ends it too.
+    const fourth = adopt(new Browser(app, env), (await createTestSession(env, { email: 'olive@example.com' })).cookie);
+    await must(env, fourth, (c) => startImpersonation(c, mel.user.id));
+    expect(await running()).toBe(1);
+    await must(env, await elsewhere(), (c) => signOut(c));
+    expect(await running()).toBe(0);
   });
 
   it('cannot be forged by handing the browser a made-up owner cookie', async () => {

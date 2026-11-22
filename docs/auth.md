@@ -150,7 +150,8 @@ The install owner sees a Users screen that covers every workspace:
   really acting. While signed in as someone, the owner cannot:
   - change how that account signs in (password, username, passkeys, two-step, email);
   - make or replace an API key or a service account, or ask for a token;
-  - add a webhook endpoint, or read or replace a webhook's signing secret;
+  - add a webhook endpoint or change one beyond its name, or read or replace a webhook's signing secret;
+  - invite someone or change a member's role;
   - start an export;
   - leave or delete their workspace, or use the Users screen.
 

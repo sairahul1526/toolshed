@@ -220,16 +220,22 @@ export function purgeOrgStatements(env: Env, orgId: string): D1PreparedStatement
   return stmts;
 }
 
-/** Delete the files a workspace has outside the database: its exports. Safe to run again. */
+/**
+ * Delete the files a workspace has outside the database: its exports, and everything its modules
+ * stored. Modules keep their files under `<module id>/<workspace id>/`, which is what makes this
+ * possible without asking each one. Safe to run again.
+ */
 export async function purgeOrgFiles(env: Env, orgId: string): Promise<void> {
   if (!orgId) throw new Error('purgeOrgFiles needs a workspace id');
-  const prefix = exportPrefix(orgId);
-  let cursor: string | undefined;
-  do {
-    const page = await env.FILES.list({ prefix, ...(cursor ? { cursor } : {}) });
-    if (page.objects.length > 0) await env.FILES.delete(page.objects.map((o) => o.key));
-    cursor = page.truncated ? page.cursor : undefined;
-  } while (cursor);
+  const prefixes = [exportPrefix(orgId), ...registered.map((m) => `${m.id}/${orgId}/`)];
+  for (const prefix of prefixes) {
+    let cursor: string | undefined;
+    do {
+      const page = await env.FILES.list({ prefix, ...(cursor ? { cursor } : {}) });
+      if (page.objects.length > 0) await env.FILES.delete(page.objects.map((o) => o.key));
+      cursor = page.truncated ? page.cursor : undefined;
+    } while (cursor);
+  }
 }
 
 /** Delete everything modules and core services stored for a workspace: files first, then rows. */
