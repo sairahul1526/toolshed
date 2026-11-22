@@ -184,7 +184,16 @@ export async function exportModules(env: Env, org: { id: string; name: string; s
 /** Delete everything modules and core services stored for a workspace. Call when a workspace is deleted. */
 export async function purgeOrgData(env: Env, orgId: string): Promise<void> {
   const tables = registered.flatMap((m) => m.tables ?? []);
-  const core = ['module_state', 'audit_log', 'email_log', 'event_counts', 'events_recent'];
+  const core = [
+    'module_state',
+    'audit_log',
+    'email_log',
+    'event_counts',
+    'events_recent',
+    'webhook_attempts',
+    'webhook_deliveries',
+    'webhook_endpoints',
+  ];
   const stmts = [...tables, ...core].map((t) => env.DB.prepare(`DELETE FROM ${t} WHERE org_id = ?1`).bind(orgId));
   stmts.push(env.DB.prepare('DELETE FROM settings WHERE scope = ?1').bind(orgId));
   await env.DB.batch(stmts);

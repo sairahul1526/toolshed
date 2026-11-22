@@ -20,13 +20,26 @@ export interface ScopeInfo {
   label: string;
 }
 
-/** Every scope a module declares, in module order. `*` and `<module>:*` are accepted on top. */
+/** Scopes for services that live in core rather than in a module. */
+const CORE_SCOPES: readonly ScopeInfo[] = [
+  { module: 'webhooks', scope: 'webhooks:read', label: 'See webhook endpoints and deliveries' },
+  { module: 'webhooks', scope: 'webhooks:write', label: 'Add, change and delete webhook endpoints, send test events' },
+];
+
+/** Every scope core and the modules declare, core first. `*` and `<module>:*` are accepted on top. */
 export function listScopes(): ScopeInfo[] {
-  return allModules().flatMap((m) => (m.permissions ?? []).map((p) => ({ module: m.id, scope: p.scope, label: p.label })));
+  return [
+    ...CORE_SCOPES,
+    ...allModules().flatMap((m) => (m.permissions ?? []).map((p) => ({ module: m.id, scope: p.scope, label: p.label }))),
+  ];
 }
 
 function known(): Set<string> {
   const set = new Set<string>([ALL_SCOPES]);
+  for (const c of CORE_SCOPES) {
+    set.add(`${c.module}:*`);
+    set.add(c.scope);
+  }
   for (const m of allModules()) {
     if (!m.permissions?.length) continue;
     set.add(`${m.id}:*`);

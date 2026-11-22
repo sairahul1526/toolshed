@@ -203,6 +203,8 @@ describe('/api/v1/keys', () => {
     const res = await keys(session('admin'))('GET', '/api/v1/keys/scopes');
     expect(res.json).toEqual({
       scopes: [
+        { module: 'webhooks', scope: 'webhooks:read', label: 'See webhook endpoints and deliveries' },
+        { module: 'webhooks', scope: 'webhooks:write', label: 'Add, change and delete webhook endpoints, send test events' },
         { module: 'forms', scope: 'forms:read', label: 'See forms and answers' },
         { module: 'links', scope: 'links:read', label: 'See links' },
         { module: 'links', scope: 'links:write', label: 'Create, edit and delete links' },

@@ -134,6 +134,7 @@ Rules:
 | `core/guards.ts` | `requireUser`, `requireOrg`, `requireScope`, `requireInstanceOwner`, `needRole`, `hasScope` |
 | `core/registry.ts` | Which modules exist and which are on: `allModules`, `moduleStates`, `setModuleEnabled`, `getModuleSettings`, `setModuleSettings`, `moduleContext`, `exportModules`, `purgeOrgData` |
 | `core/events.ts` | `emit`, `eventCounts`, `eventTotal`, `recentEvents` |
+| `core/webhooks.ts` | `createEndpoint`, `listEndpoints`, `sendTestEvent`, `listDeliveries`, `resendDelivery`, `queueWebhooks`, `deliverWebhook`, `signPayload`, `verifySignature` |
 | `core/jobs.ts` | `enqueue`, `registerCoreJob`, `registerCoreSchedule` |
 | `core/audit.ts` | `audit`, `auditFromRequest` |
 | `core/email.ts` | `sendEmail`, `emailReady`, `devOutbox` |
@@ -141,6 +142,16 @@ Rules:
 | `core/settings.ts` | `getSetting`, `setSetting` for the install (`'instance'`) or a workspace |
 | `core/apikeys.ts`, `core/jwt.ts` | `verifyApiKey`, `verifyJwt`, used by the request loader |
 | `core/shell-data.ts` | `shellData(c)`: what the sidebar and top bar show |
+
+## Webhooks
+
+Outgoing webhooks live in `core/webhooks/` and are described for users in [webhooks.md](./webhooks.md). The parts that matter when you work on them:
+
+- `emit()` calls `queueWebhooks`, which does one remembered check ("does this workspace have an active endpoint?") and, only if so, queues one `core.webhook.fanout` job. A workspace without endpoints costs nothing more.
+- The fan-out job reads the active endpoints with one query, keeps the ones whose patterns match, and writes every delivery in one batch. The event id is the `webhook-id`, so a repeated job cannot make a second delivery.
+- Each delivery is one row. A `core.webhook.deliver` job claims a try with a single atomic update, sends it through `safeFetch`, records the attempt, and queues the next try. A queue delay is 12 hours at most, so the 24 hour wait is two hops. A sweeper every 5 minutes queues deliveries whose job was lost.
+- Secrets and custom header values are sealed with AES-256-GCM under a key derived from `AUTH_SECRET`, with the endpoint id as additional data. They are never logged, audited or returned.
+- Tables: `webhook_endpoints`, `webhook_deliveries`, `webhook_attempts`, all keyed by `org_id`. A daily job deletes deliveries and attempts older than 30 days.
 
 ## Tests
 
