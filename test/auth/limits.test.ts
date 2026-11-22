@@ -67,6 +67,35 @@ describe('limits per IP address', () => {
   });
 });
 
+describe('a machine past its limit, typing a new name each time', () => {
+  const count = async (sql: string) => Number(await env.DB.prepare(sql).first<number>('n'));
+
+  it('leaves one audit line for the address and nothing under the names', async () => {
+    const noisy = '198.51.100.99';
+    await fill('checkPerIp', noisy);
+    const countersBefore = await count('SELECT COUNT(*) AS n FROM rate_limits');
+
+    const b = new Browser(app, env, noisy);
+    for (let i = 0; i < 25; i++) {
+      const res = await b.post('/sign-in/password', { identifier: `made-up-${i}@example.com`, password: 'a long wrong password' });
+      expect(res.headers.get('location')).toBe('/sign-in/limited');
+    }
+
+    const lines = (await env.DB.prepare(`SELECT actor_label, summary, meta, ip FROM audit_log WHERE action = 'user.sign_in_paused'`).all<Record<string, string | null>>()).results;
+    expect(lines).toEqual([{ actor_label: null, summary: 'Too many sign-in tries from one address', meta: '{"what":"address"}', ip: noisy }]);
+    // One new counter, for the address. None per name.
+    expect((await count('SELECT COUNT(*) AS n FROM rate_limits')) - countersBefore).toBe(1);
+    expect(await count(`SELECT COUNT(*) AS n FROM rate_limits WHERE key LIKE 'auth.passwordPerAccount:%' OR key LIKE 'auth.burst:password:%'`)).toBe(0);
+  });
+
+  it('still notes an account that was paused by its own limit', async () => {
+    const b = new Browser(app, env);
+    for (let i = 0; i <= LIMITS.passwordPerAccount.limit; i++) await b.post('/sign-in/password', { identifier: EMAIL, password: 'a long wrong password' });
+    const lines = (await env.DB.prepare(`SELECT actor_label, meta FROM audit_log WHERE action = 'user.sign_in_paused'`).all<Record<string, string | null>>()).results;
+    expect(lines).toEqual([{ actor_label: EMAIL, meta: '{"what":"password"}' }]);
+  });
+});
+
 describe('emails from the rest of the install', () => {
   it('cannot use up the room a sign-in code needs', async () => {
     const sent: string[] = [];

@@ -32,7 +32,7 @@ import {
   type LimitedReason,
 } from '../pages/sign-in';
 import { sessionFromRequest } from '../session';
-import { accountFor, finishSignIn, recordFailedBurst, recordSignIn, signOut, startCodeSignIn, type Finished, type SignInMethod } from '../signin';
+import { accountFor, finishSignIn, recordBusyAddress, recordFailedBurst, recordSignIn, signOut, startCodeSignIn, type Finished, type SignInMethod } from '../signin';
 import { emailSchema, instanceClaimed } from '../users';
 
 type C = Context<AppEnv>;
@@ -212,7 +212,12 @@ signInRoutes.post('/sign-in/password', async (c) => {
   }
 
   const who = input.identifier;
-  const wait = (await hit(c.env, 'checkPerIp', clientIp(c))) || (await hit(c.env, 'passwordPerAccount', await fingerprint(c.env.AUTH_SECRET, who)));
+  const busy = await hit(c.env, 'checkPerIp', clientIp(c));
+  if (busy) {
+    await recordBusyAddress(c);
+    return limited(c, { email: who, wait: busy, reason: 'password', next });
+  }
+  const wait = await hit(c.env, 'passwordPerAccount', await fingerprint(c.env.AUTH_SECRET, who));
   if (wait) {
     await recordFailedBurst(c, who, 'password');
     return limited(c, { email: who, wait, reason: 'password', next });

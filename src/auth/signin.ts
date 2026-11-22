@@ -174,8 +174,10 @@ export async function recordSignIn(c: Context<AppEnv>, user: { id: string; email
 }
 
 /**
- * Note a run of failed sign-ins in the audit log. One line per address per window, however many
- * guesses follow, so the log cannot be flooded.
+ * Note a run of failed sign-ins in the audit log. One line per account per window, however many
+ * guesses follow. Call it only when the account's own limit stopped the try: the caller's address
+ * was still under its limit then, and that limit is what bounds how many accounts one machine can
+ * get a line written for. Past the address limit, use `recordBusyAddress`.
  */
 export async function recordFailedBurst(c: Context<AppEnv>, email: string, what: 'code' | 'password' | 'two-step'): Promise<void> {
   const who = await fingerprint(c.env.AUTH_SECRET, email);
@@ -193,6 +195,25 @@ export async function recordFailedBurst(c: Context<AppEnv>, email: string, what:
     summary: `Too many wrong ${what === 'code' ? 'codes' : what === 'password' ? 'passwords' : 'authenticator codes'} for ${email}`,
     meta: { what },
     ip: clientIp(c),
+  });
+}
+
+/**
+ * Note that one machine went over its limit for checking passwords. One line per address per
+ * window and nothing under the name it typed: past the limit a caller can send a new name with
+ * every request, and each would otherwise leave a counter and an audit line behind.
+ */
+export async function recordBusyAddress(c: Context<AppEnv>): Promise<void> {
+  const ip = clientIp(c);
+  const first = await rateLimit(c.env, `auth.burst:address:${ip}`, { limit: 1, windowSec: LIMITS.checkPerIp.windowSec });
+  if (!first.ok) return;
+  await audit(c.env, {
+    orgId: null,
+    actorType: 'system',
+    action: 'user.sign_in_paused',
+    summary: 'Too many sign-in tries from one address',
+    meta: { what: 'address' },
+    ip,
   });
 }
 
