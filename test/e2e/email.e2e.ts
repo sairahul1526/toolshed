@@ -54,8 +54,10 @@ test('a test email is sent and lands in the delivery log', async ({ page }) => {
 
   await page.goto('/app/email?tab=log');
   await expect(page.getByRole('heading', { name: 'Delivery log' })).toBeVisible();
-  const row = page.getByRole('row').filter({ hasText: OWNER_EMAIL }).first();
+  // The list hides most of the address; the details below show all of it.
+  const row = page.getByRole('row').filter({ hasText: 'o***@example.com' }).first();
   await expect(row).toBeVisible();
+  await expect(row).not.toContainText(OWNER_EMAIL);
   await shotThemes(page, 'email-log');
   await row.getByRole('button', { name: /Details|Open|View/ }).click();
   const dialog = page.getByRole('dialog', { name: 'Email details' });

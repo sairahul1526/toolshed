@@ -64,6 +64,9 @@ The delivery log keeps the time, recipient, subject, template, status, number of
 message id. It keeps no email body, code or link in production, because those are secrets. In development the
 body is kept so the outbox page can show it. Log entries are deleted after 30 days.
 
+On the Email screen the list shows each recipient masked, as `j***@example.com`. The full address is in the
+row's details, and search still matches the full address.
+
 ## Settings
 
 All of these are install-wide settings, changed from the Email screen or the settings API.

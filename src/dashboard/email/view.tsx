@@ -1,4 +1,5 @@
 /** The Email screen's markup. Pure functions of what `data.ts` loaded; no reading or writing here. */
+import { maskAddress } from './mask';
 import { EMAIL_LOG_DAYS, EMAIL_STATUSES, type EmailLogItem, type EmailResult, type EmailSetup, type EmailStatus } from '../../core/email';
 import { EMAIL_LANGUAGES, TEMPLATE_INFO, TEMPLATE_NAMES } from '../../core/email-templates';
 import {
@@ -381,9 +382,8 @@ function LogTab({ page, viewer, query }: EmailViewProps) {
     when: <span title={formatDateTime(m.at)}>{timeAgo(m.at)}</span>,
     to: (
       <span class="row-text">
-        <b class="trunc" title={m.to}>
-          {m.to}
-        </b>
+        {/* Masked here; the full address is in the row's details. */}
+        <b class="trunc">{maskAddress(m.to)}</b>
       </span>
     ),
     email: (
