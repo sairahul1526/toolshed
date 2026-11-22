@@ -1,0 +1,57 @@
+/* Waitlist module styles. Used by the public pages and the dashboard screens. */
+
+/* Public pages */
+.wl-embed .pub-card { border-radius: 10px; }
+.wl-form { display: flex; flex-direction: column; gap: 14px; }
+.wl-trap { position: absolute; left: -10000px; width: 1px; height: 1px; overflow: hidden; }
+.wl-hero { width: 100%; max-height: 220px; object-fit: cover; border-radius: 10px; }
+.wl-meta { font-size: 14px; color: var(--muted); text-align: center; }
+.wl-links { display: flex; justify-content: center; gap: 16px; margin: 0; font-size: 14px; }
+.wl-links a { color: var(--at, var(--accent-ink)); text-underline-offset: 3px; }
+.wl-tiers { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 8px; }
+.wl-tiers li { display: flex; flex-direction: column; gap: 2px; padding: 10px 12px; border: 1px solid var(--line); border-radius: 10px; font-size: 14px; }
+.wl-tiers li span { color: var(--muted); overflow-wrap: anywhere; }
+.wl-tiers li.done { border-color: var(--at); background: color-mix(in srgb, var(--ac) 10%, var(--bg)); }
+.wl-board { list-style: none; counter-reset: row; margin: 0; padding: 0; display: flex; flex-direction: column; }
+.wl-board li { counter-increment: row; display: flex; gap: 12px; align-items: baseline; padding: 10px 0; border-bottom: 1px solid var(--line); }
+.wl-board li::before { content: counter(row); width: 24px; color: var(--muted); font-variant-numeric: tabular-nums; }
+.wl-board li span { flex: 1; min-width: 0; overflow-wrap: anywhere; }
+.wl-board li strong { font-variant-numeric: tabular-nums; }
+
+/* Dashboard */
+.wl-form-stack { display: flex; flex-direction: column; gap: 16px; max-width: 640px; }
+.wl-inline { display: flex; flex-wrap: wrap; gap: 12px; align-items: flex-end; }
+.wl-inline > * { min-width: 0; }
+.wl-actions { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; }
+.wl-new { display: flex; flex-wrap: wrap; gap: 12px; align-items: flex-end; }
+.wl-switch { display: flex; gap: 8px; align-items: center; margin-bottom: 12px; }
+.wl-two { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 16px; }
+.wl-editor { display: grid; grid-template-columns: minmax(0, 1fr) 360px; gap: 24px; align-items: start; }
+.wl-side { position: sticky; top: 16px; display: flex; flex-direction: column; gap: 12px; min-width: 0; }
+.wl-frame { width: 100%; height: 520px; border: 1px solid var(--border, var(--line)); border-radius: var(--radius-lg, 12px); background: var(--surface, var(--bg)); }
+.wl-detail { display: grid; grid-template-columns: minmax(0, 1fr) 320px; gap: 24px; align-items: start; }
+.wl-tier-form { display: flex; flex-wrap: wrap; gap: 8px; align-items: flex-end; }
+.wl-bulk { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; margin-bottom: 12px; }
+.wl-bc { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; justify-content: space-between; margin-bottom: 12px; }
+.wl-segment { display: flex; flex-wrap: wrap; gap: 8px; }
+.wl-range { display: inline-flex; gap: 4px; margin-bottom: 12px; }
+.wl-person { display: flex; flex-direction: column; gap: 2px; color: inherit; text-decoration: none; min-width: 0; overflow-wrap: anywhere; }
+.wl-person:hover { text-decoration: underline; }
+.wl-person:focus-visible { outline: 2px solid var(--accent-ink); outline-offset: 2px; border-radius: 4px; }
+.wl-check { width: 18px; height: 18px; }
+.wl-tag-in { min-width: 140px; }
+.wl-h { margin: 0 0 8px; font-size: 14px; font-weight: 600; }
+.wl-h2 { margin: 0 0 12px; font-size: 16px; font-weight: 600; }
+.wl-note { margin: 0; color: var(--muted); font-size: 13px; overflow-wrap: anywhere; }
+
+@media (max-width: 900px) {
+  .wl-editor, .wl-detail { grid-template-columns: minmax(0, 1fr); }
+  .wl-side { position: static; }
+}
+@media (max-width: 600px) {
+  .wl-two { grid-template-columns: minmax(0, 1fr); }
+  .wl-frame { height: 440px; }
+}
+.wl-toggle { display: flex; align-items: center; gap: 10px; font-size: 14px; cursor: pointer; }
+.wl-toggle span { min-width: 0; overflow-wrap: anywhere; }
+.input.wl-tag-in { width: auto; }
