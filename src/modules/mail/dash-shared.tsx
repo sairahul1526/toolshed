@@ -10,17 +10,12 @@ import type { Crumb } from '../../ui';
 export const HOME = '/app/mail';
 
 export function Assets() {
-  return (
-    <>
-      <link rel="stylesheet" href="/m/mail/mail.css" />
-      <script src="/m/mail/mail.js" defer></script>
-    </>
-  );
+  return <script src="/m/mail/mail.js" defer></script>;
 }
 
 export function page(c: Context<AppEnv>, title: string, body: Child, crumbs?: Crumb[], status?: 200 | 404 | 422 | 500): Promise<Response> {
   const trail = crumbs ?? (title === 'Broadcasts' ? undefined : [{ label: 'Mail', href: HOME }, { label: title }]);
-  return renderPage(c, { title, crumbs: trail, status }, (
+  return renderPage(c, { title, crumbs: trail, status, styles: ['/m/mail/mail.css'] }, (
     <>
       <Assets />
       {body}
