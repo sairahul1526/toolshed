@@ -97,6 +97,22 @@ export async function setModuleEnabled(env: Env, orgId: string, moduleId: string
     .run();
 }
 
+/**
+ * Turns a module on only if it was off, in one statement. True for the request that did it, so two
+ * presses at once cannot both run the first-time work (sample rows, the audit line).
+ */
+export async function enableModuleOnce(env: Env, orgId: string, moduleId: string): Promise<boolean> {
+  if (!getModule(moduleId)) throw errors.not_found('There is no module with that name.');
+  const res = await env.DB.prepare(
+    `INSERT INTO module_state (org_id, module_id, enabled, enabled_at) VALUES (?1, ?2, 1, ?3)
+     ON CONFLICT (org_id, module_id) DO UPDATE SET enabled = 1, enabled_at = excluded.enabled_at
+       WHERE module_state.enabled = 0`,
+  )
+    .bind(orgId, moduleId, Date.now())
+    .run();
+  return (res.meta?.changes ?? 0) > 0;
+}
+
 export async function setModuleSample(env: Env, orgId: string, moduleId: string, sample: boolean): Promise<void> {
   await env.DB.prepare(
     `INSERT INTO module_state (org_id, module_id, sample) VALUES (?1, ?2, ?3)

@@ -11,6 +11,7 @@ import { sendEmail } from '../../core/email';
 import { renderEmail } from '../../core/email-templates';
 import { AppError, errors } from '../../core/errors';
 import { sameOrigin } from '../../core/guards';
+import { SAMPLE_SETTING } from '../../core/onboarding';
 import { allModules, moduleContext, setModuleEnabled, setModuleSample } from '../../core/registry';
 import { setSetting } from '../../core/settings';
 import type { AppEnv, Env } from '../../env';
@@ -50,6 +51,8 @@ setupRoutes.use('/setup/*', sameOrigin);
 
 /** How long the "what first" step stays open after the claim. */
 const SETUP_TTL_SEC = 60 * 60;
+/** Where the owner lands when setup ends without a module picked: the Get started screen. */
+const AFTER_SETUP = '/app/welcome';
 /** The workspace setting that holds its time zone. */
 export const TIMEZONE_KEY = 'timezone';
 
@@ -276,7 +279,7 @@ setupRoutes.post('/setup/workspace', async (c) => {
 
   if (firstCards().length === 0) {
     clearFlow(c, 'setup');
-    return c.redirect('/app', 303);
+    return c.redirect(AFTER_SETUP, 303);
   }
   // The step is offered once, right after the first workspace is named.
   await setFlow(c, 'setup', {}, SETUP_TTL_SEC);
@@ -295,19 +298,21 @@ async function pickingFirst(c: C): Promise<{ cards: FirstCard[]; org: { id: stri
 
 setupRoutes.get('/setup/first', async (c) => {
   const step = await pickingFirst(c);
-  if (!step) return c.redirect('/app');
+  if (!step) return c.redirect(AFTER_SETUP);
   return page(c, 'What first?', <FirstStep cards={step.cards} />, { wide: true });
 });
 
 setupRoutes.post('/setup/first', async (c) => {
   const step = await pickingFirst(c);
-  if (!step) return c.redirect('/app', 303);
+  if (!step) return c.redirect(AFTER_SETUP, 303);
 
   const form = await c.req.parseBody();
   const picked = allModules().find((m) => m.onboarding && m.id === text(form.module));
   if (!picked?.onboarding) return page(c, 'What first?', <FirstStep cards={step.cards} error="Pick one, or skip this step." />, { status: 422, wide: true });
 
   await setModuleEnabled(c.env, step.org.id, picked.id, true);
+  // The choice carries over to the Get started screen, where later modules follow it.
+  await setSetting(c.env, step.org.id, SAMPLE_SETTING, form.sample === 'yes');
   let sample = false;
   if (form.sample === 'yes' && picked.sampleData) {
     try {

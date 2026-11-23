@@ -137,6 +137,8 @@ interface NavLink {
   icon: string;
   label: string;
   count?: number | null;
+  /** Words shown where the count goes, for example "2/6". */
+  note?: string;
   dot?: 'warn' | 'accent';
   dotLabel?: string;
   /** A shortcut to a page that has its own entry elsewhere in the sidebar: never shown as the current page. */
@@ -150,7 +152,10 @@ interface NavGroup {
 
 /** The sidebar groups for this person. Exported so tests and the dev page can look at it. */
 export function navGroups(shell: ShellData): NavGroup[] {
-  const groups: NavGroup[] = [{ links: [{ href: '/app', icon: 'home', label: 'Overview' }] }];
+  const first: NavLink[] = [{ href: '/app', icon: 'home', label: 'Overview' }];
+  const setup = shell.setup;
+  if (setup && !setup.hidden && setup.done < setup.total) first.unshift({ href: '/app/welcome', icon: 'flag', label: 'Get started', note: `${setup.done}/${setup.total}` });
+  const groups: NavGroup[] = [{ links: first }];
   const mods: NavLink[] = shell.modules.map((m) => ({ href: m.href, icon: m.icon, label: m.name, count: m.count }));
   if (shell.modulesOff > 0) mods.push({ href: '/app/modules', icon: 'plus', label: 'Add a module', count: shell.modulesOff, shortcut: true });
   groups.push({ label: 'Modules', add: true, links: mods });
@@ -331,6 +336,11 @@ export function AppShell({ shell, path, crumbs = [], children, ...doc }: AppShel
                       <Icon name={l.icon} />
                       <span class="hide-c nav-label">{l.label}</span>
                       {l.count !== null && l.count !== undefined ? <span class="count hide-c">{formatNumber(l.count)}</span> : null}
+                      {l.note ? (
+                        <span class="count hide-c" aria-label={`${l.note.replace('/', ' of ')} done`}>
+                          {l.note}
+                        </span>
+                      ) : null}
                     </a>
                   ))}
                 </nav>

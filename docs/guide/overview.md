@@ -4,7 +4,6 @@ Overview is the first page you see after signing in. It shows how each module in
 
 ## What you see
 
-- **Getting-started checklist.** A short list for a new workspace: set up email sending, turn on a module, choose your look, invite a teammate. A step is ticked only when it is really done. Each open step has a button that takes you to the page where you finish it. The list hides itself when every step is done.
 - **One card per module that is turned on.** Each card shows the module's own headline number (for example how many links you have), how much happened in the chosen date range, a small chart of activity per day, and whether the module is ready or needs setup. If a module needs setup, the card says why and links to the fix. Click the module's name to open it.
 - **Recent activity.** The latest ten things that happened in your modules, with the module, what happened and how long ago.
 
@@ -17,10 +16,9 @@ Use the tabs above the cards: last 7, 30 or 90 days. The choice is in the page a
 | | Viewer | Member | Admin | Owner |
 |---|---|---|---|---|
 | See cards and recent activity | Yes | Yes | Yes | Yes |
-| See the checklist and "Invite people" | No | No | Yes | Yes |
-| Hide the checklist | No | No | Yes | Yes |
+| See "Invite people" | No | No | Yes | Yes |
 
-Hiding the checklist hides it for everyone in the workspace. Every step is still available from the sidebar. It is recorded in the audit log.
+The setup steps for a new workspace are on their own page: see [Get started](get-started.md).
 
 ## Limits
 

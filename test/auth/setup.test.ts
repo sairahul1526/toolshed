@@ -77,8 +77,8 @@ describe('claiming a new install', () => {
 
     const named = await b.post('/setup/workspace', { name: ' Northwind Studio ', slug: '', yourName: 'Ada Lovelace', timezone: 'Europe/London' });
     expect(named.status).toBe(303);
-    // No module offers a first step here, so setup ends on the dashboard.
-    expect(named.headers.get('location')).toBe('/app');
+    // No module offers a first step here, so setup ends on Get started.
+    expect(named.headers.get('location')).toBe('/app/welcome');
 
     const org = await env.DB.prepare('SELECT "id", "name", "slug" FROM "organization"').first<{ id: string; name: string; slug: string }>();
     expect(org).toMatchObject({ name: 'Northwind Studio', slug: 'northwind-studio' });
@@ -227,7 +227,7 @@ describe('an install that already has an owner', () => {
     // The later steps have nothing to show a visitor: each one sends them away.
     expect((await b.get('/setup/code')).headers.get('location')).toBe('/setup');
     expect((await b.get('/setup/workspace')).headers.get('location')).toBe('/setup');
-    expect((await b.get('/setup/first')).headers.get('location')).toBe('/app');
+    expect((await b.get('/setup/first')).headers.get('location')).toBe('/app/welcome');
   });
 
   it('does not let a code asked for earlier claim it again', async () => {
@@ -255,7 +255,7 @@ describe('an install that already has an owner', () => {
     const post = await member.post('/setup/workspace', { name: 'Mine', slug: '', yourName: 'Sam', timezone: 'UTC' });
     expect(post.headers.get('location')).toBe('/app');
     expect(await count(env, 'SELECT COUNT(*) AS n FROM "organization"')).toBe(1);
-    expect((await member.get('/setup/first')).headers.get('location')).toBe('/app');
+    expect((await member.get('/setup/first')).headers.get('location')).toBe('/app/welcome');
   });
 });
 
@@ -379,7 +379,7 @@ describe('naming the first workspace', () => {
 
   it('does not make a second workspace when the form is sent twice', async () => {
     const form = { name: 'Acme', slug: '', yourName: 'Ada', timezone: 'UTC' };
-    expect((await b.post('/setup/workspace', form)).headers.get('location')).toBe('/app');
+    expect((await b.post('/setup/workspace', form)).headers.get('location')).toBe('/app/welcome');
     expect((await b.post('/setup/workspace', form)).headers.get('location')).toBe('/app');
     expect(await count(env, 'SELECT COUNT(*) AS n FROM "organization"')).toBe(1);
   });
@@ -441,8 +441,8 @@ describe('what to do first', () => {
     expect(filled).toEqual([orgId]);
     expect(await audits('module.enabled')).toBe(1);
     // The step is offered once.
-    expect((await b.get('/setup/first')).headers.get('location')).toBe('/app');
-    expect((await b.post('/setup/first', { module: 'forms' })).headers.get('location')).toBe('/app');
+    expect((await b.get('/setup/first')).headers.get('location')).toBe('/app/welcome');
+    expect((await b.post('/setup/first', { module: 'forms' })).headers.get('location')).toBe('/app/welcome');
     expect(await moduleState(env, orgId, 'forms')).toMatchObject({ enabled: false });
   });
 
@@ -489,8 +489,8 @@ describe('what to do first', () => {
     await setUp();
     const again = new Browser(testApp(), env);
     await signInByCode(again, env, OWNER);
-    expect((await again.get('/setup/first')).headers.get('location')).toBe('/app');
-    expect((await again.post('/setup/first', { module: 'links' })).headers.get('location')).toBe('/app');
+    expect((await again.get('/setup/first')).headers.get('location')).toBe('/app/welcome');
+    expect((await again.post('/setup/first', { module: 'links' })).headers.get('location')).toBe('/app/welcome');
     expect(await moduleState(env, orgId, 'links')).toMatchObject({ enabled: false });
   });
 });

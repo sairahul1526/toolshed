@@ -8,6 +8,7 @@ import { roleAtLeast } from '../env';
 import { currentImpersonation } from '../auth/service';
 import { listNotifications, type NotificationItem } from './notifications';
 import type { NavItem } from './module';
+import { loadSetupProgress, setupHidden, type SetupProgress } from './onboarding';
 import { allModules, moduleContext, moduleStates } from './registry';
 import { getSetting } from './settings';
 
@@ -44,6 +45,11 @@ export interface ShellData {
   notifications?: ShellNotifications;
   /** Set while the install owner is signed in as this person. The shell then shows a strip with Stop. */
   impersonation?: ShellImpersonation | null;
+  /**
+   * The "Finish setting up" steps, for admins who have not hidden Get started. Null for everyone else.
+   * The sidebar shows the entry while a step is still open.
+   */
+  setup?: SetupProgress | null;
 }
 
 export interface ShellImpersonation {
@@ -51,6 +57,17 @@ export interface ShellImpersonation {
   name: string;
   /** When the session ends by itself, ms. */
   expiresAt: number;
+}
+
+/** Get started is a nicety: if its reads fail, the sidebar entry is left out and the page still opens. */
+async function loadSetup(c: Context<AppEnv>, modulesOn: number, hidden: boolean): Promise<SetupProgress | null> {
+  if (hidden) return null;
+  try {
+    return await loadSetupProgress(c, { modulesOn, hidden });
+  } catch (err) {
+    console.error('[shell] setup progress failed', err);
+    return null;
+  }
 }
 
 /** A failed lookup must not take the page down; the strip is then left out. */
@@ -82,16 +99,19 @@ export async function shellData(c: Context<AppEnv>): Promise<ShellData> {
   const org = c.get('org');
   if (!user || !org) throw new Error('shellData needs a signed-in user and an active workspace');
 
-  const [states, appearance, ctx, notifications, impersonation] = await Promise.all([
+  const [states, appearance, ctx, notifications, impersonation, hidden] = await Promise.all([
     moduleStates(c.env, org.id),
     getSetting<Record<string, string>>(c.env, org.id, 'appearance', {}),
     moduleContext(c.env, org),
     loadBell(c.env, org, user),
     loadImpersonation(c),
+    setupHidden(c).catch(() => true),
   ]);
 
   const on = allModules().filter((m) => states.get(m.id)?.enabled && m.dashboard);
-  const modules = await Promise.all(
+  const [setup, modules] = await Promise.all([
+    loadSetup(c, on.length, hidden),
+    Promise.all(
     on.map(async (m): Promise<ShellModule> => {
       let count: number | null = null;
       try {
@@ -101,7 +121,8 @@ export async function shellData(c: Context<AppEnv>): Promise<ShellData> {
       }
       return { id: m.id, name: m.name, icon: m.icon, href: `/app/${m.id}`, count, nav: m.nav ?? [] };
     }),
-  );
+    ),
+  ]);
 
-  return { user, org, modules, modulesOff: allModules().length - on.length, appearance, notifications, impersonation };
+  return { user, org, modules, modulesOff: allModules().length - on.length, appearance, notifications, impersonation, setup };
 }

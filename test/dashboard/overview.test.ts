@@ -64,18 +64,19 @@ describe('access', () => {
     expect(html).toContain('Test Workspace');
   });
 
-  it('shows the checklist and invite button to admins only', async () => {
+  it('shows the invite button and the Get started link to admins only', async () => {
     const { t, app } = await setup();
     for (const role of ['owner', 'admin'] as const) {
       const { html } = await get(t, app, '/app', role);
-      expect(html).toContain('Finish setting up');
       expect(html).toContain('Invite people');
+      expect(html).toContain('href="/app/welcome"');
+      // The setup steps moved to Get started; Overview no longer carries them.
+      expect(html).not.toContain('Finish setting up');
     }
     for (const role of ['member', 'viewer'] as const) {
       const { html } = await get(t, app, '/app', role);
-      expect(html).not.toContain('Finish setting up');
       expect(html).not.toContain('Invite people');
-      expect(html).not.toContain('Dismiss');
+      expect(html).not.toContain('href="/app/welcome"');
     }
   });
 });
@@ -270,120 +271,5 @@ describe('recent activity', () => {
     expect(eventLabel('link.clicked')).toBe('Link clicked');
     expect(eventLabel('form_response.created')).toBe('Form response created');
     expect(eventLabel('')).toBe('Something happened');
-  });
-});
-
-describe('getting-started checklist', () => {
-  const links = fake('links', { name: 'Links' });
-
-  function stepState(html: string, title: string): 'done' | 'todo' {
-    const at = html.indexOf(title);
-    expect(at).toBeGreaterThan(-1);
-    const li = html.lastIndexOf('<li', at);
-    return html.slice(li, li + 20).includes('class="done"') ? 'done' : 'todo';
-  }
-
-  it('starts with only the steps that are really done ticked', async () => {
-    const { t, app } = await setup();
-    const { html } = await get(t, app);
-    expect(html).toContain('1 of 4 done.');
-    expect(stepState(html, 'Set up email sending')).toBe('done');
-    expect(stepState(html, 'Turn on a module')).toBe('todo');
-    expect(stepState(html, 'Choose your look')).toBe('todo');
-    expect(stepState(html, 'Invite a teammate')).toBe('todo');
-    for (const href of ['/app/modules', '/app/appearance', '/app/members']) expect(html).toContain(`href="${href}"`);
-  });
-
-  it('asks for email setup in production when nothing can send', async () => {
-    const { t, app } = await setup([], { ENVIRONMENT: 'production' });
-    const { html } = await get(t, app);
-    expect(stepState(html, 'Set up email sending')).toBe('todo');
-    expect(html).toContain('href="/app/email"');
-  });
-
-  it('ticks a step when its state changes', async () => {
-    const { t, app } = await setup([links]);
-    await setSetting(t.env, t.org.id, 'appearance', { accent: 'violet' });
-    const { html } = await get(t, app);
-    expect(stepState(html, 'Turn on a module')).toBe('done');
-    expect(stepState(html, 'Choose your look')).toBe('done');
-    expect(stepState(html, 'Invite a teammate')).toBe('todo');
-    expect(html).toContain('3 of 4 done.');
-  });
-
-  it('counts a teammate only from this workspace', async () => {
-    const { t, app } = await setup();
-    await createTestSession(t.env, { role: 'member', orgId: OTHER });
-    await createTestSession(t.env, { role: 'member', orgId: OTHER });
-    expect(stepState((await get(t, app)).html, 'Invite a teammate')).toBe('todo');
-    await createTestSession(t.env, { role: 'member' });
-    expect(stepState((await get(t, app)).html, 'Invite a teammate')).toBe('done');
-  });
-
-  it('treats saved defaults as unchanged', async () => {
-    const { t, app } = await setup();
-    await setSetting(t.env, t.org.id, 'appearance', { accent: 'lime', mode: 'system', junk: 'x' });
-    const { html } = await get(t, app);
-    expect(stepState(html, 'Choose your look')).toBe('todo');
-  });
-
-  it('hides itself once every step is done', async () => {
-    const { t, app } = await setup([links]);
-    await setSetting(t.env, t.org.id, 'appearance', { mode: 'dark' });
-    await createTestSession(t.env, { role: 'member', email: 'second@example.com' });
-    const { html } = await get(t, app);
-    expect(html).not.toContain('Finish setting up');
-  });
-
-  describe('dismissing', () => {
-    it('hides it for the workspace, writes an audit entry and thanks the admin', async () => {
-      const { t, app } = await setup();
-      const { headers } = await createTestSession(t.env, { role: 'admin' });
-      const res = await app.request('/app/overview/dismiss-checklist', { method: 'POST', headers: { ...headers, 'content-type': 'application/x-www-form-urlencoded' }, body: 'days=7' }, t.env);
-      expect(res.status).toBe(303);
-      expect(res.headers.get('location')).toBe('/app?days=7');
-      const row = t.sqlite.prepare("SELECT value FROM settings WHERE scope = ? AND key = 'overview.checklistDismissed'").get(t.org.id) as { value: string };
-      expect(row.value).toBe('true');
-      const log = t.sqlite.prepare("SELECT action, org_id, target_id FROM audit_log WHERE action = 'overview.checklist_dismissed'").all() as { org_id: string; target_id: string }[];
-      expect(log).toHaveLength(1);
-      expect(log[0]!.org_id).toBe(t.org.id);
-      const after = await app.request('/app', { headers: { ...headers, cookie: `${headers.cookie}; ${res.headers.getSetCookie().map((c) => c.split(';')[0]).join('; ')}` } }, t.env);
-      const html = await after.text();
-      expect(html).not.toContain('Finish setting up');
-      expect(html).toContain('Checklist hidden.');
-    });
-
-    it('redirects to the default range when the range field is junk', async () => {
-      const { t, app } = await setup();
-      const { headers } = await createTestSession(t.env, { role: 'owner' });
-      const res = await app.request('/app/overview/dismiss-checklist', { method: 'POST', headers: { ...headers, 'content-type': 'application/x-www-form-urlencoded' }, body: 'days=%3Cscript%3E' }, t.env);
-      expect(res.headers.get('location')).toBe('/app');
-    });
-
-    it.each<Role>(['member', 'viewer'])('refuses a %s', async (role) => {
-      const { t, app } = await setup();
-      const { headers } = await createTestSession(t.env, { role });
-      const res = await app.request('/app/overview/dismiss-checklist', { method: 'POST', headers }, t.env);
-      expect(res.status).toBe(403);
-      expect(t.sqlite.prepare("SELECT COUNT(*) AS n FROM settings WHERE key = 'overview.checklistDismissed'").get()).toEqual({ n: 0 });
-    });
-
-    it('refuses a post from another site and a signed-out post', async () => {
-      const { t, app } = await setup();
-      const { headers } = await createTestSession(t.env, { role: 'admin' });
-      const cross = await app.request('/app/overview/dismiss-checklist', { method: 'POST', headers: { ...headers, origin: 'https://evil.example.com' } }, t.env);
-      expect(cross.status).toBe(403);
-      const anon = await app.request('/app/overview/dismiss-checklist', { method: 'POST', headers: { origin: 'http://localhost' } }, t.env);
-      expect(anon.status).toBe(401);
-    });
-
-    it('does not hide the checklist of another workspace', async () => {
-      const { t, app } = await setup();
-      const a = await createTestSession(t.env, { role: 'admin' });
-      await app.request('/app/overview/dismiss-checklist', { method: 'POST', headers: a.headers }, t.env);
-      const b = await createTestSession(t.env, { role: 'admin', orgId: OTHER });
-      const html = await (await app.request('/app', { headers: b.headers }, t.env)).text();
-      expect(html).toContain('Finish setting up');
-    });
   });
 });

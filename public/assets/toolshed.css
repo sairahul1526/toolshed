@@ -885,3 +885,18 @@ td:has(> .cell-stack) { padding-top: 10px; padding-bottom: 10px; }
 .banner > span { flex: 1; min-width: 0; }
 .banner > svg { flex: none; }
 @media (max-width: 760px) { .banner { align-items: flex-start; flex-wrap: nowrap; } .banner > svg { margin-top: 2px; } }
+
+/* ---------- Get started (/app/welcome) ---------- */
+a.choice, a.select-btn { text-decoration: none; color: inherit; }
+.choice:focus-visible { outline: 2px solid var(--accent-ink); outline-offset: 2px; }
+.choice-top { display: flex; align-items: center; justify-content: space-between; align-self: stretch; gap: 8px; }
+.choice b, .choice > span:last-child { overflow-wrap: anywhere; }
+.tile.quiet { background: var(--surface-2); color: var(--muted); }
+.switch[aria-checked="true"] { background: var(--accent-ink); }
+.switch[aria-checked="true"]::after { transform: translateX(12px); }
+.switch-lg[aria-checked="true"]::after { transform: translateX(16px); }
+.progress-wrap { padding: 12px 16px 4px; }
+.foot-line { display: contents; }
+.sample-now { display: block; margin-top: 6px; }
+.welcome-split { margin-top: 16px; }
+.welcome-split .card-head .mono { padding-top: 4px; }

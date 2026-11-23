@@ -20,9 +20,7 @@ import {
 } from '../../ui';
 import { getModule } from '../../core/registry';
 import type { RecentEvent } from '../../core/events';
-import { RANGES, type ChecklistStep, type ModuleCard, type OverviewData, type Range } from './data';
-
-export const DISMISS_PATH = '/app/overview/dismiss-checklist';
+import { RANGES, type ModuleCard, type OverviewData, type Range } from './data';
 
 const rangeHref = (days: Range) => (days === 30 ? '/app' : `/app?days=${days}`);
 
@@ -30,43 +28,6 @@ const rangeHref = (days: Range) => (days === 30 ? '/app' : `/app?days=${days}`);
 export function eventLabel(name: string): string {
   const text = name.replace(/[._-]+/g, ' ').trim();
   return text ? text.charAt(0).toUpperCase() + text.slice(1) : 'Something happened';
-}
-
-function Checklist({ steps, range }: { steps: ChecklistStep[]; range: Range }) {
-  const done = steps.filter((s) => s.done).length;
-  return (
-    <Card
-      title="Finish setting up"
-      description={`${done} of ${steps.length} done.`}
-      ruled
-      flush
-      actions={
-        <form method="post" action={DISMISS_PATH}>
-          <input type="hidden" name="days" value={String(range)} />
-          <Button size="sm" variant="ghost" type="submit" title="Hides this list. Every step is still available from the sidebar.">
-            Dismiss
-          </Button>
-        </form>
-      }
-    >
-      <ul class="rows">
-        {steps.map((s) => (
-          <li class={s.done ? 'done' : undefined}>
-            <span class="tick">{s.done ? <Icon name="check" /> : null}</span>
-            <span class="row-text">
-              <b>{s.title}</b>
-              <span>{s.done ? 'Done.' : s.body}</span>
-            </span>
-            {s.done ? null : (
-              <LinkButton size="sm" href={s.href}>
-                {s.action}
-              </LinkButton>
-            )}
-          </li>
-        ))}
-      </ul>
-    </Card>
-  );
 }
 
 function ModuleCardView({ card, range }: { card: ModuleCard; range: Range }) {
@@ -160,7 +121,7 @@ function Recent({ events, now }: { events: RecentEvent[]; now: number }) {
 }
 
 export function OverviewView({ data, now }: { data: OverviewData; now: number }) {
-  const { shell, cards, range, checklist, canManage } = data;
+  const { shell, cards, range, canManage } = data;
   return (
     <>
       <PageHeader
@@ -175,7 +136,6 @@ export function OverviewView({ data, now }: { data: OverviewData; now: number })
           ) : null
         }
       />
-      {checklist ? <Checklist steps={checklist} range={range} /> : null}
       {cards.length === 0 ? (
         <EmptyState
           icon="layers"

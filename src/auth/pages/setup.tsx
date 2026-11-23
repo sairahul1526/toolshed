@@ -226,13 +226,13 @@ export function FirstStep({ cards, error }: { cards: FirstCard[]; error?: string
           ) : null}
           <RadioCards name="module" label="What to do first" columns={2} options={cards.map((card) => ({ value: card.id, label: card.title, description: card.body, icon: card.icon }))} />
           {cards.some((card) => card.hasSample) ? (
-            <Checkbox name="sample" value="yes" checked label="Show sample data" description="So the pages aren’t empty. It goes away when real data arrives." />
+            <Checkbox name="sample" value="yes" checked label="Show sample data" description="So the pages aren’t empty. You can remove it later from Get started." />
           ) : null}
           <Button variant="primary" size="block" type="submit">
             Open my dashboard
           </Button>
           <p class="sub">
-            <a class="link" href="/app">
+            <a class="link" href="/app/welcome">
               Skip, I’ll look around first
             </a>
           </p>

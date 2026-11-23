@@ -50,19 +50,6 @@ test('a turned-on module gets a card with its numbers, and the range switches', 
   }
 });
 
-test('the checklist can be dismissed', async ({ page }) => {
-  const w = watch(page);
-  await page.goto('/app?days=7');
-  const checklist = page.getByRole('heading', { name: 'Finish setting up' });
-  await expect(checklist).toBeVisible();
-  await shot(page, 'overview-checklist');
-  await page.getByRole('button', { name: 'Dismiss' }).click();
-  await expect(page.getByText('Checklist hidden. Every step is still in the sidebar.')).toBeVisible();
-  await expect(page).toHaveURL(/days=7/);
-  await expect(checklist).toHaveCount(0);
-  w.expectClean();
-});
-
 test('the page holds at 375 px', async ({ page }) => {
   await setLinks(page, '1');
   try {
