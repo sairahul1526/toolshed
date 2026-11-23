@@ -13,12 +13,29 @@
     "url": "https://github.com/sairahul1526/toolshed/issues"
   },
   "type": "module",
+  "cloudflare": {
+    "bindings": {
+      "AUTH_SECRET": {
+        "description": "Signs sessions. A random string of at least 32 characters. Make one with `openssl rand -base64 32`."
+      },
+      "OWNER_EMAIL": {
+        "description": "Your email address. Only this address can claim the new install, at `/setup`."
+      },
+      "DB": { "description": "The D1 database that holds everything except files." },
+      "KV": { "description": "Rate limits, short-lived codes and cached settings." },
+      "FILES": { "description": "The R2 bucket for uploads, images and exports." },
+      "JOBS": { "description": "The queue that runs background work: emails, webhooks, exports." }
+    }
+  },
   "engines": {
     "node": ">=22"
   },
   "scripts": {
     "dev": "node scripts/prepare.mjs && wrangler d1 migrations apply DB --local && wrangler dev --port 8787 --ip 127.0.0.1 --var ENVIRONMENT:dev",
     "prepare:app": "node scripts/prepare.mjs",
+    "build": "node scripts/prepare.mjs",
+    "db:migrate": "wrangler d1 migrations apply DB --remote",
+    "deploy": "node scripts/prepare.mjs && npm run db:migrate && wrangler deploy",
     "typecheck": "node scripts/prepare.mjs && tsc",
     "test": "node scripts/prepare.mjs && vitest run",
     "check": "npm run typecheck && vitest run",

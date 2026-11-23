@@ -17,7 +17,7 @@ Toolshed is a single Cloudflare Worker. One sign-in, one dashboard, many modules
 | Hashing spike | [`spikes/hash/`](spikes/hash/) | The benchmark behind that choice: 12 scrypt and PBKDF2 settings, timed in Node and in workerd |
 | Hasher demo | [`spikes/hash/demo/`](spikes/hash/demo/) | A local page that shows the measurements and lets you try the hasher |
 | Design tokens | [`public/assets/toolshed.css`](public/assets/toolshed.css) | Colors, type and components for the dashboard, light and dark |
-| Docs | [`docs/`](docs/) | [How Toolshed is built](docs/architecture.md) · [How sign-in works](docs/auth.md) · [How passwords are stored](docs/passwords.md) |
+| Docs | [`docs/`](docs/) | [How Toolshed is built](docs/architecture.md) · [How sign-in works](docs/auth.md) · [How passwords are stored](docs/passwords.md) · [Get started screen](docs/guide/get-started.md) · [Deploy (draft, not verified yet)](docs/deploy.md) |
 
 ![The hasher demo: measured hash settings against the 10 ms Free-plan line, and a form to hash and check a password](docs/img/hash-demo.jpg)
 

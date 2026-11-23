@@ -168,7 +168,7 @@ npm run check        # typecheck + unit tests
 npm run test:e2e     # Playwright; starts its own server on PORT (default 8787)
 ```
 
-Local secrets go in `.dev.vars` (copy `.dev.vars.example`). Nothing here needs a Cloudflare account.
+Local secrets go in `.dev.vars` (copy `.dev.vars.example`). Start the app with `npm run dev`, which turns dev mode on by itself. Nothing here needs a Cloudflare account.
 
 ## Shared helpers
 

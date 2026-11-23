@@ -1,5 +1,6 @@
 # Copy to .dev.vars for local development. Never commit .dev.vars.
-ENVIRONMENT=dev
+# The Deploy to Cloudflare button also reads this file and asks for each value as a secret,
+# so only secrets belong here. `npm run dev` sets ENVIRONMENT=dev by itself.
 # A random string of at least 32 characters. Make one with: openssl rand -base64 32
 AUTH_SECRET=replace-with-a-long-random-string
 # Only this email can claim a new install, at /setup. A code is sent to it.
