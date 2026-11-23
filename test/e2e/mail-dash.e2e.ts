@@ -75,6 +75,8 @@ async function expectSpacedFields(page: Page): Promise<void> {
 
 /** Check the page's form spacing, then save the three screenshots. */
 async function shoot(page: Page, product: string, name: string): Promise<void> {
+  // After a form post the text can show before the stylesheet has loaded, which measures every gap as 0.
+  await page.waitForLoadState('load');
   await expectSpacedFields(page);
   await takeShot(page, product, name);
 }

@@ -33,9 +33,11 @@ export function WebhooksTab({ endpoints, canManage, now }: { endpoints: WebhookE
         flush
         title="Endpoints"
         actions={
-          <LinkButton size="sm" variant="primary" icon="plus" href={`${HOOKS}/new`}>
-            Add webhook
-          </LinkButton>
+          endpoints.length ? (
+            <LinkButton size="sm" variant="primary" icon="plus" href={`${HOOKS}/new`}>
+              Add webhook
+            </LinkButton>
+          ) : undefined
         }
       >
         <Table

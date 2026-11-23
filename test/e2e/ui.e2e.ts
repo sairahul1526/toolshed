@@ -214,4 +214,21 @@ test.describe('other pages', () => {
       }
     }
   });
+  test('a code block keeps its copy button in its top right corner', async ({ page }) => {
+    for (const width of [1280, 375]) {
+      await page.setViewportSize({ width, height: 800 });
+      await page.goto('/dev/ui?theme=light');
+      const off = await page.evaluate(() =>
+        [...document.querySelectorAll('pre.code')].flatMap((pre: any) => {
+          const btn = pre.querySelector(':scope > .icon-btn');
+          if (!btn) return [];
+          const a = pre.getBoundingClientRect();
+          const b = btn.getBoundingClientRect();
+          const text = pre.querySelector('code').getBoundingClientRect();
+          return b.top - a.top < 12 && a.right - b.right < 12 && text.right <= b.left + 1 ? [] : [pre.textContent.slice(0, 30)];
+        }),
+      );
+      expect(off, `at ${width}px`).toEqual([]);
+    }
+  });
 });

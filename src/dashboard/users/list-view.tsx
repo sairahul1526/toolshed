@@ -30,7 +30,7 @@ function Search({ state }: { state: ListState }) {
   return (
     <FilterBar action="/app/users">
       {people ? null : <input type="hidden" name="tab" value="workspaces" />}
-      <SearchInput label={people ? 'Search people' : 'Search workspaces'} placeholder={people ? 'Search name, email or username' : 'Search name or short name'} value={state.q} />
+      <SearchInput label={people ? 'Search people' : 'Search workspaces'} placeholder={people ? 'Search by name or email' : 'Search name or short name'} value={state.q} />
       {state.q ? (
         <a class="btn sm ghost" href={listHref(state, { q: '', after: '' })}>
           Clear search

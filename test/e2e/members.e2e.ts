@@ -59,6 +59,9 @@ test('an invite is made, listed, sent again and cancelled', async ({ browser }) 
 
   await row.getByRole('button', { name: 'Cancel', exact: true }).click();
   await expect(page.getByRole('dialog')).toContainText(`Cancel the invite for ${email}?`);
+  // The question sits inside a table cell; its text must wrap, not run out of the box.
+  const cut = await page.getByRole('dialog').evaluate((d) => [...d.querySelectorAll('h2, h3, p')].filter((e) => e.scrollWidth > e.clientWidth + 1).length);
+  expect(cut).toBe(0);
   await shotView(page, 'members-confirm-cancel');
   await page.getByRole('dialog').getByRole('button', { name: 'Cancel invite' }).click();
   await expect(page.getByText('Invite cancelled. Its link stops working now.')).toBeVisible();
