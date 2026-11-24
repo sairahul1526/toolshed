@@ -77,12 +77,25 @@ export async function setSampleData(c: Context<AppEnv>, id: string): Promise<Res
     return c.redirect(back, 303);
   }
 
+  const ctx = await moduleContext(c.env, org);
   try {
-    const ctx = await moduleContext(c.env, org);
     await (show ? def.sampleData : def.clearSampleData)?.(ctx);
   } catch (err) {
     console.error(`[modules] sample data ${show ? 'add' : 'remove'} failed for ${def.id}`, err);
-    setFlash(c, { kind: 'error', message: `We couldn’t ${show ? 'add' : 'remove'} the sample data for ${def.name}. Nothing was changed. Try again in a moment.` });
+    // An add that stopped half way may have written some rows. Take them out so "nothing was changed" is true.
+    let clean = true;
+    if (show) {
+      await def.clearSampleData?.(ctx).catch((e) => {
+        clean = false;
+        console.error(`[modules] sample data clean-up failed for ${def.id}`, e);
+      });
+    }
+    const what = !show
+      ? 'Some sample rows may still be there. Try again in a moment.'
+      : clean
+        ? 'The sample rows that were added have been removed. Try again in a moment.'
+        : 'Some sample rows may have been added. Try again in a moment.';
+    setFlash(c, { kind: 'error', message: `We couldn’t ${show ? 'add' : 'remove'} the sample data for ${def.name}. ${what}` });
     return c.redirect(back, 303);
   }
 

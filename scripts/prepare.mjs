@@ -6,6 +6,7 @@
 //   src/core/routes/<name>.ts           -> src/generated/routes.ts
 //   src/core/migrations/*.sql           -> migrations/core_<file>
 //   src/modules/<id>/migrations/*.sql   -> migrations/m_<id>_<file>
+//   the names of all of those           -> src/generated/migrations.ts (Updates compares it with the database)
 //   node_modules/@fontsource-variable/*  -> public/assets/fonts/*.woff2 (self-hosted, no third-party requests)
 //
 // Wrangler applies migrations in file-name order, so core tables always exist before module tables.
@@ -90,6 +91,12 @@ for (const id of moduleIds) {
 mkdirSync(out, { recursive: true });
 for (const f of readdirSync(out)) if (!wanted.has(f)) rmSync(join(out, f));
 for (const [name, from] of wanted) writeIfChanged(join(out, name), readFileSync(from, 'utf8'));
+writeIfChanged(
+  join(src, 'generated', 'migrations.ts'),
+  header +
+    '/** Every database change this version of the code expects, in the order Wrangler applies them. */\n' +
+    `export const migrations: string[] = ${JSON.stringify([...wanted.keys()].sort(), null, 2)};\n`,
+);
 
 // Fonts: Inter and Geist Mono (both OFL-1.1), served from our own origin.
 const fontsOut = join(root, 'public', 'assets', 'fonts');

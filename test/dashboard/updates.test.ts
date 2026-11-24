@@ -1,10 +1,12 @@
+import { readdirSync } from 'node:fs';
 import { afterEach, describe, expect, it } from 'vitest';
 import { createApp } from '../../src/app';
 import { defineModule } from '../../src/core/module';
 import { registerModules } from '../../src/core/registry';
 import { recordJobFailure, registerCoreJob } from '../../src/core/jobs';
 import updates from '../../src/dashboard/updates';
-import { runningVersion } from '../../src/dashboard/updates/data';
+import { compareMigrations, loadUpdatesPage, runningVersion } from '../../src/dashboard/updates/data';
+import { migrations as shipped } from '../../src/generated/migrations';
 import type { Role } from '../../src/env';
 import { createTestSession, type TestSession } from '../helpers/auth';
 import { createTestEnv, type TestEnv } from '../helpers/d1';
@@ -125,23 +127,91 @@ describe('what the page reports', () => {
     expect(html).toContain('Not available');
   });
 
+  it('names the changes the code ships that the database does not have yet', async () => {
+    const { t, owner } = await setup();
+    expect(shipped.length).toBeGreaterThan(2);
+    addMigrationsTable(t, shipped.slice(0, -2).map((name) => [name, '2026-11-20 09:30:00'] as [string, string]));
+    const html = await (await get(t, owner)).text();
+    expect(html).toContain('2 database changes are waiting');
+    expect(html).toContain('2 waiting');
+    for (const name of shipped.slice(-2)) expect(html).toContain(name);
+    expect(html).toContain('>Waiting<');
+    expect(html).toContain('href="#how-to-update"');
+    expect(html).toContain('id="how-to-update"');
+  });
+
+  it('uses the singular for one waiting change', async () => {
+    const { t, owner } = await setup();
+    addMigrationsTable(t, shipped.slice(0, -1).map((name) => [name, '2026-11-20 09:30:00'] as [string, string]));
+    const html = await (await get(t, owner)).text();
+    expect(html).toContain('1 database change is waiting');
+    expect(html).toContain('until it is applied');
+  });
+
+  it('shows no notice when every shipped change is applied', async () => {
+    const { t, owner } = await setup();
+    addMigrationsTable(t, shipped.map((name) => [name, '2026-11-20 09:30:00'] as [string, string]));
+    const html = await (await get(t, owner)).text();
+    expect(html).not.toContain('waiting');
+    expect(html).not.toContain('does not know');
+    expect(html).toContain(`${shipped.length} changes applied`);
+  });
+
+  it('explains a database that is ahead of the code, as after going back a version', async () => {
+    const { t, owner } = await setup();
+    addMigrationsTable(t, [...shipped, 'core_9999_future.sql'].map((name) => [name, '2026-11-20 09:30:00'] as [string, string]));
+    const html = await (await get(t, owner)).text();
+    expect(html).toContain('The database has 1 change this version does not know');
+    expect(html).toContain('core_9999_future.sql');
+    expect(html).toContain('Newer version');
+    expect(html).not.toContain('waiting');
+  });
+
+  it('calls nothing waiting when the database keeps no list', async () => {
+    const { t } = await setup();
+    const page = await loadUpdatesPage(t.env, { shipped: ['a.sql'] });
+    expect(page.migrations).toBeNull();
+    expect(page.waiting).toEqual([]);
+    expect(page.unknown).toEqual([]);
+  });
+
+  it('shortens a long list of waiting changes', async () => {
+    const { t, owner } = await setup();
+    addMigrationsTable(t, []);
+    const html = await (await get(t, owner)).text();
+    if (shipped.length > 4) expect(html).toContain(`and ${shipped.length - 4} more`);
+    expect(html).toContain(`${shipped.length} database changes are waiting`);
+  });
+
   it('lists applied database changes with the latest one in the summary', async () => {
     const { t, owner } = await setup();
-    addMigrationsTable(t, [
-      ['core_0001_core.sql', '2026-11-20 09:30:00'],
-      ['core_0002_auth.sql', '2026-11-20 09:30:01'],
-    ]);
+    addMigrationsTable(t, shipped.map((name, i) => [name, `2026-11-20 09:30:${String(i).padStart(2, '0')}`] as [string, string]));
     const html = await (await get(t, owner)).text();
-    expect(html).toContain('2 changes applied');
-    expect(html).toContain('latest core_0002_auth.sql');
+    expect(html).toContain(`${shipped.length} changes applied`);
+    expect(html).toContain(`latest ${shipped[shipped.length - 1]}`);
     expect(html).toContain('core_0001_core.sql');
     expect(html).toContain('Nov 20, 2026, 9:30 AM UTC');
   });
 
-  it('shows an empty list of applied changes with the next step', async () => {
+  it('lists every shipped change as waiting when the database has recorded none', async () => {
     const { t, owner } = await setup();
     addMigrationsTable(t, []);
-    expect(await (await get(t, owner)).text()).toContain('No database changes recorded yet');
+    const html = await (await get(t, owner)).text();
+    expect(html).toContain('0 changes applied');
+    expect(html).not.toContain('No database changes recorded yet');
+    expect(html.split('>Waiting<').length - 1).toBe(shipped.length);
+  });
+
+  it('shows a change name from the database as text, never as markup', async () => {
+    const { t, owner } = await setup();
+    addMigrationsTable(t, [...shipped.map((name) => [name, '2026-11-20 09:30:00'] as [string, string]), ['<img src=x onerror=alert(1)>.sql', '2026-11-21 09:30:00']]);
+    const html = await (await get(t, owner)).text();
+    expect(html).not.toContain('<img src=x');
+    expect(html).toContain('&lt;img src=x');
+  });
+
+  it('keeps the shipped list in the order Wrangler applies the files', () => {
+    expect(shipped).toEqual(readdirSync('migrations').filter((f) => f.endsWith('.sql')).sort());
   });
 
   it('reports email as dev mode in the test environment and as needing setup in production', async () => {
@@ -277,5 +347,24 @@ describe('retrying a failed job', () => {
       t.env,
     );
     expect(res.status).toBe(403);
+  });
+});
+
+describe('compareMigrations', () => {
+  it('keeps the shipped order for waiting changes', () => {
+    expect(compareMigrations(['a.sql', 'b.sql', 'c.sql'], ['b.sql'])).toEqual({ waiting: ['a.sql', 'c.sql'], unknown: [] });
+  });
+
+  it('matches names with or without the .sql ending', () => {
+    expect(compareMigrations(['a.sql', 'b.sql'], ['a', 'B.SQL'.toLowerCase()])).toEqual({ waiting: [], unknown: [] });
+  });
+
+  it('reports recorded changes the code does not ship', () => {
+    expect(compareMigrations(['a.sql'], ['a.sql', 'z.sql'])).toEqual({ waiting: [], unknown: ['z.sql'] });
+  });
+
+  it('handles an empty database and empty code', () => {
+    expect(compareMigrations(['a.sql'], [])).toEqual({ waiting: ['a.sql'], unknown: [] });
+    expect(compareMigrations([], [])).toEqual({ waiting: [], unknown: [] });
   });
 });

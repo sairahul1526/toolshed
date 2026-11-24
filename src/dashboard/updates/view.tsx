@@ -20,6 +20,8 @@ import {
 import type { UpdatesPage } from './data';
 
 const BASE = '/app/updates';
+/** Names spelled out in a notice before it says "and N more". */
+const NAMED = 4;
 
 /** The same five steps as the README's local commands, in the order an owner runs them. */
 const STEPS: { title: string; body: string; code: string }[] = [
@@ -65,11 +67,13 @@ export function UpdatesView({ page, before }: { page: UpdatesPage; before: numbe
             ]}
           />
         </Card>
+        <WaitingNotice waiting={page.waiting} />
         <Callout tone="info" title="Updates happen from your computer">
           Toolshed does not look for new versions, and it cannot deploy itself. That keeps this page from talking to other sites and keeps you in charge of when your install changes.
           Check the Toolshed repository for new releases, then follow the steps below.
         </Callout>
       </div>
+      <div id="how-to-update" />
       <Section title="How to update" description="Run these in a terminal, in your copy of the repository, signed in to the Cloudflare account that runs this install.">
         <Card>
           <div class="stack">
@@ -93,7 +97,10 @@ export function UpdatesView({ page, before }: { page: UpdatesPage; before: numbe
         </Card>
       </Section>
       <Section title="Database changes" description="Each change a new version needs is applied once, in order. A list that matches the code you just deployed means step 3 worked.">
-        <MigrationsCard migrations={page.migrations} />
+        <div id="database-changes" class="stack">
+          <UnknownNotice unknown={page.unknown} />
+          <MigrationsCard page={page} />
+        </div>
       </Section>
       <Section title="Modules" description="Every module this install ships. Each workspace turns its own on or off from Modules.">
         <Card flush>
@@ -133,8 +140,53 @@ function migrationSummary(page: UpdatesPage) {
   return (
     <>
       {plural(page.migrations.length, 'change')} applied
-      {last ? <span class="muted">{` · latest ${last.name}`}</span> : null}
+      {page.waiting.length > 0 ? (
+        <>
+          {' '}
+          <a href="#database-changes">
+            <Pill tone="warn">{`${formatNumber(page.waiting.length)} waiting`}</Pill>
+          </a>
+        </>
+      ) : last ? (
+        <span class="muted">{` · latest ${last.name}`}</span>
+      ) : null}
     </>
+  );
+}
+
+/** "a, b and c", or "a, b, c, d and 3 more" for a long list. File names are set in mono, the joining words are not. */
+function NameList({ names }: { names: string[] }) {
+  const shown = names.slice(0, NAMED);
+  const rest = names.length - shown.length;
+  const parts = new Intl.ListFormat('en', { type: 'conjunction' }).formatToParts(rest > 0 ? [...shown, `${formatNumber(rest)} more`] : shown);
+  return (
+    <>
+      {parts.map((p) => (p.type === 'element' && shown.includes(p.value) ? <span class="mono">{p.value}</span> : p.value))}
+    </>
+  );
+}
+
+/** The code is ahead of the database: step 3 was skipped, or an update stopped half way. */
+function WaitingNotice({ waiting }: { waiting: string[] }) {
+  if (waiting.length === 0) return null;
+  const one = waiting.length === 1;
+  return (
+    <Callout tone="warn" title={one ? '1 database change is waiting' : `${formatNumber(waiting.length)} database changes are waiting`}>
+      This version expects {one ? 'a change' : 'changes'} your database does not have yet: <NameList names={waiting} />. Screens that need{' '}
+      {one ? 'it' : 'them'} can show errors until {one ? 'it is' : 'they are'} applied. Run <a href="#how-to-update">step 3 below</a>, then reload this page.
+    </Callout>
+  );
+}
+
+/** The database is ahead of the code, which is what going back a version leaves behind. */
+function UnknownNotice({ unknown }: { unknown: string[] }) {
+  if (unknown.length === 0) return null;
+  const one = unknown.length === 1;
+  return (
+    <Callout tone="info" title={one ? 'The database has 1 change this version does not know' : `The database has ${formatNumber(unknown.length)} changes this version does not know`}>
+      <NameList names={unknown} /> {one ? 'was' : 'were'} applied by a newer version. That is normal after going back a version: changes only add to the
+      database, so older code keeps working. Deploy the newer version again when you are ready.
+    </Callout>
   );
 }
 
@@ -155,7 +207,9 @@ function failureSummary(page: UpdatesPage, before: number | null) {
   return <a href="#failed-jobs">{`${formatNumber(page.failures.length)}${more} to look at`}</a>;
 }
 
-function MigrationsCard({ migrations }: { migrations: UpdatesPage['migrations'] }) {
+function MigrationsCard({ page }: { page: UpdatesPage }) {
+  const { migrations } = page;
+  const unknown = new Set(page.unknown);
   if (!migrations) {
     return (
       <Callout tone="warn" title="This database does not keep a list">
@@ -166,15 +220,40 @@ function MigrationsCard({ migrations }: { migrations: UpdatesPage['migrations'] 
   return (
     <Card flush>
       <Table
-        caption="Applied database changes"
+        caption="Database changes"
         columns={[
           { key: 'name', label: 'Change' },
           { key: 'at', label: 'Applied' },
         ]}
-        rows={migrations.map((m) => ({
-          name: <span class="mono trunc">{m.name}</span>,
-          at: m.at === null ? <span class="muted">Unknown</span> : <span title={formatDateTime(m.at)}>{timeAgo(m.at)}</span>,
-        }))}
+        rows={[
+          ...migrations.map((m) => ({
+            name: (
+              <span class="mono file-name">
+                {m.name}
+              </span>
+            ),
+            at: (
+              <>
+                {m.at === null ? <span class="muted">Unknown</span> : <span title={formatDateTime(m.at)}>{timeAgo(m.at)}</span>}
+                {unknown.has(m.name) ? (
+                  <>
+                    {' '}
+                    <Pill tone="neutral">Newer version</Pill>
+                  </>
+                ) : null}
+              </>
+            ),
+          })),
+          // Waiting changes come last: that is where they land once applied.
+          ...page.waiting.map((name) => ({
+            name: (
+              <span class="mono file-name">
+                {name}
+              </span>
+            ),
+            at: <Pill tone="warn">Waiting</Pill>,
+          })),
+        ]}
         empty={<EmptyState bare icon="layers" title="No database changes recorded yet" body="Step 3 above applies them. Until then the dashboard cannot store anything." />}
       />
     </Card>

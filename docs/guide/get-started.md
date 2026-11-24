@@ -38,6 +38,8 @@ The switch decides whether modules you start from this page come with example ro
 
 You can also add or remove sample data for one module from its page on Modules.
 
+If adding sample rows fails partway, Toolshed removes the rows it added and tells you. Try again in a moment.
+
 ## This install
 
 The version that is running, the address, and how large the database is. The install owner also gets a link to [Updates](updates.md). The database line is left out when the size cannot be read.

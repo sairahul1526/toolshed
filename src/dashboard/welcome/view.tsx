@@ -1,6 +1,6 @@
 /** The page at /app/welcome: what to start with, what is left to set up, and facts about this install. */
 import { progressLine, type SetupProgress, type SetupStep } from '../../core/onboarding';
-import { Button, Card, Icon, KeyValueList, LinkButton, PageHeader, Pill, formatBytes } from '../../ui';
+import { Button, Callout, Card, Icon, KeyValueList, LinkButton, PageHeader, Pill, formatBytes } from '../../ui';
 import { BASE, type InstallFacts, type StartCard, type WelcomeData } from './data';
 
 function StartCards({ cards, moduleCount }: { cards: StartCard[]; moduleCount: number }) {
@@ -53,6 +53,17 @@ function StepRow({ step }: { step: SetupStep }) {
         </LinkButton>
       )}
     </li>
+  );
+}
+
+/** Shown in place of the steps when they could not be read. */
+function StepsUnavailable() {
+  return (
+    <Card title="Finish setting up">
+      <Callout tone="warn" title="We couldn’t load the setup steps" actions={<LinkButton size="sm" href={BASE}>Reload</LinkButton>}>
+        Nothing is lost. Everything else on this page still works.
+      </Callout>
+    </Card>
   );
 }
 
@@ -155,7 +166,7 @@ export function WelcomeView({ data }: { data: WelcomeData }) {
       />
       <StartCards cards={data.cards} moduleCount={data.moduleCount} />
       <div class="split welcome-split">
-        <Steps progress={data.progress} />
+        {data.progress ? <Steps progress={data.progress} /> : <StepsUnavailable />}
         <div class="stack">
           <SampleCard sample={data.sample} />
           <InstallCard install={data.install} owner={data.shell.user.isInstanceOwner} />

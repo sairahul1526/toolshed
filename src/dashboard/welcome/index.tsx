@@ -56,13 +56,16 @@ screen.post('/start', async (c) => {
   // A module that was on before, then turned off, keeps its sample rows. Do not add a second set.
   let sample = before?.sample === true;
   if (!sample && hasSample(def) && (await getSetting<boolean>(c.env, org.id, SAMPLE_SETTING, true)) === true) {
+    const ctx = await moduleContext(c.env, org);
     try {
-      await def.sampleData!(await moduleContext(c.env, org));
+      await def.sampleData!(ctx);
       await setModuleSample(c.env, org.id, def.id, true);
       sample = true;
     } catch (err) {
       // Sample rows are a nicety. A module that fails to make them still opens.
       console.error(`[welcome] sample data for ${def.id} failed`, err);
+      // Some rows may have been written before it failed. Take them out, so none are left that the switch cannot find.
+      await def.clearSampleData!(ctx).catch((e) => console.error(`[welcome] sample data clean-up for ${def.id} failed`, e));
     }
   }
   await auditFromRequest(c, {

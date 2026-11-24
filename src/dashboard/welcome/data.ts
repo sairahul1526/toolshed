@@ -35,7 +35,8 @@ export interface WelcomeData {
   cards: StartCard[];
   /** How many modules exist, for the "See all N modules" card. */
   moduleCount: number;
-  progress: SetupProgress;
+  /** Null when the steps could not be read. The rest of the page still shows. */
+  progress: SetupProgress | null;
   sample: {
     /** The switch: modules started from here get sample rows. */
     on: boolean;
@@ -72,8 +73,16 @@ export async function loadWelcome(c: Context<AppEnv>): Promise<WelcomeData> {
   ]);
 
   // The shell leaves the steps out once Get started is hidden; this page shows them anyway.
-  const progress = shell.setup ?? (await loadSetupProgress(c, { modulesOn: shell.modules.length, hidden: await setupHidden(c) }));
-  if (!progress) throw new Error('loadWelcome is for workspace admins');
+  let progress = shell.setup ?? null;
+  if (!progress) {
+    try {
+      progress = await loadSetupProgress(c, { modulesOn: shell.modules.length, hidden: await setupHidden(c) });
+    } catch (err) {
+      // The cards, the switch and the install facts are still worth showing without the steps.
+      console.error('[welcome] setup steps failed', err);
+      progress = null;
+    }
+  }
 
   const all = allModules();
   const cards = all.flatMap((m): StartCard[] => {

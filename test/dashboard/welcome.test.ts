@@ -239,6 +239,38 @@ describe('starting a module from a card', () => {
     quiet.mockRestore();
   });
 
+  it('takes out the rows a failed sample run left behind', async () => {
+    const quiet = vi.spyOn(console, 'error').mockImplementation(() => {});
+    const order: string[] = [];
+    const def = fake('links', {
+      sampleData: async () => {
+        order.push('add');
+        throw new Error('boom');
+      },
+      clearSampleData: async () => {
+        order.push('clear');
+      },
+    });
+    const { t, app } = await setup([def]);
+    const { headers } = await get(t, app);
+    const res = await post(t, app, headers, '/start', { module: 'links' });
+    expect(res.status).toBe(303);
+    expect(order).toEqual(['add', 'clear']);
+    quiet.mockRestore();
+  });
+
+  it('still opens the module when the clean-up fails too', async () => {
+    const quiet = vi.spyOn(console, 'error').mockImplementation(() => {});
+    const boom = async () => Promise.reject(new Error('boom'));
+    const { t, app } = await setup([fake('links', { sampleData: boom, clearSampleData: boom })]);
+    const { headers } = await get(t, app);
+    const res = await post(t, app, headers, '/start', { module: 'links' });
+    expect(res.status).toBe(303);
+    expect(res.headers.get('location')).toBe('/app/links');
+    expect(await moduleState(t.env, t.org.id, 'links')).toMatchObject({ enabled: true, sample: false });
+    quiet.mockRestore();
+  });
+
   it('does nothing twice: a module that is on is only opened', async () => {
     const sampleData = vi.fn(async () => {});
     const { t, app } = await setup([fake('links', { sampleData, clearSampleData: async () => {} })]);
@@ -374,5 +406,23 @@ describe('the sidebar entry', () => {
     await post(t, app, a.headers, '/sidebar', { hidden: '0' });
     expect(await (await app.request('/app', { headers: a.headers }, t.env)).text()).toContain('href="/app/welcome"');
     expect(t.sqlite.prepare("SELECT action FROM audit_log WHERE action LIKE 'onboarding.%' ORDER BY rowid").all()).toEqual([{ action: 'onboarding.hidden' }, { action: 'onboarding.shown' }]);
+  });
+});
+
+describe('when the setup steps cannot be read', () => {
+  it('still shows the cards, the switch and the install facts', async () => {
+    const quiet = vi.spyOn(console, 'error').mockImplementation(() => {});
+    const { t, app } = await setup([fake('links')]);
+    const { headers } = await createTestSession(t.env, { role: 'owner' });
+    t.sqlite.exec('DROP TABLE "passkey"');
+    const res = await app.request('/app/welcome', { headers }, t.env);
+    const html = await res.text();
+    expect(res.status).toBe(200);
+    expect(html).toContain('We couldn’t load the setup steps');
+    expect(html).toContain('Start links');
+    expect(html).toContain('Sample data');
+    expect(html).toContain('This install');
+    expect(html).not.toContain('role="progressbar"');
+    quiet.mockRestore();
   });
 });

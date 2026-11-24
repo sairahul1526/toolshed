@@ -13,7 +13,10 @@ test('the Owner section links to Updates, and the page says what is running and 
   await expect(page.getByText(/^Version \d+\.\d+\.\d+/)).toBeVisible();
   await expect(page.getByRole('heading', { name: 'How to update' })).toBeVisible();
   await expect(page.getByText('npx wrangler deploy')).toBeVisible();
-  await expect(page.getByRole('table', { name: 'Applied database changes' })).toBeVisible();
+  await expect(page.getByRole('table', { name: 'Database changes' })).toBeVisible();
+  // The test server applies every change before it starts, so nothing is waiting.
+  await expect(page.getByText(/database changes? (is|are) waiting/)).toHaveCount(0);
+  await expect(page.getByText('Waiting', { exact: true })).toHaveCount(0);
   await expect(page.getByRole('table', { name: 'Installed modules' })).toBeVisible();
   // A fresh install has no failed jobs, and the page says so rather than showing an empty table.
   await expect(page.getByText('No failed jobs')).toBeVisible();

@@ -6,9 +6,19 @@ Updates shows what your install is running and walks you through updating it. On
 
 - **Running now:** the Toolshed version, how many database changes have been applied, how many modules are installed, whether email is on, and whether any background jobs failed.
 - **How to update:** the commands to run in a terminal, in order: save a copy of your data, get the new code, apply the database changes, deploy. Each command has a copy button. The last step is how to go back to the previous code if something looks wrong.
-- **Database changes:** every change that has been applied to your database, and when. After an update, the newest ones should match the new version.
+- **Database changes:** every change that has been applied to your database, and when. Changes this version expects but the database does not have yet are listed last, marked Waiting.
 - **Modules:** every module this install ships, with its version.
 - **Failed jobs:** background work that still failed after five tries, newest first.
+
+## Waiting changes
+
+If you deploy new code without applying its database changes, the page says how many are waiting and names them. Screens that need those changes can show errors until they are applied. Run step 3 on the page (apply the database changes), then reload.
+
+`npm run deploy` applies the changes before it deploys, so you only see this after deploying another way.
+
+## Changes from a newer version
+
+If you go back to older code, the database keeps the changes the newer version made. The page lists them, marked "Newer version". This is expected: changes only add to the database, so older code keeps working.
 
 ## Why it does not update itself
 

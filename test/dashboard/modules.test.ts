@@ -612,10 +612,57 @@ describe('sample data', () => {
     expect(res.status).toBe(303);
     const flash = flashOf(res);
     expect(flash?.kind).toBe('error');
-    expect(flash?.message).toContain('We couldn’t add the sample data for CRM. Nothing was changed.');
+    expect(flash?.message).toContain('We couldn’t add the sample data for CRM. The sample rows that were added have been removed.');
     expect(flash?.message).not.toContain('disk full');
     expect(await moduleState(t.env, t.org.id, 'crm')).toMatchObject({ sample: false });
     expect(audits(t)).toEqual([]);
+  });
+
+  it('takes out rows a failed add left behind', async () => {
+    vi.spyOn(console, 'error').mockImplementation(() => {});
+    const order: string[] = [];
+    const def = fake('crm', {
+      name: 'CRM',
+      sampleData: async () => {
+        order.push('add');
+        throw new Error('disk full');
+      },
+      clearSampleData: async () => {
+        order.push('clear');
+      },
+    });
+    const { t, app, headers } = await setup([def]);
+    t.sqlite.prepare("INSERT INTO module_state (org_id, module_id, enabled) VALUES (?, 'crm', 1)").run(t.org.id);
+    await post(app, t, headers, '/app/modules/crm/sample', { sample: '1' });
+    expect(order).toEqual(['add', 'clear']);
+  });
+
+  it('does not claim nothing changed when the clean-up fails too', async () => {
+    vi.spyOn(console, 'error').mockImplementation(() => {});
+    const boom = async () => {
+      throw new Error('disk full');
+    };
+    const { t, app, headers } = await setup([fake('crm', { name: 'CRM', sampleData: boom, clearSampleData: boom })]);
+    t.sqlite.prepare("INSERT INTO module_state (org_id, module_id, enabled) VALUES (?, 'crm', 1)").run(t.org.id);
+    const flash = flashOf(await post(app, t, headers, '/app/modules/crm/sample', { sample: '1' }));
+    expect(flash?.message).toBe('We couldn’t add the sample data for CRM. Some sample rows may have been added. Try again in a moment.');
+    expect(await moduleState(t.env, t.org.id, 'crm')).toMatchObject({ sample: false });
+  });
+
+  it('says rows may remain when a remove fails, and keeps the flag so it can be tried again', async () => {
+    vi.spyOn(console, 'error').mockImplementation(() => {});
+    const def = fake('crm', {
+      name: 'CRM',
+      sampleData: async () => {},
+      clearSampleData: async () => {
+        throw new Error('disk full');
+      },
+    });
+    const { t, app, headers } = await setup([def]);
+    t.sqlite.prepare("INSERT INTO module_state (org_id, module_id, enabled, sample) VALUES (?, 'crm', 1, 1)").run(t.org.id);
+    const flash = flashOf(await post(app, t, headers, '/app/modules/crm/sample', { sample: '0' }));
+    expect(flash?.message).toBe('We couldn’t remove the sample data for CRM. Some sample rows may still be there. Try again in a moment.');
+    expect(await moduleState(t.env, t.org.id, 'crm')).toMatchObject({ sample: true });
   });
 
   it('refuses a module with no sample data, a module that is off, and an unknown module', async () => {

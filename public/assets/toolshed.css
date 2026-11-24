@@ -76,6 +76,8 @@
 }
 *, *::before, *::after { box-sizing: border-box; }
 html, body { margin: 0; }
+/* The top bar is sticky and 60px tall: keep in-page links from landing underneath it. */
+html { scroll-padding-top: 76px; }
 body {
   font-family: var(--font-sans); font-size: 14px; line-height: 1.45;
   color: var(--text); background: var(--bg);
@@ -428,6 +430,7 @@ select.input option { background: var(--surface); color: var(--text); }
 /* callouts */
 .callout { display: flex; gap: 10px; align-items: flex-start; padding: 12px 14px; border-radius: var(--radius); background: var(--surface-2); border: 1px solid var(--border); font-size: 13px; }
 .callout > svg { margin-top: 1px; color: var(--muted); }
+.callout > div { min-width: 0; overflow-wrap: anywhere; }
 .callout b { font-weight: 500; }
 .callout p { margin: 2px 0 0; color: var(--muted); }
 .callout .row { margin-top: 8px; }
@@ -869,6 +872,8 @@ input[type="file"].input { height: auto; padding: 6px; }
 input[type="file"]::file-selector-button { margin-right: 10px; padding: 5px 12px; border: 1px solid var(--border-strong); border-radius: var(--radius-sm); background: var(--surface); color: var(--text); font: inherit; font-size: 13px; cursor: pointer; }
 input[type="file"]::file-selector-button:hover { background: var(--surface-2); }
 td.wrap-cell, th.wrap-cell { white-space: normal; overflow-wrap: anywhere; }
+/* a file name in a table: shown whole, wraps instead of being cut */
+.file-name { display: block; min-width: 0; max-width: 60ch; white-space: normal; overflow-wrap: anywhere; }
 .code:has(> code) { padding: 0 40px 0 0; overflow: visible; }
 .code > code { display: block; padding: 12px 4px 12px 14px; overflow-x: auto; font: inherit; }
 .code > .icon-btn { position: absolute; top: 6px; right: 6px; background: var(--surface-2); }
