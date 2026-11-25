@@ -124,8 +124,14 @@ By default only the install owner can create more workspaces. The install settin
 `auth.members_can_create_workspaces` lets everyone create them. One person can own at most 25.
 
 Deleting a workspace deletes everything in it and cannot be undone: the tools' data, members and invites,
-API keys, service accounts, notifications, exports and stored files. It needs a sign-in from the last 30
-minutes and the workspace's short name, typed out.
+API keys, service accounts, notifications, exports, failed jobs and stored files. It needs a sign-in from
+the last 30 minutes and the workspace's short name, typed out.
+
+One thing stays on purpose: addresses on the email suppression list. They still bounce whoever sends to
+them, so they stay blocked for the whole install, but they no longer record which workspace found them.
+
+A background job that was already waiting when the workspace was deleted can still fail a few minutes
+later. Its record on the Updates screen is removed by the next daily cleanup.
 
 ### Invites
 

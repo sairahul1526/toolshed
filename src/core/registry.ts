@@ -202,7 +202,7 @@ export async function exportModules(env: Env, org: { id: string; name: string; s
  * before `audit_log`: the audit log only lets go of a workspace's lines once that workspace has
  * no module state left (see `audit_guard` in the migrations).
  */
-const CORE_ORG_TABLES = [
+export const CORE_ORG_TABLES = [
   'module_state',
   'audit_log',
   'email_log',
@@ -218,7 +218,24 @@ const CORE_ORG_TABLES = [
   'notification_marks',
   'notifications',
   'exports',
+  // Failed jobs keep a preview of their payload, and "Retry" would run one for a workspace that is gone.
+  'job_failures',
 ] as const;
+
+/**
+ * Tables that have an `org_id` column and are NOT emptied when a workspace is deleted, each with
+ * its reason. A table with `org_id` has to be here, in `CORE_ORG_TABLES`, or in a module's
+ * `tables`: test/services/purge.test.ts fails otherwise.
+ */
+export const ORG_TABLES_KEPT: Record<string, string> = {
+  // The list protects the whole install's sender reputation: the address still bounces whoever
+  // sends to it. The row stays and only its link to the workspace is cut (see purgeOrgStatements).
+  email_suppressions: 'kept for the whole install; org_id is cleared',
+  // Holds a key and an expiry, nothing else. Some keys contain a workspace or site id, never
+  // content. `once()` never fills org_id, and the daily cleanup removes every key when it
+  // expires (seven days at most).
+  once_keys: 'ids only; expires on its own',
+};
 
 /** Where a workspace's export files live. The same layout as `exportKey` in export.ts, which imports this file. */
 const exportPrefix = (orgId: string): string => `exports/${orgId}/`;
@@ -233,6 +250,8 @@ export function purgeOrgStatements(env: Env, orgId: string): D1PreparedStatement
   const tables = registered.flatMap((m) => m.tables ?? []);
   const stmts = [...tables, ...CORE_ORG_TABLES].map((t) => env.DB.prepare(`DELETE FROM ${t} WHERE org_id = ?1`).bind(orgId));
   stmts.push(env.DB.prepare('DELETE FROM settings WHERE scope = ?1').bind(orgId));
+  // Bounced addresses stay blocked for the install, but no longer name the workspace that found them.
+  stmts.push(env.DB.prepare(`UPDATE email_suppressions SET org_id = '' WHERE org_id = ?1`).bind(orgId));
   return stmts;
 }
 

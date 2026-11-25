@@ -220,11 +220,17 @@ export async function once<T>(env: Env, key: string, ttlSeconds: number, fn: () 
   }
 }
 
-/** Delete expired `once` keys and failure rows older than `keepDays`. Run by the daily housekeeping. */
+/**
+ * Delete expired `once` keys and failure rows older than `keepDays`. Also delete failures that
+ * name a workspace which no longer exists: a job that was already on the queue when its workspace
+ * was deleted fails afterwards, and that record should not outlive the workspace by a month.
+ * Run by the daily housekeeping.
+ */
 export async function cleanupJobs(env: Env, now = Date.now(), keepDays = 30): Promise<void> {
   await env.DB.batch([
     env.DB.prepare('DELETE FROM once_keys WHERE expires_at <= ?1').bind(now),
     env.DB.prepare('DELETE FROM job_failures WHERE failed_at < ?1').bind(now - keepDays * 86_400_000),
+    env.DB.prepare(`DELETE FROM job_failures WHERE org_id <> '' AND org_id NOT IN (SELECT "id" FROM "organization")`),
   ]);
 }
 
