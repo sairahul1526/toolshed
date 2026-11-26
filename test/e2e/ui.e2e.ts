@@ -109,6 +109,18 @@ test.describe('gallery', () => {
     await page.screenshot({ path: `${SHOTS}/gallery-worst-375.png`, fullPage: true });
   });
 
+  test('a value marked to read in full is cut on wide screens and wraps on phones', async ({ page }) => {
+    const cell = page.locator('.trunc.full-m').first();
+    const isCut = () => cell.evaluate((el) => el.scrollWidth > el.clientWidth + 1);
+    await page.setViewportSize({ width: 1280, height: 900 });
+    await page.goto('/dev/ui?theme=light');
+    expect(await isCut()).toBe(true);
+    await expect(cell).toHaveAttribute('title', /example-company-name\.co\.uk$/);
+    await page.setViewportSize({ width: 375, height: 812 });
+    expect(await isCut()).toBe(false);
+    expect(await noOverflow(page)).toBe(true);
+  });
+
   for (const theme of ['light', 'dark'] as const) {
     test(`text meets AA contrast in ${theme}`, async ({ page }) => {
       for (const accent of ['lime', 'violet', 'amber']) {

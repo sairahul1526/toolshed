@@ -570,7 +570,7 @@ function BlockedTab({ page }: EmailViewProps) {
         rows={blocked.map((b, i) => ({
           address: (
             <span class="row-text">
-              <b class="trunc" title={b.address}>
+              <b class="trunc full-m" title={b.address}>
                 {b.address}
               </b>
             </span>

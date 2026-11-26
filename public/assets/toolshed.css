@@ -604,6 +604,8 @@ td.c, th.c { text-align: center; }
   .otp .gap { width: 2px; }
   .page-head .actions { justify-content: flex-start; }
   .trunc { max-width: 140px; }
+  /* stacked rows have the whole width: a value that must be read in full (an address) wraps instead of being cut */
+  .stack-table td .trunc.full-m { max-width: 100%; overflow: visible; white-space: normal; overflow-wrap: anywhere; }
   .card-foot { flex-wrap: wrap; }
   .card-foot .note { width: 100%; }
 }
@@ -712,6 +714,7 @@ dialog.command { padding: 0; width: min(520px, calc(100vw - 32px)); margin: 14vh
 
 /* choice cards and segmented control built on native radios */
 .choices.two { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+@media (max-width: 560px) { .choices.two { grid-template-columns: 1fr; } }
 .choice { position: relative; }
 .choice:has(input:checked) { border-color: var(--accent-ink); box-shadow: 0 0 0 3px var(--accent-soft); }
 .choice:has(input:focus-visible), .seg label:has(input:focus-visible) { outline: 2px solid var(--accent-ink); outline-offset: 2px; }

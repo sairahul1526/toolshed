@@ -408,6 +408,13 @@ describe('blocked addresses', () => {
     expect(page).toContain('sending reputation');
   });
 
+  it('marks the address to be shown in full on phones, where there is no hover title', async () => {
+    const { t, owner } = await setup();
+    await suppressAddress(t.env, 'gone@example.com', 'hard bounce');
+    const page = await (await get(t, owner, '/app/email?tab=blocked')).text();
+    expect(page).toMatch(/<b[^>]*class="trunc full-m"[^>]*title="gone@example\.com"|<b[^>]*title="gone@example\.com"[^>]*class="trunc full-m"/);
+  });
+
   it('allows an address again, audits it and says so', async () => {
     const { t, owner } = await setup();
     await suppressAddress(t.env, 'gone@example.com', 'hard bounce');

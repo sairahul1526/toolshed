@@ -82,6 +82,9 @@ const WORST_LINKS = [
   { name: '夏のキャンペーン 🎉 شركة الاختبار', url: '/日本語', clicks: 0, status: 'neutral' as const, label: 'Paused' },
 ];
 
+/** Longer than any column: shows how a value that must be read in full behaves. */
+const longAddress = `${'a-very-long-mailbox-name.'.repeat(3)}with+tags@${'subdomain.'.repeat(4)}example-company-name.co.uk`;
+
 function Gallery({ worst }: { worst: boolean }) {
   const links = worst ? WORST_LINKS : LINKS;
   const days = Array.from({ length: 14 }, (_, i) => `Nov ${i + 8}`);
@@ -177,6 +180,27 @@ function Gallery({ worst }: { worst: boolean }) {
             empty={<EmptyState title="No links yet" body="Create your first short link." actions={<Button variant="primary">New link</Button>} />}
           />
           <Pagination page={2} pageSize={25} total={worst ? 1284903 : 312} href={(p) => `?page=${p}`} noun={['link', 'links']} />
+        </Card>
+        <Card class="gallery-gap" title="Table with a value to read in full" description="Cut with a hover title on wide screens. Wraps on phones, where there is no hover." flush>
+          <Table
+            caption="Addresses"
+            columns={[
+              { key: 'address', label: 'Address' },
+              { key: 'why', label: 'Why' },
+            ]}
+            rows={[
+              {
+                address: (
+                  <span class="row-text">
+                    <b class="trunc full-m" title={longAddress}>
+                      {longAddress}
+                    </b>
+                  </span>
+                ),
+                why: 'Bounced',
+              },
+            ]}
+          />
         </Card>
         <Card class="gallery-gap" title="Empty table">
           <Table caption="Nothing" columns={[{ key: 'a', label: 'A' }]} rows={[]} empty={<EmptyState bare icon="link" title="No links yet" body="Links you create show up here." />} />
